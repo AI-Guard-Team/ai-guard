@@ -66,25 +66,55 @@ cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 
 ### 2. PostgreSQL 16
 
-1. https://www.postgresql.org/download/windows/ adresinden PostgreSQL 16 kurulum dosyasını indir ve kur (port: `5432`).
-2. Kurulumda belirlediğin şifreyi `.env` içindeki `POSTGRES_PASSWORD` alanına yaz.
-3. pgAdmin veya `psql` ile `.env` içindeki `POSTGRES_DB` adında boş bir veritabanı oluştur:
-   ```sql
-   CREATE DATABASE aiguard;
-   ```
+1. https://www.postgresql.org/download/windows/ → "Download the installer" → **16.x, Windows x86-64** kurulum dosyasını indir.
+2. Bileşenlerden **PostgreSQL Server** ve **Command Line Tools** yeterli; pgAdmin ve Stack Builder isteğe bağlı.
+3. Port `5432` kalsın. `postgres` şifresinde **Türkçe karakter kullanma** (ş, ğ, ı, ö, ü, ç).
+4. **Locale** ekranında `Default locale` yerine **`C`** seç. Türkçe Windows'ta varsayılan ayarın adı (`Turkish_Türkiye.1254`) "ü" içerdiği için veritabanı oluşturulamıyor ve kurulum "database cluster initialisation failed" uyarısıyla yarım kalıyor. Kodlama yine UTF-8 olduğundan Türkçe metinler sorunsuz saklanıyor.
+
+`aiguard` veritabanını elle oluşturmana gerek yok; aşağıdaki `dotnet ef database update` komutu oluşturuyor.
+
+<details>
+<summary>Kurulum "database cluster initialisation failed" uyarısıyla bittiyse</summary>
+
+Program dosyaları kurulmuş ama veritabanı oluşmamış demektir. Yeniden kurmak yerine **yönetici olarak açılmış** PowerShell'de:
+
+```powershell
+$pg = "C:\Program Files\PostgreSQL\16"; $data = "$pg\data"
+& "$pg\bin\initdb.exe" -D $data -U postgres -E UTF8 --locale=C -A scram-sha-256 -W
+icacls $data /grant "NT AUTHORITY\NetworkService:(OI)(CI)F" /T | Out-Null
+& "$pg\bin\pg_ctl.exe" register -N postgresql-x64-16 -U "NT AUTHORITY\NetworkService" -D $data -S auto
+Start-Service postgresql-x64-16
+```
+
+`data` klasörü boş değilse önce içini boşalt. Servis zaten kayıtlıysa `pg_ctl register` satırı hata verir; atlayabilirsin.
+</details>
 
 ### 3. API (.NET)
 
-```bash
+Bağlantı dizesi ve geliştirme şifresi **repoya yazılmaz**; bir kez `user-secrets` ile ayarlanır (bilgisayarında, repo dışında saklanır):
+
+```powershell
 cd api
-dotnet restore
+dotnet tool restore                      # repodaki EF aracı (dotnet-ef 8.0.11)
+dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=aiguard;Username=postgres;Password=<şifren>" --project src/AIGuard.Api
+dotnet user-secrets set "Seed:DefaultPassword" "<en-az-12-karakter>" --project src/AIGuard.Api
+
 dotnet ef database update --project src/AIGuard.Infrastructure --startup-project src/AIGuard.Api
-dotnet run --project src/AIGuard.Api
+dotnet run --project src/AIGuard.Api     # http://localhost:5080/health -> Healthy
 ```
 
-Bağlantı dizesi ortam değişkeninden (`ConnectionStrings__Default`) veya `appsettings.Development.json` dosyasından okunur. Swagger: http://localhost:5000/swagger
+Alternatif olarak `ConnectionStrings__Default` ortam değişkeni de okunur (CI ve Docker böyle çalışır).
+İlk açılışta Development ortamında örnek veri yüklenir: `admin@aiguard.local`, `reviewer@aiguard.local`, `aday1@aiguard.local`, `aday2@aiguard.local` (şifre: `Seed:DefaultPassword`) ve bir örnek sınav.
 
-> Proje adları A1 / E2 kartlarıyla netleşince bu bölüm güncellenecek.
+Testler:
+
+```powershell
+dotnet test                                                    # birim testleri (veritabanı gerekmez)
+$env:ConnectionStrings__Default = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=<şifren>"
+dotnet test                                                    # + entegrasyon testleri (geçici DB açıp siler)
+```
+
+Veritabanı modeli: [docs/er-diagram.md](docs/er-diagram.md) · Mimari kararlar ve nedenleri: [docs/MIMARI-KARARLAR.md](docs/MIMARI-KARARLAR.md)
 
 ### 4. Vision (Python)
 
@@ -107,6 +137,10 @@ npm run dev
 ## Docker ile çalıştırma (Yağmur'un bilgisayarı)
 
 Bkz. E1b kartı. `docker compose up -d` ile api, vision ve postgres birlikte ayağa kalkar.
+
+## Bir karta başlamadan önce
+
+Arka uçta çalışacaksanız [docs/MIMARI-KARARLAR.md](docs/MIMARI-KARARLAR.md) dosyasına göz atın. Katmanlar, ortak adlar, gizli değerlerin saklanması ve göç ekleme adımları orada anlatılıyor.
 
 ## Çalışma kuralları
 
