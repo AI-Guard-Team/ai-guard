@@ -38,7 +38,31 @@ def published_ports(service: dict) -> set[tuple[str, int]]:
 
 
 def test_card_services_exist(config: dict) -> None:
-    assert {"api", "vision", "postgres"} <= set(config["services"])
+    # Kart (revize): web, api, vision ve postgres.
+    assert {"web", "api", "vision", "postgres"} <= set(config["services"])
+
+
+def test_web_is_published_on_5173_and_not_on_vision_network(config: dict) -> None:
+    web = config["services"]["web"]
+    assert ("5173", 80) in published_ports(web)
+    assert "vision-internal" not in web["networks"]
+
+
+def test_api_trusts_forwarded_ip_only_from_web(config: dict) -> None:
+    # K-16: X-Forwarded-For yalnızca web (nginx) adresinden kabul edilmeli; aksi hâlde IP_CHANGE atlatılır.
+    web_ip = config["services"]["web"]["networks"]["backend"]["ipv4_address"]
+    env = config["services"]["api"]["environment"]
+    assert env["ForwardedHeaders__KnownNetworks__0"] == f"{web_ip}/32"
+    subnet = config["networks"]["backend"]["ipam"]["config"][0]["subnet"]
+    assert web_ip.rsplit(".", 1)[0] == subnet.split("/")[0].rsplit(".", 1)[0]
+
+
+def test_default_config_files_are_given_to_api_read_only(config: dict) -> None:
+    # GAB 3.3.7: varsayılan yapılandırma dosyaları konteynere verilir.
+    mounts = {v["target"]: v for v in config["services"]["api"].get("volumes", [])}
+    risk = mounts["/app/riskconfig.json"]
+    assert risk["type"] == "bind" and risk.get("read_only") is True
+    assert Path(risk["source"]).name == "riskconfig.json" and Path(risk["source"]).exists()
 
 
 def test_vision_publishes_no_ports(config: dict) -> None:

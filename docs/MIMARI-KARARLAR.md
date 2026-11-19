@@ -312,7 +312,7 @@ Kartta olay ucunun gövdesinde `type` ve `source` alması yazıyor. Bunu olduğu
 
 **E2'ye not:** Kimlik doğrulama gelene kadar uç `[DevelopmentOnly]` ile yalnızca Development'ta açık. E2 birleşince bu öznitelik kaldırılıp aday rolü ve "oturum bu adaya mı ait" kontrolü eklenmeli.
 
-**IP kontrolü (FR-22):** `SessionIpGuard.CheckAsync` oturumla ilgili her istekte çağrılmalı (E4'ün uçları dahil). İlk IP oturuma yazılıyor; farklı bir IP gelince bir kez `IP_CHANGE` üretiliyor. `::ffff:1.2.3.4` ile `1.2.3.4` aynı sayılıyor. API proxy arkasındaysa `X-Forwarded-For` yalnızca bilinen proxy'den kabul edilmeli (E1b).
+**IP kontrolü (FR-22):** `SessionIpGuard.CheckAsync` oturumla ilgili her istekte çağrılmalı (E4'ün uçları dahil). İlk IP oturuma yazılıyor; farklı bir IP gelince bir kez `IP_CHANGE` üretiliyor. `::ffff:1.2.3.4` ile `1.2.3.4` aynı sayılıyor. API proxy arkasındaysa `X-Forwarded-For` yalnızca bilinen proxy'den kabul edilmeli (E1b). **E1b'de yapıldı:** Compose'da `web` (nginx) API'nin önünde. `Api/TrustedProxySetup` başlığı yalnızca `ForwardedHeaders:KnownNetworks` ayarındaki adresten (web container'ı, 172.30.47.10) kabul ediyor. Ayar yoksa (Docker'sız çalışma) hiçbir şey değişmiyor.
 
 ---
 

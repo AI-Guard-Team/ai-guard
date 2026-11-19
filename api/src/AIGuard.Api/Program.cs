@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using AIGuard.Api;
 using AIGuard.Application;
 using AIGuard.Application.Risk;
 using AIGuard.Infrastructure;
@@ -24,7 +25,16 @@ builder.Services.AddProblemDetails();
 // Docker Compose ve CI, API'nin ve veritabanı bağlantısının ayakta olduğunu bu uçla kontrol ediyor.
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
 
+// Compose'da web (nginx) API'nin önünde; gerçek istemci IP'si yalnızca ondan kabul ediliyor (E1b, K-16).
+var behindProxy = builder.Services.AddTrustedProxies(builder.Configuration);
+
 var app = builder.Build();
+
+if (behindProxy)
+{
+    // Diğer her şeyden önce: SessionIpGuard RemoteIpAddress'i okurken gerçek istemci IP'sini görsün.
+    app.UseForwardedHeaders();
+}
 
 app.MapHealthChecks("/health");
 app.MapControllers();

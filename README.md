@@ -140,10 +140,15 @@ Tüm sistemi birlikte çalıştırmak ve entegrasyon günleri (E5a, E5b) için. 
 
 | Servis | Adres | Not |
 |---|---|---|
+| `web` | http://localhost:5173 | Vite build çıktısını nginx sunar; `/api/...` istekleri `api`'ye gider. `web/package.json` gelene kadar geçici bir sayfa gösterir |
 | `api` | http://localhost:8080 (`/health` → `Healthy`) | Development ortamında örnek veriyle açılır |
 | `vision` | yalnızca iç ağda, `http://vision:8000` | Bilgisayardan erişilemez, ona yalnızca `api` erişir |
 | `postgres` | `localhost:5432` | PostgreSQL 16, veri `aiguard_pgdata` volume'unda kalıcı |
 | `migrate` | — | Göçleri uygulayıp kapanır; `api` bunu bekler |
+
+- **Yapılandırma dosyaları:** `api/src/AIGuard.Api/riskconfig.json` container'a salt okunur bağlanıyor. Ağırlıkları değiştirdikten sonra `docker compose restart api` yeterli, yeniden derleme gerekmiyor. `forbidden-apps.json` oluşturulunca (Y3) aynı şekilde eklenecek.
+- **Önyüz API'yi `/api` üzerinden çağırmalı** (ör. `fetch('/api/...')`). Böylece tarayıcı için aynı adres oluyor ve API'de CORS gerekmiyor.
+- **İstemci IP'si:** API, `X-Forwarded-For` başlığını yalnızca `web` container'ından (172.30.47.10) kabul ediyor (K-16). Bilgisayarda 172.30.47.0/24 ağı başka bir şeyle çakışırsa `docker-compose.yml` içinde ikisi birlikte değiştirilmeli.
 
 ### Tek komutla (örnek değerlerle)
 
@@ -166,9 +171,10 @@ docker compose up -d --build
 ### Sık kullanılan komutlar
 
 ```bash
-docker compose ps                    # durum (api, vision, postgres "healthy"/"running"; migrate "exited (0)")
+docker compose ps                    # durum (web, api, vision, postgres "healthy"/"running"; migrate "exited (0)")
 docker compose logs -f api           # api logları
 docker compose up -d --build api     # yalnızca api'yi yeniden derle (ör. dev'i çektikten sonra)
+docker compose up -d --build web     # web projesi değişince önyüzü yeniden derle
 docker compose run --rm migrate      # yeni göç geldiyse tekrar uygula
 docker compose down                  # durdur (veri kalır)
 docker compose down -v               # durdur ve veritabanını sil (temiz başlangıç)

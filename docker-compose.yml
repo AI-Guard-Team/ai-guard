@@ -5,6 +5,7 @@
 #   cp .env.example .env && docker compose up -d --build    # kendi değerlerinle
 # Podman Desktop: aynı dosya "podman compose up -d --build" ile çalışır.
 #
+# Servisler: web (5173), api (8080), vision (yalnızca iç ağ), postgres (5432) ve tek seferlik migrate.
 # Docker yalnızca birlikte çalıştırma ve entegrasyon (E5a/E5b) için. Günlük geliştirme
 # Docker'sız yapılabiliyor (bkz. README "Yerel kurulum").
 
@@ -91,6 +92,14 @@ services:
       EVIDENCE_ENCRYPTION_KEY: ${EVIDENCE_ENCRYPTION_KEY:?EVIDENCE_ENCRYPTION_KEY tanımlı değil}
       # DevDataSeeder en az 12 karakter istiyor; boş verilirse açılışta hata verir.
       Seed__DefaultPassword: ${Seed__DefaultPassword:?Seed__DefaultPassword tanımlı değil (en az 12 karakter)}
+      # X-Forwarded-For yalnızca web (nginx) container'ından kabul edilsin (K-16). Başka biri başlığı
+      # yazsa da yok sayılır; aday IP değişimini gizleyemez.
+      ForwardedHeaders__KnownNetworks__0: 172.30.47.10/32
+    volumes:
+      # Varsayılan yapılandırma dosyaları (GAB 3.3.7). İmajda zaten var; buradan bağlanınca pilot oturumda
+      # ağırlıklar (S-10) imajı yeniden derlemeden değiştirilebiliyor: düzenle + "docker compose restart api".
+      - ./api/src/AIGuard.Api/riskconfig.json:/app/riskconfig.json:ro
+      # forbidden-apps.json repoda oluşturulunca (Y3) aynı şekilde buraya eklenecek.
     ports:
       - "8080:8080"
     depends_on:
@@ -105,8 +114,33 @@ services:
       - backend          # postgres'e erişim + 8080'in dışarı açılması
       - vision-internal  # vision'a erişim
 
+  web:
+    build:
+      context: ./web
+    restart: unless-stopped
+    ports:
+      # Vite'in geliştirme portuyla aynı; ajanın AllowedOrigins varsayılanı (http://localhost:5173) da bu.
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      # nginx imajında curl yok, wget var.
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      backend:
+        # Sabit adres: API, X-Forwarded-For'u yalnızca bu adresten kabul ediyor.
+        ipv4_address: 172.30.47.10
+
 networks:
-  backend: {}
+  backend:
+    ipam:
+      config:
+        # web'e sabit adres verebilmek için ağın aralığı sabit.
+        - subnet: 172.30.47.0/24
   vision-internal:
     # internal: true -> bu ağdan dışarı çıkış ve port yayınlama yok.
     internal: true
