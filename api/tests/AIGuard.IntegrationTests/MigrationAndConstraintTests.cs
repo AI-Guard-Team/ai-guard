@@ -42,6 +42,24 @@ public class MigrationAndConstraintTests(PostgresFixture fx) : IClassFixture<Pos
     }
 
     [SkippableFact]
+    public async Task Cancelled_session_does_not_use_up_the_attempt()
+    {
+        // FR-10: rızayı reddeden adayın oturumu iptal olur, hakkı kullanılmış sayılmaz.
+        RequireDb();
+        await using var db = fx.CreateContext();
+        var first = await TestData.SavedSessionAsync(db);
+        first.State = SessionState.Cancelled;
+        await db.SaveChangesAsync();
+
+        db.ExamSessions.Add(new ExamSession { ExamId = first.ExamId, CandidateId = first.CandidateId });
+        await db.SaveChangesAsync();
+
+        db.ExamSessions.Add(new ExamSession { ExamId = first.ExamId, CandidateId = first.CandidateId });
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        Assert.Equal(UniqueViolation, SqlState(ex));
+    }
+
+    [SkippableFact]
     public async Task Replayed_agent_nonce_is_rejected_by_database()
     {
         RequireDb();

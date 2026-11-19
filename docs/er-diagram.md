@@ -1,6 +1,6 @@
 # ER diyagramı
 
-Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261119142158_InitialCreate`.
+Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261119204838_GabUyumu`.
 
 Model değiştiğinde diyagram da aynı PR'da güncellenmeli. Tablo ve sütun adları veritabanındaki snake_case adlar; kararların gerekçeleri [MIMARI-KARARLAR.md](MIMARI-KARARLAR.md) dosyasında.
 
@@ -86,14 +86,15 @@ erDiagram
         uuid user_id FK
         varchar role "Candidate | Reviewer"
         timestamptz assigned_at
+        timestamptz attempt_used_at "oturum hakkı kullanıldı"
     }
 
     exam_sessions {
         uuid id PK
-        uuid exam_id FK "UK (exam_id, candidate_id)"
+        uuid exam_id FK "UK (exam_id, candidate_id), iptal edilenler hariç"
         uuid candidate_id FK
         varchar state "SessionState"
-        int flags "Risky=1 Indicated=2 NoAgent=4 MonitoringGap=8"
+        int flags "Risky=1 Indicated=2 NoAgent=4 MonitoringGap=8 PermissionGap=16"
         timestamptz created_at
         timestamptz started_at
         timestamptz ends_at "sunucu saati"
@@ -138,7 +139,7 @@ erDiagram
     verifications {
         uuid id PK
         uuid exam_session_id FK
-        varchar kind "Initial | Reconnect"
+        varchar kind "Initial | Reconnect | Periodic"
         float liveness_score
         float similarity
         bool passed
@@ -177,6 +178,7 @@ erDiagram
         varchar pairing_code_hash UK "SHA-256"
         timestamptz pairing_code_expires_at
         timestamptz paired_at
+        varchar platform "Windows | MacOS"
         bytea encrypted_session_key "AES-GCM, HMAC anahtarı"
         timestamptz last_signal_at
     }

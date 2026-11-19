@@ -1,0 +1,31 @@
+{
+  "Risk": {
+    "SessionThreshold": 10,
+    "RepetitionStep": 0.25,
+    "MaxRepetitionMultiplier": 2.0,
+    "DurationScaleSeconds": 10,
+    "Events": {
+      "FACE_MISSING":         { "Weight": 2.0,  "DecayPerMinute": 0.05 },
+      "MULTIPLE_FACES":       { "Weight": 4.0,  "DecayPerMinute": 0.03 },
+      "GAZE_AWAY":            { "Weight": 1.5,  "DecayPerMinute": 0.05 },
+      "PHONE":                { "Weight": 5.0,  "DecayPerMinute": 0.02 },
+      "IDENTITY_MISMATCH":    { "Weight": 8.0,  "DecayPerMinute": 0.0,  "Threshold": 8 },
+      "VERIFICATION_FAILED":  { "Weight": 2.0,  "DecayPerMinute": 0.0 },
+      "SPEECH":               { "Weight": 2.0,  "DecayPerMinute": 0.05 },
+      "TAB_BLUR":             { "Weight": 1.5,  "DecayPerMinute": 0.05 },
+      "FULLSCREEN_EXIT":      { "Weight": 1.0,  "DecayPerMinute": 0.05 },
+      "COPY_PASTE":           { "Weight": 2.0,  "DecayPerMinute": 0.03 },
+      "RIGHT_CLICK":          { "Weight": 0.5,  "DecayPerMinute": 0.1,  "MaxTotal": 2 },
+      "PERMISSION_REVOKED":   { "Weight": 3.0,  "DecayPerMinute": 0.02 },
+      "VM_DETECTED":          { "Weight": 10.0, "DecayPerMinute": 0.0,  "Threshold": 10 },
+      "HYPERVISOR_INFO":      { "Weight": 0.5,  "DecayPerMinute": 0.0,  "MaxTotal": 1 },
+      "FORBIDDEN_APP":        { "Weight": 6.0,  "DecayPerMinute": 0.0,  "Threshold": 6 },
+      "VPN_PROXY":            { "Weight": 4.0,  "DecayPerMinute": 0.0 },
+      "IP_CHANGE":            { "Weight": 3.0,  "DecayPerMinute": 0.01 },
+      "AGENT_SIGNAL_LOST":    { "Weight": 3.0,  "DecayPerMinute": 0.02 },
+      "AGENT_SIGNAL_INVALID": { "Weight": 8.0,  "DecayPerMinute": 0.0,  "Threshold": 8 },
+      "CONNECTION_LOST":      { "Weight": 1.0,  "DecayPerMinute": 0.05 },
+      "MONITORING_GAP":       { "Weight": 0.0,  "DecayPerMinute": 0.0 }
+    }
+  }
+}

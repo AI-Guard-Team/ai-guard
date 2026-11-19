@@ -1,4 +1,5 @@
 using AIGuard.Domain.Common;
+using AIGuard.Domain.Enums;
 
 namespace AIGuard.Domain.Entities;
 
@@ -15,6 +16,9 @@ public class AgentPairing : Entity
     public DateTimeOffset PairingCodeExpiresAt { get; set; }
 
     public DateTimeOffset? PairedAt { get; set; }
+
+    /// <summary>Ajanın işletim sistemi; eşleşme kurulunca dolduruluyor (ajan değerlendirmesi Y7a/Y7b için).</summary>
+    public AgentPlatform? Platform { get; set; }
 
     /// <summary>
     /// Sinyalleri imzalayan HMAC anahtarı, AES-GCM ile şifreli.

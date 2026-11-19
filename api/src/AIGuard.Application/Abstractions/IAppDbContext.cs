@@ -1,5 +1,6 @@
 using AIGuard.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace AIGuard.Application.Abstractions;
 
@@ -28,5 +29,15 @@ public interface IAppDbContext
     DbSet<ReviewerDecision> ReviewerDecisions { get; }
     DbSet<AuditLog> AuditLogs { get; }
 
+    /// <summary>İşlem (transaction) başlatmak için.</summary>
+    DatabaseFacade Database { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Oturum satırını açık işlem bitene kadar kilitliyor (SELECT … FOR UPDATE) ve izlenen
+    /// kopyayı veritabanındaki güncel hâliyle yeniliyor. Aynı oturuma eşzamanlı yazanları
+    /// sıraya sokmak için; çağıran açık bir işlem içinde olmalı.
+    /// </summary>
+    Task LockExamSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
 }

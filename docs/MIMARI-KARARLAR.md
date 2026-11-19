@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 19 Kasım 2026 (A1)*
+*Son güncelleme: 19 Kasım 2026 (GAB uyumu)*
 
 ---
 
@@ -12,7 +12,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 
 | Konu | Kural |
 |---|---|
-| Kaynak belgeler | Trello kartları GAB'dan sonra revize edildi; çelişkide kart geçerli (K-01) |
+| Kaynak belgeler | Güncel GAB, Talimat ve imzalı Öneri Formu (20.10.2026) ile Trello kartları; adlarda kartlar esas (K-01) |
 | Sürümler | .NET 8 (`api/global.json`), EF Core 8.0.11, Npgsql 8.0.11 |
 | Katmanlar | Api → Application → Domain, Infrastructure → Application + Domain (K-14) |
 | Veri erişimi | Servisler `IAppDbContext` kullanır; ayrı repository sınıfı yok (K-14) |
@@ -27,24 +27,43 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Örnek veri | Göçte değil, Development'ta açılışta (K-06) |
 | Göçler | Otomatik uygulanmaz, `dotnet ef database update` ile (K-07) |
 | Testler | Birim testleri veritabanısız; entegrasyon testleri gerçek PostgreSQL ile (K-09) |
+| Olay kaynağı | Sunucu belirliyor; tarayıcı yalnızca 5 tarayıcı olayını gönderebiliyor (K-16) |
+| Risk skoru | Olaylardan saf fonksiyonla hesaplanıyor; ağırlıklar `riskconfig.json`'da (K-17) |
+| Aynı oturuma eşzamanlı yazma | Oturum satırı kilitleniyor (`LockExamSessionAsync`) (K-18) |
 
 ---
 
 ## K-01 · Kaynak belgeler
 
-Trello kartları, GAB 1.0 ve öneri formundan (24 Ekim) sonra revize edildi ve kapsamda bazı değişiklikler yaptı. Arka uçta kartları esas alıyoruz:
+Geçerli belgeler şunlar:
 
-| Konu | GAB | Kartlar |
-|---|---|---|
-| Gözetim | Canlı gözetmen paneli ve müdahale (FR-27, FR-29) | Canlı gözetmen yok; değerlendirici (`Reviewer`) sınavdan sonra inceliyor |
-| Referans kaydı | Kimlik kartı ve gözetmen onayı | Fotoğraf yükleniyor, vektör çıkarılıp fotoğraf siliniyor |
-| Ajan çalışmazsa | Gözetmen istisna onayı veriyor | Aday gerekçe yazıp devam ediyor; oturuma `NoAgent` / `Indicated` işareti düşüyor |
-| Üç başarısız doğrulama | "Gözetmen Onayı Bekliyor" durumu | Oturum `IdentityVerification`'da kalıyor |
-| Durumlar | Askıda, Sonlandırıldı | `PermissionPending`, `Cancelled`, `Decided` |
-| Karar düzeltme | Sürümlü karar (FR-32) | Oturum başına en fazla bir karar |
-| macOS ajanı | Kapsam dışı | Kapsamda |
+- Gereksinim Analiz Belgesi (GAB)
+- Geliştirme Talimatı (YM491-INST-001, revizyon tarihi 20.10.2026)
+- İmzalı Proje Öneri Formu (20.10.2026)
+- Trello kartları
 
-GAB'ın bu farklara göre güncellenmesi E8 kartında yapılacak.
+Hepsinde kapsam aynı:
+
+- Canlı gözetmen yok; değerlendirici (`Reviewer`) riskli ve işaretli oturumları sınav bitince inceliyor.
+- Aday başvuruda kayıt fotoğrafı yüklüyor.
+- Güvenlik ajanı Windows ve macOS'ta çalışıyor.
+- Sınavlar gün aralıklı erişim penceresinde, aday başına tek oturum hakkıyla yapılıyor.
+
+Uç, olay türü ve durum adlarında Trello kartlarındaki ortak adlar esas. GAB'daki Türkçe durum adlarının karşılıkları:
+
+| GAB | Kod (`SessionState`) |
+|---|---|
+| Rıza Bekliyor | `ConsentPending` |
+| Ajan Eşleştirme | `AgentPairing` |
+| Kimlik Doğrulama | `IdentityVerification` |
+| Sürüyor | `InProgress` |
+| İzin Bekliyor | `PermissionPending` |
+| Bağlantı Kesik | `Disconnected` |
+| Tamamlandı | `Completed` |
+| İptal | `Cancelled` |
+| Karara Bağlandı | `Decided` |
+
+Daha önce dolaşan eski sürümlerde (GAB 1.0 ve 24.10.2026 tarihli öneri formu) canlı gözetmen paneli, kimlik kartıyla referans onayı ve yalnızca Windows ajanı vardı. Bu sürümler artık geçerli değil.
 
 ---
 
@@ -174,7 +193,7 @@ Kuralların bir kısmını uygulama kodunun yanında veritabanında da tanımlad
 
 | Kısıt | Sağladığı | Kart |
 |---|---|---|
-| `exam_sessions (exam_id, candidate_id)` benzersiz | Aday başına tek oturum | E4 |
+| `exam_sessions (exam_id, candidate_id)` benzersiz, iptal edilenler hariç (`WHERE state <> 'Cancelled'`) | Aday başına tek oturum. Rızayı reddeden adayın iptal edilen oturumu hakkı tüketmiyor (FR-10); hakkın kullanıldığı an `ExamAssignment.AttemptUsedAt`'te | E4 |
 | `agent_signals (agent_pairing_id, nonce)` benzersiz | Sinyal tekrar gönderilemez | Y2 |
 | `answers (exam_session_id, seq)` benzersiz | Aynı cevap iki kez kaydedilmez | E4, S3 |
 | `users.normalized_email` benzersiz | Büyük/küçük harf farkıyla ikinci hesap açılamaz | E2 |
@@ -224,6 +243,9 @@ A1 kartında geçmeyen bazı alanları, ilgili kartlar başladığında yeni gö
 | `EvidenceFrame.StorageKey`, `KeyVersion`, `DeleteAfter` | A5 |
 | `ExamSession.ContinueJustification` | Y4 |
 | `AgentPairing.EncryptedSessionKey`, `LastSignalAt`; `AgentSignal.SignatureValid` | Y2 |
+| `AgentPairing.Platform` (Windows / macOS) | Y1, Y7a, Y7b (GAB nesne modeli) |
+| `ExamAssignment.AttemptUsedAt` (oturum hakkı kullanıldı mı) | E4 (GAB nesne modeli, FR-10) |
+| `SessionFlags.PermissionGap` (izinsiz geçen süre) | A2, S4 (GAB FR-17) |
 
 GAB'daki "Müdahale" varlığını canlı gözetim kapsamdan çıktığı için eklemedik.
 
@@ -265,6 +287,110 @@ Bu sayede "süre dolunca otomatik teslim" (E4) veya "saklama süresi dolan veril
 
 ---
 
+## K-16 · Olayları kim üretiyor
+
+Kartta olay ucunun gövdesinde `type` ve `source` alması yazıyor. Bunu olduğu gibi uygularsak adayın tarayıcısı kendi adına kamera veya ajan olayı gönderebilir, kaynağı taklit edebilir ya da olayları hiç göndermeyebilir. İstemciden gelen bilgiye güvenmeme ilkesi gereği şöyle ayırdık:
+
+| Olaylar | Üreten | Yol |
+|---|---|---|
+| `TAB_BLUR`, `FULLSCREEN_EXIT`, `COPY_PASTE`, `RIGHT_CLICK`, `PERMISSION_REVOKED` | Tarayıcı | `POST /api/sessions/{id}/events` → `EventService.RecordBrowserEventAsync` |
+| Kamera ve ses olayları | API, görüntü servisinin sonucuna göre (D4, D5) | `EventService.RecordSystemEventAsync` |
+| Ajan olayları | API, imzalı sinyal doğrulandıktan sonra (Y2–Y4) | `EventService.RecordSystemEventAsync` |
+| `IP_CHANGE` | API (`SessionIpGuard`) | `EventService.RecordSystemEventAsync` |
+| `CONNECTION_LOST`, `MONITORING_GAP` | API (E4, vision istemcisi) | `EventService.RecordSystemEventAsync` |
+
+- Kaynak her zaman `Domain/Events/EventCatalog` üzerinden belirleniyor; istekteki `source` alanı yok sayılıyor.
+- Tarayıcı olayının başlangıç zamanı da istemciden alınmıyor: `alınma anı − süre`.
+- Tarayıcı olaylarında sunucu tarafında hız sınırı var: aynı oturum ve aynı türden saniyede en fazla bir olay. S4'teki tarayıcı sınırlamasına güvenilmiyor.
+- Tarayıcı olaylarında serbest metin/JSON alanı yok. Değerlendirici ekranında gösterilecek veriyi aday belirleyemesin (XSS) ve pano içeriği gibi kişisel veri yanlışlıkla kaydedilmesin. İstekte gönderilen fazladan alanlar yok sayılıyor.
+- Uçta gövde en fazla 2 KB (`[RequestSizeLimit]`). Bu sınır Kestrel'de uygulanıyor, TestServer'da uygulanmıyor; bu yüzden elle doğrulandı.
+- Sunucu içi olaylarda başlangıç zamanı geçmişte olabilir (ör. kare analizi), 5 saniyeden fazla ileride olamaz. Birkaç saniye ileri tarihli olay "şimdi" sayılıyor ki skora hemen girsin.
+- Sunucu içi olaylardaki ek bilgi (`payload`) en fazla 4 KB ve geçerli bir JSON nesnesi/dizisi olmalı. Bu veri yalnızca sunucu kodundan geliyor.
+- Uç, skoru veya katkıyı yanıtta döndürmüyor; aday hangi davranışın ne kadar puan getirdiğini görmemeli.
+
+**Sınırlılık:** Tarayıcının bildirdiği süreye (`durationSec`) güvenilemez; aday sekme değiştirme süresini 0 gösterebilir. Tarayıcıyı aday kontrol ettiği için olayı hiç göndermemesi de mümkün. Bu, istemci tarafı izlemenin bilinen sınırı (GAB 1.2). Ağırlıklar bu yüzden kısa olayları da anlamlı puanlıyor.
+
+**E2'ye not:** Kimlik doğrulama gelene kadar uç `[DevelopmentOnly]` ile yalnızca Development'ta açık. E2 birleşince bu öznitelik kaldırılıp aday rolü ve "oturum bu adaya mı ait" kontrolü eklenmeli.
+
+**IP kontrolü (FR-22):** `SessionIpGuard.CheckAsync` oturumla ilgili her istekte çağrılmalı (E4'ün uçları dahil). İlk IP oturuma yazılıyor; farklı bir IP gelince bir kez `IP_CHANGE` üretiliyor. `::ffff:1.2.3.4` ile `1.2.3.4` aynı sayılıyor. API proxy arkasındaysa `X-Forwarded-For` yalnızca bilinen proxy'den kabul edilmeli (E1b).
+
+---
+
+## K-17 · Risk skoru
+
+Skor `Application/Risk/RiskEngine` içinde, veritabanına dokunmayan bir fonksiyonla hesaplanıyor. Aynı olaylar ve aynı an için her zaman aynı sonuç çıkıyor; rapor ve inceleme ekranları (A4) skoru istedikleri an için yeniden hesaplayabiliyor.
+
+```
+katkı = ağırlık × süreÇarpanı × tekrarÇarpanı × e^(−azalma × geçen dakika)
+skor  = Σ katkı
+```
+
+| Bileşen | Tanım | Gerekçe |
+|---|---|---|
+| süreÇarpanı | Anlık olayda 1, süreli olayda `1 + ln(1 + süre / 10 sn)` | Uzun olay daha ağır, ama 10 dakikalık bakış 60 kat ağır olmuyor |
+| tekrarÇarpanı | Aynı türün n. tekrarında `min(1 + 0,25 × (n − 1), 2)` | Tekrarlayan davranış daha şüpheli, ama sınırsız büyümüyor |
+| geçen dakika | Olayın **bitişinden** değerlendirme anına | Süren bir olay bitmeden azalmaya başlamıyor |
+| `MaxTotal` | Türün toplam katkısının üst sınırı | `HYPERVISOR_INFO` gibi bilgi olayları ajan her sinyalde bildirse bile oturumu riskli yapamıyor |
+| Tür eşiği (`Threshold`) | Türün toplam katkısı bu değere ulaşırsa oturum riskli | Sanal makine, yasaklı uygulama, kimlik uyuşmazlığı ve geçersiz ajan imzası tek başına incelemeyi gerektiriyor |
+| Oturum eşiği | Skor ≥ `SessionThreshold` (varsayılan 10) ise riskli | Küçük olayların birikmesi |
+
+- **`Risky` kalıcı:** Bir kez konunca skor zamanla düşse de kalkmıyor; değerlendirici neden riskli olduğunu görebilmeli.
+- **Yanlış alarm:** Yanlış alarm işaretli olaylar (A4) skora girmiyor.
+- **Sınav bitince:** Skor bitiş anında sabitleniyor; rapor ekranında sonradan azalmıyor.
+- **`MONITORING_GAP`:** Ağırlığı 0. Bu adayın değil sistemin sorunu; yalnızca `MonitoringGap` işaretini koyuyor.
+- **`PERMISSION_REVOKED`:** Puan eklemenin yanında `PermissionGap` işaretini koyuyor. GAB'a göre izinsiz geçen süresi olan oturum, risk skorundan bağımsız olarak incelemeye düşüyor (FR-17).
+- **Kayıtlı katkı:** `Event.ScoreContribution`, olayın kaydedildiği andaki katkısı. Skorla aynı hesaptan alınıyor (tekrar ve tür üst sınırı dahil); üst sınıra takılmış bir olayda 0 görünüyor. Zamanla azalmış değeri görmek için hesaplayıcı istenen an için yeniden çalıştırılmalı.
+- **Eşik kararı:** Yuvarlanmamış skorla veriliyor; 9,99996 gibi bir değer "riskli" sayılmıyor. Saklanan skor 4 basamağa yuvarlanıyor.
+- **Gerekçe metni:** Sınavın başladığı ana göre yazılıyor ("12. dakikada 8 sn telefon görüldü"); sınav başlamadan önceki olaylarda "Sınav başlamadan önce …".
+
+**Ayarlar:** Ağırlıklar `api/src/AIGuard.Api/riskconfig.json` dosyasında. Her olay türü için ayar zorunlu; eksik veya hatalı değer varsa uygulama açılmıyor (`RiskOptionsValidator`). Şu anki değerler başlangıç tahmini; pilot oturumda ayarlanıp deneyler boyunca sabit tutulacak (Talimat, 9. hafta). Testler kendi sabit ayarlarını kullandığı için ağırlıkları değiştirmek testleri bozmuyor; yalnızca `RiskConfigTests` yayındaki dosyanın tutarlılığını kontrol ediyor.
+
+---
+
+## K-18 · Aynı oturuma eşzamanlı olay yazımı
+
+Bir oturuma aynı saniyede kamera, ses ve tarayıcı olayı gelebiliyor. Her olay oturumun `RiskScore` ve `Flags` alanlarını güncellediği için `xmin` iyimser kilidi çakışma hatası veriyordu. Yeniden deneme yükü yalnızca azaltıyordu, çözmüyordu.
+
+Bu yüzden `EventService` her olayı bir işlem içinde yazıyor ve önce `IAppDbContext.LockExamSessionAsync` ile oturum satırını kilitliyor (`SELECT … FOR UPDATE`). Aynı oturuma gelen yazmalar sıraya giriyor; farklı oturumlar birbirini beklemiyor. Bu sayede:
+
+- Skor her zaman o ana kadarki tüm olaylarla hesaplanıyor.
+- Hız sınırı kontrolü eşzamanlı isteklerde atlatılamıyor.
+
+`LockExamSessionAsync` PostgreSQL'e özgü SQL içerdiği için Infrastructure'da, `IAppDbContext` arkasında duruyor.
+
+**E4'e not:** Oturum durumunu değiştiren işlemler (teslim, otomatik teslim, bağlantı kesildi) de aynı kilidi kullanırsa olay yazımıyla çakışmaz. Kullanmazsa `DbUpdateConcurrencyException` alabilir ve yeniden denemesi gerekir.
+
+---
+
+## Kartlarda geçmeyen GAB kuralları
+
+Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
+
+### E4 · Sınav oturumu durum makinesi
+
+- **Rıza reddi oturum hakkını tüketmez (FR-10).** Rıza Bekliyor durumunda aday rızayı reddederse oturum `Cancelled` olur ve aday alternatif yönteme yönlendirilir. Hak kullanılmış sayılmaz; aynı aday sonra yeni oturum açabilir. Veritabanı buna hazır: tek oturum indeksi iptal edilen oturumları saymıyor (K-11). `ExamAssignment.AttemptUsedAt` yalnızca oturum gerçekten başladığında doldurulmalı; doluysa yeni oturum açılmamalı.
+- **Sınav sırasında biyometrik rıza geri alınırsa oturum iptal olur (FR-05).** `InProgress`, `PermissionPending` veya `Disconnected` durumundaki oturum `Cancelled`'a geçer, izleme durur, işlem denetim kaydına yazılır.
+- **Uzun kesinti (FR-26).** 5 dakikadan uzun bağlantı kesintisi yüksek ağırlıklı bir olay üretmeli. Ortak olay listesinde bunun için ayrı bir tür yok (S-13); karar verilene kadar kesinti `CONNECTION_LOST` olarak, süresiyle birlikte yazılmalı.
+- **İzin Bekliyor süresi (FR-17).** İzin yeniden verilince izinsiz geçen süre `PERMISSION_REVOKED` olayı olarak, `DurationSec` ile kaydedilmeli. Olay oturuma `PermissionGap` işaretini kendiliğinden koyuyor (K-17).
+- **Kesinti sonrası doğrulama (FR-26).** Aday döndüğünde canlılık testi ve yüz eşleştirmesi tekrar yapılmalı; oturum hakkı yenilenmez. Doğrulama `VerificationKind.Reconnect` ile kaydedilir.
+
+### A3 · Kayıt fotoğrafı ve doğrulama
+
+- **Rıza geri alma oturumu da etkiler (FR-05).** Biyometrik rıza geri alınınca yüz vektörü silinir. Aday o sırada sınavdaysa oturum iptal edilir (E4 ile birlikte).
+- **Kayıt fotoğrafı yoksa sınav başlamaz (FR-04).** Oturum başlatılırken adayın `ReferenceFaceTemplate` kaydı kontrol edilmeli.
+
+### A4 · Rapor API'si ve inceleme bildirimleri
+
+- **İnceleme bekleyen oturum sayısı (FR-29).** Değerlendirici panelinde, atandığı sınavlarda incelenmeyi bekleyen (riskli veya işaretli, henüz kararı olmayan) oturum sayısı gösterilmeli. Liste ucuyla birlikte bu sayı da dönmeli.
+- **İşaretli oturumlar skordan bağımsız listelenir (FR-27).** Listede öne çıkarma `Flags` içinde `Risky`, `NoAgent`, `Indicated`, `PermissionGap` veya `MonitoringGap` olmasına göre yapılmalı, yalnızca skora göre değil.
+
+### S5 · Değerlendirici inceleme paneli
+
+- **İnceleme bekleyen oturum sayısı panelde görünmeli (FR-29).** Sayıyı A4 sağlayacak.
+- **İşaretler ayrı ayrı gösterilmeli (FR-27).** Riskli, ajansız, göstergeli, izinsiz süre ve izleme kesintisi işaretleri listede rozet olarak görünmeli.
+
+---
+
 ## Açık konular
 
 | # | Konu | İlgili | Öneri |
@@ -277,3 +403,7 @@ Bu sayede "süre dolunca otomatik teslim" (E4) veya "saklama süresi dolan veril
 | S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | Serviste kontrol ve test; gerekirse `answers.exam_id` ile bileşik yabancı anahtar |
 | S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı; göçler ayrı kullanıcıyla |
 | S-8 | `agent_signals` hızlı büyüyor; kullanıcı silme talebi | Ayşe (A5) | Saklama görevine eklenmesi; kişisel alanların anonimleştirilmesi |
+| S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açık | Esma (E2), Ayşe | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü |
+| S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
+| S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
+| S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |

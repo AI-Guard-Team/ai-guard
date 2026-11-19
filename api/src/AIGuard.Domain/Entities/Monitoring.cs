@@ -29,6 +29,7 @@ public class Event : Entity
     /// </summary>
     public string? Payload { get; set; }
 
+    /// <summary>Olay kaydedildiği andaki skora katkısı (tekrar ve tür üst sınırı dahil).</summary>
     public double ScoreContribution { get; set; }
 
     /// <summary>Gerekçe metni, örn. "12. dakikada 8 sn telefon görüldü".</summary>
