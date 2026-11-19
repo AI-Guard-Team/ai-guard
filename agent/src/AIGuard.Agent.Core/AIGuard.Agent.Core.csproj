@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Eşleştirme, sinyal ve imza gibi işletim sisteminden bağımsız kod (Y1–Y4). -->
+
+  <ItemGroup>
+    <!-- Yerel uç için Kestrel; ayrı NuGet paketi yerine .NET ile gelen ASP.NET Core çatısı. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AIGuard.Agent.Core.Tests" />
+  </ItemGroup>
+
+</Project>

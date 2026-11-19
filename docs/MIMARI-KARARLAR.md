@@ -357,3 +357,5 @@ Bu yüzden `EventService` her olayı bir işlem içinde yazıyor ve önce `IAppD
 | S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açık | Esma (E2), Ayşe | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
+| S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent/pairing-code`) E2 gelene kadar yalnızca Development'ta açık | Esma (E2), Yağmur | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü (S-9 ile aynı) |
+| S-13 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | Y2'de eşleşme anında HMAC oturum anahtarı üretilip `EncryptedSessionKey`'e yazılması ve ajana bu yanıtta verilmesi |

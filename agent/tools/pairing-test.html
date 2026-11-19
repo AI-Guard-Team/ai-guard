@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  Y1 tarayıcı denemesi için test sayfası. Platform önyüzünün yapacağı isteği taklit eder:
+  kodu http://127.0.0.1:47321/pair adresine fetch ile gönderir.
+  Yalnızca geliştirici aracı: gerçek önyüzde kod adaya gösterilmez ve elle girilmez.
+  Kullanım: docs/tarayici-deneme-notlari.md
+-->
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ajan eşleştirme denemesi</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    input { width: 100%; font-family: monospace; padding: .4rem; box-sizing: border-box; }
+    button { margin-top: .6rem; padding: .4rem 1rem; }
+    pre { background: #f2f2f2; padding: .6rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Ajan eşleştirme denemesi</h1>
+  <p>Sayfanın origin'i: <code id="origin"></code><br>
+     Bu değer ajanın <code>Agent:AllowedOrigins</code> listesinde olmalı.</p>
+  <label for="code">Eşleştirme kodu (API'den alınan, 43 karakter)</label>
+  <input id="code" autocomplete="off">
+  <button id="send">Ajana gönder</button>
+  <pre id="out"></pre>
+  <script>
+    document.getElementById('origin').textContent = location.origin;
+    const out = document.getElementById('out');
+    document.getElementById('send').addEventListener('click', async () => {
+      const started = performance.now();
+      out.textContent = 'Gönderiliyor...';
+      try {
+        // Content-Type: application/json -> tarayıcı önce OPTIONS ön kontrolü yapar (CORS + yerel ağ erişimi).
+        const res = await fetch('http://127.0.0.1:47321/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: document.getElementById('code').value.trim() }),
+        });
+        out.textContent = `HTTP ${res.status} (${Math.round(performance.now() - started)} ms)\n${await res.text()}`;
+      } catch (e) {
+        // CORS, yerel ağ erişimi reddi veya ajan kapalıysa tarayıcı ayrıntı vermez; DevTools > Console'a bakın.
+        out.textContent = `İstek başarısız: ${e}\nAyrıntı için DevTools > Console ve Network sekmesine bakın.`;
+      }
+    });
+  </script>
+</body>
+</html>
