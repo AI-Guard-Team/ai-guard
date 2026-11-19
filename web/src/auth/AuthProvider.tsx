@@ -11,9 +11,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = useMemo(() => (accessToken ? decodeAccessToken(accessToken) : null), [accessToken])
 
   const signIn = useCallback((next: Tokens) => tokenStore.set(next), [])
-  const signOut = useCallback(() => tokenStore.clear(), [])
 
-  const value = useMemo<AuthContextValue>(() => ({ user, signIn, signOut }), [user, signIn, signOut])
+  const value = useMemo<AuthContextValue>(() => ({ user, signIn }), [user, signIn])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

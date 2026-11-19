@@ -1,6 +1,13 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { tokenStore } from './auth/tokenStore'
+import { jsonResponse, mockFetch } from './test/fetch'
 import { renderApp, signInAs } from './test/renderApp'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('yönlendirme', () => {
   it('giriş yapmamış kullanıcıyı giriş sayfasına gönderir', () => {
@@ -37,6 +44,18 @@ describe('yönlendirme', () => {
     expect(nav).not.toHaveTextContent('Yönetim')
     expect(nav).not.toHaveTextContent('Sınavlarım')
     expect(screen.getByText('Mert Yılmaz · Değerlendirici')).toBeInTheDocument()
+  })
+
+  it('Çıkış butonu oturumu kapatıp giriş sayfasına götürür', async () => {
+    const fetchMock = mockFetch(() => jsonResponse(204))
+    signInAs('Admin')
+    renderApp('/admin')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Çıkış' }))
+
+    expect(await screen.findByRole('heading', { name: 'Giriş' })).toBeInTheDocument()
+    expect(tokenStore.get()).toBeNull()
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/logout')
   })
 
   it('tanımsız adreste "Sayfa bulunamadı" gösterir', () => {

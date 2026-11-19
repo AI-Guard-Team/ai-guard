@@ -5,7 +5,6 @@ import type { Tokens } from './tokenStore'
 export interface AuthContextValue {
   user: SessionUser | null
   signIn: (tokens: Tokens) => void
-  signOut: () => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

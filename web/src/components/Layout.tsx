@@ -1,16 +1,18 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
+import { logout } from '../api/auth'
 import { ROLE_LABEL, ROLE_MENU } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
 
 export function Layout() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   if (!user) return null
 
   const handleSignOut = () => {
-    signOut()
+    // Önce yönlendirilir; aksi hâlde RequireAuth mevcut sayfayı "girişten sonra dönülecek sayfa" olarak saklar.
     navigate('/login', { replace: true })
+    void logout()
   }
 
   return (
