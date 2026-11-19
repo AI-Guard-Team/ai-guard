@@ -158,10 +158,13 @@ public sealed class EventService(IAppDbContext db, RiskEngine riskEngine, TimePr
             session.Flags |= SessionFlags.Risky;
         }
 
-        if (newEvent.Type == EventType.MONITORING_GAP)
+        // İşaretli oturumlar risk skorundan bağımsız incelemeye düşüyor (GAB FR-17, FR-26).
+        session.Flags |= newEvent.Type switch
         {
-            session.Flags |= SessionFlags.MonitoringGap;
-        }
+            EventType.MONITORING_GAP => SessionFlags.MonitoringGap,
+            EventType.PERMISSION_REVOKED => SessionFlags.PermissionGap,
+            _ => SessionFlags.None,
+        };
     }
 
     private static string? ValidateCommon(double durationSec, double? confidence, string? payload)

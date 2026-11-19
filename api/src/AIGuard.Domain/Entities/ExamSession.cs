@@ -5,8 +5,10 @@ using AIGuard.Domain.Enums;
 namespace AIGuard.Domain.Entities;
 
 /// <summary>
-/// Adayın bir sınavdaki oturumu. Aday başına tek oturum kuralı veritabanında
-/// (ExamId, CandidateId) benzersiz indeksiyle de korunuyor.
+/// Adayın bir sınavdaki oturumu. Aday başına tek oturum kuralı veritabanında da korunuyor:
+/// (ExamId, CandidateId) yalnızca iptal edilmemiş oturumlar arasında benzersiz. Rızayı
+/// reddeden adayın oturumu iptal olur ve hakkı kullanılmış sayılmaz (FR-10), bu yüzden
+/// yeniden başlayabiliyor.
 /// </summary>
 public class ExamSession : Entity
 {

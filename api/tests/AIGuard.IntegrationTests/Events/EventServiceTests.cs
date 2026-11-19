@@ -118,6 +118,20 @@ public class EventServiceTests(PostgresFixture fx) : IClassFixture<PostgresFixtu
     }
 
     [SkippableFact]
+    public async Task Permission_revoked_marks_the_session_for_review()
+    {
+        // FR-17: izinsiz geçen süre olan oturum risk skorundan bağımsız incelemeye düşer.
+        RequireDb();
+        await using var db = fx.CreateContext();
+        var session = await InProgressSessionAsync(db);
+
+        await Service(db, Clock()).RecordBrowserEventAsync(session.Id, new BrowserEventRequest(EventType.PERMISSION_REVOKED, 40));
+        await db.Entry(session).ReloadAsync();
+
+        Assert.Equal(SessionFlags.PermissionGap, session.Flags);
+    }
+
+    [SkippableFact]
     public async Task False_alarms_are_left_out_of_the_score()
     {
         RequireDb();

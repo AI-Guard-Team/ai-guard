@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 19 Kasım 2026 (A2)*
+*Son güncelleme: 19 Kasım 2026 (GAB uyumu)*
 
 ---
 
@@ -12,7 +12,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 
 | Konu | Kural |
 |---|---|
-| Kaynak belgeler | Trello kartları GAB'dan sonra revize edildi; çelişkide kart geçerli (K-01) |
+| Kaynak belgeler | Güncel GAB, Talimat ve imzalı Öneri Formu (20.10.2026) ile Trello kartları; adlarda kartlar esas (K-01) |
 | Sürümler | .NET 8 (`api/global.json`), EF Core 8.0.11, Npgsql 8.0.11 |
 | Katmanlar | Api → Application → Domain, Infrastructure → Application + Domain (K-14) |
 | Veri erişimi | Servisler `IAppDbContext` kullanır; ayrı repository sınıfı yok (K-14) |
@@ -35,19 +35,35 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 
 ## K-01 · Kaynak belgeler
 
-Trello kartları, GAB 1.0 ve öneri formundan (24 Ekim) sonra revize edildi ve kapsamda bazı değişiklikler yaptı. Arka uçta kartları esas alıyoruz:
+Geçerli belgeler şunlar:
 
-| Konu | GAB | Kartlar |
-|---|---|---|
-| Gözetim | Canlı gözetmen paneli ve müdahale (FR-27, FR-29) | Canlı gözetmen yok; değerlendirici (`Reviewer`) sınavdan sonra inceliyor |
-| Referans kaydı | Kimlik kartı ve gözetmen onayı | Fotoğraf yükleniyor, vektör çıkarılıp fotoğraf siliniyor |
-| Ajan çalışmazsa | Gözetmen istisna onayı veriyor | Aday gerekçe yazıp devam ediyor; oturuma `NoAgent` / `Indicated` işareti düşüyor |
-| Üç başarısız doğrulama | "Gözetmen Onayı Bekliyor" durumu | Oturum `IdentityVerification`'da kalıyor |
-| Durumlar | Askıda, Sonlandırıldı | `PermissionPending`, `Cancelled`, `Decided` |
-| Karar düzeltme | Sürümlü karar (FR-32) | Oturum başına en fazla bir karar |
-| macOS ajanı | Kapsam dışı | Kapsamda |
+- Gereksinim Analiz Belgesi (GAB)
+- Geliştirme Talimatı (YM491-INST-001, revizyon tarihi 20.10.2026)
+- İmzalı Proje Öneri Formu (20.10.2026)
+- Trello kartları
 
-GAB'ın bu farklara göre güncellenmesi E8 kartında yapılacak.
+Hepsinde kapsam aynı:
+
+- Canlı gözetmen yok; değerlendirici (`Reviewer`) riskli ve işaretli oturumları sınav bitince inceliyor.
+- Aday başvuruda kayıt fotoğrafı yüklüyor.
+- Güvenlik ajanı Windows ve macOS'ta çalışıyor.
+- Sınavlar gün aralıklı erişim penceresinde, aday başına tek oturum hakkıyla yapılıyor.
+
+Uç, olay türü ve durum adlarında Trello kartlarındaki ortak adlar esas. GAB'daki Türkçe durum adlarının karşılıkları:
+
+| GAB | Kod (`SessionState`) |
+|---|---|
+| Rıza Bekliyor | `ConsentPending` |
+| Ajan Eşleştirme | `AgentPairing` |
+| Kimlik Doğrulama | `IdentityVerification` |
+| Sürüyor | `InProgress` |
+| İzin Bekliyor | `PermissionPending` |
+| Bağlantı Kesik | `Disconnected` |
+| Tamamlandı | `Completed` |
+| İptal | `Cancelled` |
+| Karara Bağlandı | `Decided` |
+
+Daha önce dolaşan eski sürümlerde (GAB 1.0 ve 24.10.2026 tarihli öneri formu) canlı gözetmen paneli, kimlik kartıyla referans onayı ve yalnızca Windows ajanı vardı. Bu sürümler artık geçerli değil.
 
 ---
 
@@ -177,7 +193,7 @@ Kuralların bir kısmını uygulama kodunun yanında veritabanında da tanımlad
 
 | Kısıt | Sağladığı | Kart |
 |---|---|---|
-| `exam_sessions (exam_id, candidate_id)` benzersiz | Aday başına tek oturum | E4 |
+| `exam_sessions (exam_id, candidate_id)` benzersiz, iptal edilenler hariç (`WHERE state <> 'Cancelled'`) | Aday başına tek oturum. Rızayı reddeden adayın iptal edilen oturumu hakkı tüketmiyor (FR-10); hakkın kullanıldığı an `ExamAssignment.AttemptUsedAt`'te | E4 |
 | `agent_signals (agent_pairing_id, nonce)` benzersiz | Sinyal tekrar gönderilemez | Y2 |
 | `answers (exam_session_id, seq)` benzersiz | Aynı cevap iki kez kaydedilmez | E4, S3 |
 | `users.normalized_email` benzersiz | Büyük/küçük harf farkıyla ikinci hesap açılamaz | E2 |
@@ -227,6 +243,9 @@ A1 kartında geçmeyen bazı alanları, ilgili kartlar başladığında yeni gö
 | `EvidenceFrame.StorageKey`, `KeyVersion`, `DeleteAfter` | A5 |
 | `ExamSession.ContinueJustification` | Y4 |
 | `AgentPairing.EncryptedSessionKey`, `LastSignalAt`; `AgentSignal.SignatureValid` | Y2 |
+| `AgentPairing.Platform` (Windows / macOS) | Y1, Y7a, Y7b (GAB nesne modeli) |
+| `ExamAssignment.AttemptUsedAt` (oturum hakkı kullanıldı mı) | E4 (GAB nesne modeli, FR-10) |
+| `SessionFlags.PermissionGap` (izinsiz geçen süre) | A2, S4 (GAB FR-17) |
 
 GAB'daki "Müdahale" varlığını canlı gözetim kapsamdan çıktığı için eklemedik.
 
@@ -319,6 +338,7 @@ skor  = Σ katkı
 - **Yanlış alarm:** Yanlış alarm işaretli olaylar (A4) skora girmiyor.
 - **Sınav bitince:** Skor bitiş anında sabitleniyor; rapor ekranında sonradan azalmıyor.
 - **`MONITORING_GAP`:** Ağırlığı 0. Bu adayın değil sistemin sorunu; yalnızca `MonitoringGap` işaretini koyuyor.
+- **`PERMISSION_REVOKED`:** Puan eklemenin yanında `PermissionGap` işaretini koyuyor. GAB'a göre izinsiz geçen süresi olan oturum, risk skorundan bağımsız olarak incelemeye düşüyor (FR-17).
 - **Kayıtlı katkı:** `Event.ScoreContribution`, olayın kaydedildiği andaki katkısı. Skorla aynı hesaptan alınıyor (tekrar ve tür üst sınırı dahil); üst sınıra takılmış bir olayda 0 görünüyor. Zamanla azalmış değeri görmek için hesaplayıcı istenen an için yeniden çalıştırılmalı.
 - **Eşik kararı:** Yuvarlanmamış skorla veriliyor; 9,99996 gibi bir değer "riskli" sayılmıyor. Saklanan skor 4 basamağa yuvarlanıyor.
 - **Gerekçe metni:** Sınavın başladığı ana göre yazılıyor ("12. dakikada 8 sn telefon görüldü"); sınav başlamadan önceki olaylarda "Sınav başlamadan önce …".
@@ -357,3 +377,4 @@ Bu yüzden `EventService` her olayı bir işlem içinde yazıyor ve önce `IAppD
 | S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açık | Esma (E2), Ayşe | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
+| S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |
