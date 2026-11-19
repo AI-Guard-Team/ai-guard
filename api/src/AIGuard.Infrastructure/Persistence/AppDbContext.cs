@@ -25,6 +25,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ReviewerDecision> ReviewerDecisions => Set<ReviewerDecision>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public async Task LockExamSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Oturum kilidi yalnızca açık bir işlem içinde alınabilir.");
+        }
+
+        await Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM exam_sessions WHERE id = {sessionId} FOR UPDATE", cancellationToken);
+
+        // Kilit alınmadan önce okunmuş bir kopya varsa güncel değerlerle yeniliyoruz;
+        // yoksa eski xmin ile yazmaya çalışıp çakışma hatası alırdık.
+        var tracked = ChangeTracker.Entries<ExamSession>().FirstOrDefault(e => e.Entity.Id == sessionId);
+        if (tracked is not null)
+        {
+            await tracked.ReloadAsync(cancellationToken);
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

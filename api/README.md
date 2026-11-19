@@ -9,9 +9,9 @@ api/
 ├── Directory.Build.props        Ortak ayarlar: net8.0, Nullable, uyarılar = hata
 ├── .config/dotnet-tools.json    dotnet-ef 8.0.11 (dotnet tool restore)
 ├── src/
-│   ├── AIGuard.Api/             Program.cs, /health; controller ve SignalR hub'ları (E2+). İnce katman.
-│   ├── AIGuard.Application/     Servisler, DTO'lar; Abstractions/ (IAppDbContext, IPasswordHasher)
-│   ├── AIGuard.Domain/          Varlıklar (Entities), enum'lar (SessionState, EventType, ...)
+│   ├── AIGuard.Api/             Program.cs, /health, Controllers/, Filters/, riskconfig.json. İnce katman.
+│   ├── AIGuard.Application/     Abstractions/, Events/ (EventService, SessionIpGuard), Risk/ (RiskCalculator)
+│   ├── AIGuard.Domain/          Entities/, Enums/, Events/EventCatalog
 │   └── AIGuard.Infrastructure/  AppDbContext, Configurations, Migrations, Interceptors, Seed, Security
 └── tests/
     ├── AIGuard.UnitTests/         Veritabanı gerektirmez
