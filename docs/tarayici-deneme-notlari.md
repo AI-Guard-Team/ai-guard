@@ -40,31 +40,50 @@ API Docker'da (Development), ajan Windows'ta (`aiguard-agent.exe`) çalışırke
 5. Yanıttaki `code` değerini sayfaya yapıştır, "Ajana gönder"e bas. Kod 5 dakika geçerli ve tek kullanımlık. Oturum `AgentPairing` durumunda olmalı.
 6. DevTools > Network'te `OPTIONS` ve `POST` isteklerini, Console'da varsa uyarıları not et.
 
-**İzin istemini görmek için sayfa genel (public) bir adresten açılmalı.** `localhost` → `127.0.0.1` isteği tarayıcı için aynı adres alanında kalıyor; istem çıkmaz. Genel adresten denemek için test sayfası geçici bir HTTPS adresine konabilir (ör. GitHub Pages veya bir tünel). O adres ajanın `AllowedOrigins` listesine eklenmeli.
+**İzin istemini görmek için sayfa genel (public) bir adresten açılmalı.** `localhost` → `127.0.0.1` isteği tarayıcı için aynı adres alanında kalıyor; istem çıkmaz. Denemede genel adres yerine Chrome'un `--ip-address-space-overrides=127.0.0.1:<port>=public` açılış seçeneği kullanıldı: tarayıcı sayfayı internetten geliyormuş gibi değerlendiriyor ve gerçek sınav sitesindeki istem çıkıyor.
 
-## Beklenen davranış (denemeyle doğrulanmalı)
+## Windows denemesi (20 Kasım 2026)
 
-Aşağıdakiler tarayıcıların yayımladığı belgelere göre beklenen davranış; tablodaki "Sonuç" sütunu denemeden sonra doldurulacak.
+**Ortam:** Windows 11. Y1 dalındaki API (Docker, compose'daki PostgreSQL ile) ve `aiguard-agent.exe` kullanıldı. Ajanın izinli origin'i `http://localhost:5174`, izinsiz origin olarak `http://localhost:5175` denendi. Tarayıcılar bilgisayarda kurulu Chrome ve Edge; her senaryo yeni ve temiz bir tarayıcı profiliyle Playwright üzerinden açıldı. İstekler test sayfasının yaptığı `fetch` ile aynı. Tarayıcının kendi arayüzündeki istem ekran görüntüsüyle kaydedildi.
 
-- **Chrome:** Private Network Access'in (ön kontrol + `Access-Control-Allow-Private-Network`) yerini "Local Network Access" izin istemi aldı. Genel bir siteden loopback'e ilk istekte kullanıcıya "yerel ağdaki cihazlara erişim" izni soruluyor. Reddedilirse `fetch` hata veriyor. Ajan `Access-Control-Allow-Private-Network` başlığını yine de gönderiyor; eski sürümlerle uyum için zararsız.
-- **Edge:** Chromium tabanlı olduğu için Chrome ile aynı davranması bekleniyor.
-- **Firefox:** Yerel ağ erişimi kısıtlaması daha sınırlı; istemsiz geçmesi bekleniyor. CORS kuralları aynı şekilde uygulanıyor.
-- **Karma içerik:** `https://` sayfadan `http://127.0.0.1` adresine istek üç tarayıcıda da izinli, çünkü `127.0.0.1` "güvenilir kaynak" sayılıyor. (Safari bunu engelliyor; Safari kartta yok.)
+| Tarayıcı / sürüm | Senaryo | İzin istemi | Sonuç | Not |
+|---|---|---|---|---|
+| Chrome 157.0.8103.79 | İzinli origin, yerel sayfa (`localhost:5174`) | Çıkmadı | 200 `paired`, 17 ms | Yerelden yerele istekte istem yok |
+| Chrome 157.0.8103.79 | İzinsiz origin (`localhost:5175`) | Çıkmadı | `TypeError: Failed to fetch` | Konsolda CORS hatası; ajan 403 verdi, kod sunucuya gitmedi |
+| Chrome 157.0.8103.79 | Genel site gibi (`public`), izin verilmeden | **Çıktı** (görüntü aşağıda) | İstek, istem yanıtlanana kadar bekledi. İstem çıktıktan sonra **İzin ver**'e basıldı ve 7,4 sn'de 200 `paired` geldi | Yanıtlanmadan istek zaman aşımına uğramıyor, bekliyor |
+| Chrome 157.0.8103.79 | Genel site gibi, izin önceden verilmiş | Çıkmadı | 200 `paired` | İzin DevTools ile (`localNetworkAccess`) önceden verildi |
+| Edge 157.0.4341.60 | İzinli origin, yerel sayfa | Çıkmadı | 200 `paired`, 19 ms | |
+| Edge 157.0.4341.60 | İzinsiz origin | Çıkmadı | `TypeError: Failed to fetch` | Konsolda CORS hatası |
+| Edge 157.0.4341.60 | Genel site gibi, izin verilmeden | **Çıktı** (Chrome'la aynı yerde izin balonu) | 12 sn boyunca yanıt gelmedi, istek istemi bekledi | Otomasyon altında balonun içi çizilmedi; metin elle bakılarak doğrulanmalı |
+| Edge 157.0.4341.60 | Genel site gibi, DevTools ile izin verilmiş | **Yine çıktı** | 12 sn boyunca yanıt gelmedi | Edge, Chrome'un DevTools izin ayarını dikkate almadı. **İzin ver**'e elle basıldığında sonuç ayrıca denenmeli |
+| Firefox | — | — | Denenmedi | Bilgisayarda Firefox kurulu değil |
 
-| Tarayıcı / sürüm | Sayfa adresi | İzin istemi çıktı mı? | İzin verilince | Reddedilince | Not |
-|---|---|---|---|---|---|
-| Chrome … | `http://localhost:5173` | | | | |
-| Chrome … | genel HTTPS adres | | | | |
-| Edge … | `http://localhost:5173` | | | | |
-| Edge … | genel HTTPS adres | | | | |
-| Firefox … | `http://localhost:5173` | | | | |
-| Firefox … | genel HTTPS adres | | | | |
+Chrome 157'deki istem:
+
+![Chrome yerel ağ erişimi istemi](img/y1-chrome-yerel-ag-istemi.png)
+
+**Sonuçlar:**
+
+- Eşleşme Chrome ve Edge'de kuruluyor. İzinsiz bir sitenin isteği iki tarayıcıda da CORS ile engelleniyor ve ajan kodu sunucuya göndermiyor.
+- Gerçek sınav sitesi (genel bir HTTPS adres) ajana ilk istekte Chrome ve Edge'de izin istemi çıkarıyor. Chrome'daki metin: **"Bu cihazdaki diğer uygulamalara ve hizmetlere erişin"**, düğmeler **İzin ver / Engelle**.
+- İstem yanıtlanana kadar `fetch` bekliyor, hata vermiyor. Önyüz bu yüzden kendi zaman aşımını koymalı.
+- `Access-Control-Allow-Private-Network` başlığı hâlâ gönderiliyor. Chrome 157 artık izin istemiyle çalışıyor, başlık zararsız.
+- **Karma içerik:** `https://` sayfadan `http://127.0.0.1` adresine istek Chrome ve Edge'de izinli, çünkü `127.0.0.1` "güvenilir kaynak" sayılıyor. Bu, yerel sayfayla denendi; HTTPS ile ayrıca denenmedi.
+
+**Eksik kalanlar:**
+
+- Edge'de **İzin ver**'e elle basılınca eşleşmenin kurulduğu.
+- Edge istem metni.
+- Firefox denemesi; kurulduktan sonra yapılacak.
 
 ## Web önyüzü için notlar (Şeyma, S2)
 
-Kart Y1, Chrome izin isteminin sonucunun aday ekranındaki yönlendirme metni için S2'ye iletilmesini istiyor. Tablo doldurulunca metin ona göre netleşecek; şimdilik öneri:
+Kart Y1, Chrome izin isteminin sonucunun aday ekranındaki yönlendirme metni için S2'ye iletilmesini istiyor. Denemeye göre öneri:
 
-> Sınav güvenlik uygulamasıyla bağlantı kuruluyor. Tarayıcınız "yerel ağdaki cihazlara erişim" izni isterse **İzin ver**'i seçin. Bağlantı kurulamazsa güvenlik uygulamasının açık olduğundan emin olup sayfayı yenileyin.
+> Sınav güvenlik uygulamasıyla bağlantı kuruluyor. Tarayıcınız **"Bu cihazdaki diğer uygulamalara ve hizmetlere erişin"** izni isterse **İzin ver**'i seçin. Yanlışlıkla **Engelle**'yi seçtiyseniz adres çubuğunun solundaki simgeye tıklayıp izni açın ve sayfayı yenileyin.
+
+- İstem yanıtlanana kadar `fetch` beklediği için önyüz isteğe zaman aşımı (ör. 30 sn, `AbortController`) koymalı ve süre dolunca bu yönlendirmeyi göstermeli.
+- İstem yalnızca ilk seferde çıkıyor; izin site için hatırlanıyor.
 
 Diğer notlar:
 
