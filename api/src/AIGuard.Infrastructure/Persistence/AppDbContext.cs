@@ -61,5 +61,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         configurationBuilder.Properties<ConsentType>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<VerificationKind>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDecisionType>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<AgentPlatform>().HaveConversion<string>().HaveMaxLength(16);
     }
 }

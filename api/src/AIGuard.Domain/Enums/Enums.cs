@@ -37,11 +37,22 @@ public enum ConsentType
     Session,
 }
 
-/// <summary>Sınav başı doğrulama veya bağlantı kesintisinden dönüşte tekrar doğrulama.</summary>
+/// <summary>
+/// Doğrulama türü (GAB nesne modeli: başlangıç / periyodik). Bağlantı kesintisinden dönüşte
+/// yapılan canlılık ve eşleştirme Reconnect olarak ayrıca tutuluyor (FR-14, FR-26).
+/// </summary>
 public enum VerificationKind
 {
     Initial,
     Reconnect,
+    Periodic,
+}
+
+/// <summary>Ajanın çalıştığı işletim sistemi (GAB nesne modeli, Ajan Eşleştirmesi).</summary>
+public enum AgentPlatform
+{
+    Windows,
+    MacOS,
 }
 
 /// <summary>Değerlendirici kararı: Temiz / Şüpheli / İhlal.</summary>
@@ -73,4 +84,7 @@ public enum SessionFlags
 
     /// <summary>Görüntü/ses servisi bir süre yanıt vermedi.</summary>
     MonitoringGap = 8,
+
+    /// <summary>Sınav sırasında kamera veya mikrofon izni kaldırıldı (FR-17, izinsiz geçen süre).</summary>
+    PermissionGap = 16,
 }

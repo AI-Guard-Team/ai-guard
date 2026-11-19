@@ -19,8 +19,10 @@ internal sealed class ExamSessionConfiguration : IEntityTypeConfiguration<ExamSe
             .HasForeignKey(s => s.CandidateId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Aday başına tek oturum.
-        b.HasIndex(s => new { s.ExamId, s.CandidateId }).IsUnique();
+        // Aday başına tek oturum; iptal edilen oturum hakkı tüketmiyor (FR-10).
+        b.HasIndex(s => new { s.ExamId, s.CandidateId })
+            .IsUnique()
+            .HasFilter("state <> 'Cancelled'");
 
         // Otomatik teslim görevi süresi dolan InProgress oturumları bu indeksle arıyor (E4).
         b.HasIndex(s => new { s.State, s.EndsAt });
