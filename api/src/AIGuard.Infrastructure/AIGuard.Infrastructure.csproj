@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AIGuard.Domain\AIGuard.Domain.csproj" />
+    <ProjectReference Include="..\AIGuard.Application\AIGuard.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PasswordHasher ve yapılandırma için. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+  </ItemGroup>
+
+</Project>
