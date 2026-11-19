@@ -63,4 +63,11 @@ public class ExamAssignment : Entity
     public AssignmentRole Role { get; set; }
 
     public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Adayın tek oturum hakkını kullandığı an (GAB nesne modeli, FR-06). Rıza reddedilip
+    /// oturum iptal edildiyse hak kullanılmış sayılmıyor (FR-10); bu alan E4'te oturum
+    /// gerçekten başladığında dolduruluyor.
+    /// </summary>
+    public DateTimeOffset? AttemptUsedAt { get; set; }
 }

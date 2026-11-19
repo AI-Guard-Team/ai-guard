@@ -57,6 +57,11 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("pairing_code_hash");
 
+                    b.Property<string>("Platform")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("platform");
+
                     b.HasKey("Id")
                         .HasName("pk_agent_pairings");
 
@@ -466,6 +471,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("assigned_at");
 
+                    b.Property<DateTimeOffset?>("AttemptUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("attempt_used_at");
+
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid")
                         .HasColumnName("exam_id");
@@ -565,7 +574,8 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ExamId", "CandidateId")
                         .IsUnique()
-                        .HasDatabaseName("ix_exam_sessions_exam_id_candidate_id");
+                        .HasDatabaseName("ix_exam_sessions_exam_id_candidate_id")
+                        .HasFilter("state <> 'Cancelled'");
 
                     b.HasIndex("State", "EndsAt")
                         .HasDatabaseName("ix_exam_sessions_state_ends_at");

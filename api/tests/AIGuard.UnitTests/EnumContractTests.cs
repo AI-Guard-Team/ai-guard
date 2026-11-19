@@ -44,6 +44,7 @@ public class EnumContractTests
         Assert.Equal(2, (int)SessionFlags.Indicated);
         Assert.Equal(4, (int)SessionFlags.NoAgent);
         Assert.Equal(8, (int)SessionFlags.MonitoringGap);
+        Assert.Equal(16, (int)SessionFlags.PermissionGap);
     }
 
     [Fact]
