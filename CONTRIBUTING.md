@@ -62,6 +62,14 @@ chore(E1a): GitHub Actions iş akışı eklendi
 - Birleştirme yöntemi: **Squash and merge**. Birleştikten sonra özellik dalı silinir.
 - İnceleyen kişi en geç 24 saat içinde yorum yapar veya onaylar.
 
+### Dal koruması (GitHub ruleset: `main-dev-koruma`)
+
+`main` ve `dev` için GitHub tarafında zorunlu tutulanlar:
+
+- Doğrudan push, force push ve dal silme engellidir.
+- Birleştirme için en az 1 onay gerekir; yeni commit gelince eski onay düşer. Kendi PR'ını onaylayamazsın.
+- Şu CI kontrollerinin dördü de yeşil olmalıdır: `api (.NET build + test)`, `vision (lint + pytest)`, `web (build)`, `agent (.NET build + test)`.
+
 ## Ortak adlar
 
 Uç (endpoint), olay türü ve oturum durumu adları Trello kartlarında tanımlıdır ve herkes için ortaktır. AI aracı farklı ad önerirse karttaki ad kullanılır; değişiklik gerekirse önce ekibe sorulur.
