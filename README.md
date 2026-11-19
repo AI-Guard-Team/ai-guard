@@ -136,7 +136,47 @@ npm run dev
 
 ## Docker ile çalıştırma (Yağmur'un bilgisayarı)
 
-Bkz. E1b kartı. `docker compose up -d` ile api, vision ve postgres birlikte ayağa kalkar.
+Tüm sistemi birlikte çalıştırmak ve entegrasyon günleri (E5a, E5b) için. Günlük geliştirme için Docker gerekmez; yukarıdaki yerel kurulum yeterli.
+
+| Servis | Adres | Not |
+|---|---|---|
+| `api` | http://localhost:8080 (`/health` → `Healthy`) | Development ortamında örnek veriyle açılır |
+| `vision` | yalnızca iç ağda, `http://vision:8000` | Bilgisayardan erişilemez, ona yalnızca `api` erişir |
+| `postgres` | `localhost:5432` | PostgreSQL 16, veri `aiguard_pgdata` volume'unda kalıcı |
+| `migrate` | — | Göçleri uygulayıp kapanır; `api` bunu bekler |
+
+### Tek komutla (örnek değerlerle)
+
+```bash
+docker compose --env-file .env.example up -d --build
+```
+
+### Kendi değerlerinle
+
+```bash
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+# .env içindeki change_me değerlerini değiştir
+docker compose up -d --build
+```
+
+- Şifrelerde `;` kullanma; bağlantı dizesini bozar.
+- Bilgisayarında ayrıca PostgreSQL kuruluysa 5432 portu çakışır. `.env` içinde `POSTGRES_PORT=5433` yap (yalnızca dışarıya açılan port değişir).
+- Örnek hesapların şifresi `Seed__DefaultPassword` değeridir (en az 12 karakter).
+
+### Sık kullanılan komutlar
+
+```bash
+docker compose ps                    # durum (api, vision, postgres "healthy"/"running"; migrate "exited (0)")
+docker compose logs -f api           # api logları
+docker compose up -d --build api     # yalnızca api'yi yeniden derle (ör. dev'i çektikten sonra)
+docker compose run --rm migrate      # yeni göç geldiyse tekrar uygula
+docker compose down                  # durdur (veri kalır)
+docker compose down -v               # durdur ve veritabanını sil (temiz başlangıç)
+```
+
+Compose kural testleri (Docker gerekir): `python -m pytest tests/compose -q`
+
+**Podman Desktop:** aynı dosya `podman compose up -d --build` ile çalışır (`--env-file` seçeneği de aynı).
 
 ## Bir karta başlamadan önce
 

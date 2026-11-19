@@ -1,0 +1,115 @@
+# AI-Guard — tüm sistemi birlikte çalıştırma (E1b)
+#
+# Kullanım (repo kökünde):
+#   docker compose --env-file .env.example up -d --build    # örnek değerlerle tek komut
+#   cp .env.example .env && docker compose up -d --build    # kendi değerlerinle
+# Podman Desktop: aynı dosya "podman compose up -d --build" ile çalışır.
+#
+# Docker yalnızca birlikte çalıştırma ve entegrasyon (E5a/E5b) için. Günlük geliştirme
+# Docker'sız yapılabiliyor (bkz. README "Yerel kurulum").
+
+name: aiguard
+
+services:
+  postgres:
+    # Docker'sız yerel kurulumla aynı ana sürüm (README: PostgreSQL 16).
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      # ":?" -> değişken yoksa compose anlaşılır bir hatayla durur; boş şifreyle DB açılmaz.
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER tanımlı değil (.env veya --env-file .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD tanımlı değil}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB tanımlı değil}
+    ports:
+      # Bilgisayardaki pgAdmin/psql ile bağlanabilmek için dışarı açılıyor.
+      # Yerelde ayrıca PostgreSQL kuruluysa 5432 çakışır; .env'de POSTGRES_PORT=5433 yap.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Kalıcı volume: "docker compose down" veriyi silmez, yalnızca "down -v" siler.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # migrate ve api, postgres bağlantı kabul etmeye başlamadan başlamasın diye.
+      # "$$" -> değişkeni compose değil container içindeki kabuk çözsün.
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend
+
+  # Tek seferlik adım: EF Core göçlerini uygular ve çıkar (MIMARI-KARARLAR K-07 / S-4).
+  # API açılışta göç uygulamadığı için bu adım olmadan tablolar oluşmaz.
+  migrate:
+    build:
+      context: ./api
+      target: migrate
+    environment:
+      # Container'lar arasında host adı servis adıdır (postgres), localhost değil.
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - backend
+
+  vision:
+    build:
+      context: ./vision
+    restart: unless-stopped
+    environment:
+      VISION_SERVICE_KEY: ${VISION_SERVICE_KEY:?VISION_SERVICE_KEY tanımlı değil}
+    # Bilerek "ports" YOK: vision bilgisayara/dış ağa açılmaz. "expose" yalnızca
+    # aynı ağdaki container'lara (api) bilgi amaçlı port bildirir.
+    expose:
+      - "8000"
+    healthcheck:
+      # İmajda curl yok; Python zaten var.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      # Yalnızca iç ağda: postgres'e ve internete erişemez, ona yalnızca api erişir.
+      - vision-internal
+
+  api:
+    build:
+      context: ./api
+      target: api
+    restart: unless-stopped
+    environment:
+      # Development: örnek kullanıcılar ve sınav yüklensin (entegrasyon günleri için, K-06).
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      # .env.example'daki ConnectionStrings__Default localhost'u gösterir (Docker'sız kurulum);
+      # container içinde postgres servis adına gitmesi gerektiği için burada yeniden kuruluyor.
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET tanımlı değil}
+      VISION_SERVICE_KEY: ${VISION_SERVICE_KEY:?VISION_SERVICE_KEY tanımlı değil}
+      # Aynı nedenle: localhost:8000 değil, iç ağdaki vision servisi.
+      VISION_SERVICE_URL: http://vision:8000
+      EVIDENCE_ENCRYPTION_KEY: ${EVIDENCE_ENCRYPTION_KEY:?EVIDENCE_ENCRYPTION_KEY tanımlı değil}
+      # DevDataSeeder en az 12 karakter istiyor; boş verilirse açılışta hata verir.
+      Seed__DefaultPassword: ${Seed__DefaultPassword:?Seed__DefaultPassword tanımlı değil (en az 12 karakter)}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Göçler bitmeden API açılırsa tablolar yok ve örnek veri yüklenmez.
+      migrate:
+        condition: service_completed_successfully
+      vision:
+        condition: service_healthy
+    networks:
+      - backend          # postgres'e erişim + 8080'in dışarı açılması
+      - vision-internal  # vision'a erişim
+
+networks:
+  backend: {}
+  vision-internal:
+    # internal: true -> bu ağdan dışarı çıkış ve port yayınlama yok.
+    internal: true
+
+volumes:
+  pgdata: {}

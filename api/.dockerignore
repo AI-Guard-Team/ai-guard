@@ -1,0 +1,8 @@
+# Yerel derleme çıktıları imaja girmesin (Windows'ta derlenmiş bin/obj Linux'ta bozuk build'e yol açar).
+**/bin/
+**/obj/
+**/TestResults/
+.vs/
+*.user
+# Testler imajda gerekmiyor.
+tests/

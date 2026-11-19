@@ -272,7 +272,7 @@ Bu sayede "süre dolunca otomatik teslim" (E4) veya "saklama süresi dolan veril
 | S-1 | A4'teki not ucu için ayrı tablo mu, `ReviewerDecision.Note` mu? | Ayşe, Şeyma | Birden fazla not gerekecekse A4'te `ReviewerNote` tablosu |
 | S-2 | Şifre özetleme yöntemi | Esma | Şimdilik PasswordHasher; değişirse yalnızca `IdentityPasswordHasher` etkilenir |
 | S-3 | HMAC anahtarının şifreli saklanması (K-08) | Yağmur | Y2'de bu alanın kullanılması |
-| S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | Compose'da ayrı migrate adımı |
+| S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | **Çözüldü (E1b):** compose'daki tek seferlik `migrate` servisi EF göç paketini (`efbundle`) çalıştırıyor; `api` bunun başarıyla bitmesini bekliyor |
 | S-5 | A6, E5b'ye bağlı ama tarihleri çakışıyor | Ayşe, Esma | Locust betiği 29 Kasım'da, ölçüm E5b'den sonra |
 | S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | Serviste kontrol ve test; gerekirse `answers.exam_id` ile bileşik yabancı anahtar |
 | S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı; göçler ayrı kullanıcıyla |
