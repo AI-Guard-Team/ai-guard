@@ -62,6 +62,7 @@ export function SetPasswordPage() {
           label="Yeni şifre"
           type="password"
           autoComplete="new-password"
+          placeholder="Yeni şifre"
           value={password}
           error={errors.password}
           onChange={(event) => setPasswordValue(event.target.value)}
@@ -70,6 +71,7 @@ export function SetPasswordPage() {
           label="Yeni şifre (tekrar)"
           type="password"
           autoComplete="new-password"
+          placeholder="Yeni şifre (tekrar)"
           value={confirm}
           error={errors.confirm}
           onChange={(event) => setConfirm(event.target.value)}

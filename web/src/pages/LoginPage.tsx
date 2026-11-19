@@ -74,6 +74,7 @@ export function LoginPage() {
           label="E-posta"
           type="email"
           autoComplete="username"
+          placeholder="E-posta"
           value={email}
           error={errors.email}
           onChange={(event) => setEmail(event.target.value)}
@@ -82,6 +83,7 @@ export function LoginPage() {
           label="Şifre"
           type="password"
           autoComplete="current-password"
+          placeholder="Şifre"
           value={password}
           error={errors.password}
           onChange={(event) => setPassword(event.target.value)}
