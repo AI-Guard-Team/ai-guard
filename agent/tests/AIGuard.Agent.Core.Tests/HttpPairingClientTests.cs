@@ -35,11 +35,11 @@ public class HttpPairingClientTests
         var sessionId = Guid.NewGuid();
         var handler = new StubHandler(_ => Json(HttpStatusCode.OK, $$"""{"pairingId":"{{pairingId}}","sessionId":"{{sessionId}}"}"""));
 
-        var outcome = await Client(handler).PairAsync("kod123");
+        var outcome = await Client(handler).PairAsync("kod123", "Windows");
 
         Assert.Equal(HttpMethod.Post, handler.Request!.Method);
         Assert.Equal("https://api.ornek.edu.tr/api/agent/pair", handler.Request.RequestUri!.ToString());
-        Assert.Equal("""{"code":"kod123"}""", handler.Body);
+        Assert.Equal("""{"code":"kod123","os":"Windows"}""", handler.Body);
         Assert.Equal(new PairingOutcome(PairingStatus.Paired, pairingId, sessionId), outcome);
     }
 
@@ -48,7 +48,7 @@ public class HttpPairingClientTests
     {
         var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest));
 
-        await Client(handler, "https://ornek.edu.tr/aiguard/").PairAsync("kod123");
+        await Client(handler, "https://ornek.edu.tr/aiguard/").PairAsync("kod123", "Windows");
 
         Assert.Equal("https://ornek.edu.tr/aiguard/api/agent/pair", handler.Request!.RequestUri!.ToString());
     }
@@ -62,7 +62,7 @@ public class HttpPairingClientTests
     {
         var handler = new StubHandler(_ => new HttpResponseMessage(status));
 
-        var outcome = await Client(handler).PairAsync("kod123");
+        var outcome = await Client(handler).PairAsync("kod123", "Windows");
 
         Assert.Equal(expected, outcome.Status);
     }
@@ -73,7 +73,7 @@ public class HttpPairingClientTests
         // Sertifika doğrulama hatası da HttpRequestException olarak geliyor.
         var handler = new StubHandler(_ => throw new HttpRequestException("TLS el sıkışması başarısız"));
 
-        var outcome = await Client(handler).PairAsync("kod123");
+        var outcome = await Client(handler).PairAsync("kod123", "Windows");
 
         Assert.Equal(PairingStatus.Unavailable, outcome.Status);
     }
@@ -83,7 +83,7 @@ public class HttpPairingClientTests
     {
         var handler = new StubHandler(_ => Json(HttpStatusCode.OK, "beklenmeyen"));
 
-        var outcome = await Client(handler).PairAsync("kod123");
+        var outcome = await Client(handler).PairAsync("kod123", "Windows");
 
         Assert.Equal(PairingStatus.Unavailable, outcome.Status);
     }

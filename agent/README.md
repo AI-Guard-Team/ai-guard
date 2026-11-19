@@ -20,11 +20,11 @@ agent/
 
 ## Eşleştirme akışı (Y1, FR-11)
 
-1. Tarayıcı sunucudan tek kullanımlık kod alır: `POST /api/sessions/{id}/agent/pairing-code` (adaya gösterilmez).
+1. Oturum `AgentPairing` durumundayken tarayıcı sunucudan tek kullanımlık kod alır: `POST /api/sessions/{id}/agent-code` (adaya gösterilmez).
 2. Tarayıcı kodu `POST http://127.0.0.1:47321/pair { "code": "..." }` ile ajana gönderir.
-3. Ajan kodu `POST {ApiBaseUrl}/api/agent/pair` adresine TLS ile iletir; sunucu kodu doğrulayıp oturumla eşleştirir.
+3. Ajan kodu ve işletim sistemini `POST {ApiBaseUrl}/api/agent/pair { "code": "...", "os": "Windows" }` adresine TLS ile iletir; sunucu kodu doğrulayıp oturumla eşleştirir.
 
-Ajan yalnızca loopback'i dinlediği için kod yalnızca aynı bilgisayardaki ajana ulaşır. Kod 256 bit rastgele, 2 dakika geçerli ve tek kullanımlık; başka bilgisayardaki bir ajan onu tahmin edemez.
+Ajan yalnızca loopback'i dinlediği için kod yalnızca aynı bilgisayardaki ajana ulaşır. Kod 256 bit rastgele, 5 dakika geçerli ve tek kullanımlık; başka bilgisayardaki bir ajan onu tahmin edemez. İşletim sistemi adını (`Windows` / `MacOS`) platform projesindeki `IDeviceInspector.Platform` veriyor.
 
 ## Ayarlar (`appsettings.json`, "Agent" bölümü)
 

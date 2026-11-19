@@ -63,6 +63,8 @@ public class LocalPairingEndpointTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(PlatformOrigin, Header(response, "Access-Control-Allow-Origin"));
         Assert.Equal([ValidCode], agent.Client.ReceivedCodes);
+        // İşletim sistemini tarayıcı değil, ajanın platform modülü bildiriyor.
+        Assert.Equal(["MacOS"], agent.Client.ReceivedOs);
         Assert.Contains("paired", await response.Content.ReadAsStringAsync());
     }
 

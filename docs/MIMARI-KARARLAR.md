@@ -367,15 +367,19 @@ Bu yüzden `EventService` her olayı bir işlem içinde yazıyor ve önce `IAppD
 
 FR-11: sınavı açan tarayıcı ile güvenlik ajanının aynı bilgisayarda çalıştığı doğrulanmalı. Akış:
 
-1. Tarayıcı `POST /api/sessions/{id}/agent/pairing-code` ile kod alıyor. Kod adaya gösterilmiyor.
-2. Tarayıcı kodu `POST http://127.0.0.1:47321/pair` ile ajana gönderiyor.
-3. Ajan kodu `POST /api/agent/pair` ile TLS üzerinden sunucuya iletiyor; sunucu eşleşmeyi kaydediyor.
+1. Oturum `AgentPairing` durumundayken tarayıcı `POST /api/sessions/{id}/agent-code` ile kod alıyor (UC-08 adım 1). Kod adaya gösterilmiyor.
+2. Tarayıcı kodu `POST http://127.0.0.1:47321/pair { code }` ile ajana gönderiyor.
+3. Ajan kodu `POST /api/agent/pair { code, os }` ile TLS üzerinden sunucuya iletiyor. Sunucu kodu doğrulayıp kullanılmış sayıyor, işletim sistemini (`AgentPairing.Platform`) ve eşleşme zamanını kaydediyor.
+
+`/api/agent/pair` JWT ile değil eşleştirme koduyla korunuyor; ajanın JWT'si yok. Y2'deki sinyal uçları da HMAC ile korunacak (S-14).
 
 **"Aynı bilgisayar" kanıtı neye dayanıyor:** Ajan yalnızca `127.0.0.1`'i dinliyor; ağdaki başka bir bilgisayar bu porta bağlanamıyor. Kod tarayıcıdan yalnızca bu yolla çıktığı için kodu sunucuya getirebilen ajan, tarayıcıyla aynı bilgisayardadır. Başka bilgisayardaki bir ajanın tek şansı kodu tahmin etmek. Kod 256 bit rastgele olduğu için bu pratikte imkânsız, bu yüzden deneme sayısı sınırı koymadık.
 
 | Kural | Gerekçe |
 |---|---|
-| Kod 2 dakika geçerli, tek kullanımlık | Tarayıcı kodu hemen gönderiyor; sızan bir kodun işe yarayacağı süre kısa kalıyor |
+| Kod 5 dakika geçerli, tek kullanımlık (kartta önerilen süre) | Tarayıcı kodu hemen gönderiyor; sızan bir kodun işe yarayacağı süre kısa kalıyor |
+| Kod yalnızca oturum `AgentPairing` durumundayken üretiliyor | Sınav başladıktan sonra yeni kod alınıp oturuma başka bir ajan bağlanamasın |
+| İşletim sistemi (`os`) zorunlu; bildirilmezse eşleşme reddediliyor, kod tüketilmiyor | Ajan değerlendirmesi (Y7a, Y7b) sonuçları işletim sistemine göre ayırıyor. Değeri tarayıcı değil ajanın platform modülü veriyor |
 | Veritabanında yalnızca kodun SHA-256 özeti | K-08 ile aynı: veritabanı okunsa bile geçerli kod elde edilemiyor |
 | Yeni kod istenince eskisi geçersiz; oturum başına tek `AgentPairing` kaydı | Ajan yeniden başlarsa tarayıcı yeni kodla tekrar eşleştirebilsin |
 | Tek kullanım, oturum satırı kilitlenerek sağlanıyor (K-18) | Aynı kodla eşzamanlı iki istekten yalnızca biri eşleşiyor. `ExecuteUpdate` Application'ı ilişkisel EF paketine bağlayacağı için kullanılmadı |

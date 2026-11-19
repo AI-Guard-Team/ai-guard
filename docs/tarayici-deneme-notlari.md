@@ -2,7 +2,7 @@
 
 Platform sitesindeki sayfa, kodu `http://127.0.0.1:47321/pair` adresindeki ajana gönderiyor. Tarayıcılar, bir web sitesinin kullanıcının bilgisayarındaki (loopback) veya yerel ağdaki bir adrese istek atmasını giderek daha sıkı denetliyor. Bu belge Chrome, Edge ve Firefox'ta bu isteğin nasıl davrandığını not etmek için.
 
-*Son güncelleme: 20 Kasım 2026 (Y1)*
+*Son güncelleme: 20 Kasım 2026 (Y1 revizyonu)*
 
 ## Ajan tarafında yapılanlar
 
@@ -35,9 +35,9 @@ API Docker'da (Development), ajan Windows'ta (`aiguard-agent.exe`) çalışırke
 3. Test sayfasını sun: `python -m http.server 5173 --bind 127.0.0.1 -d agent/tools` ve tarayıcıda `http://localhost:5173/pairing-test.html` adresini aç.
 4. Bir oturum için kod al (E2 gelene kadar uç yalnızca Development'ta açık):
    ```bash
-   curl -X POST http://localhost:5080/api/sessions/<oturum-id>/agent/pairing-code
+   curl -X POST http://localhost:5080/api/sessions/<oturum-id>/agent-code
    ```
-5. Yanıttaki `code` değerini sayfaya yapıştır, "Ajana gönder"e bas. Kod 2 dakika geçerli ve tek kullanımlık.
+5. Yanıttaki `code` değerini sayfaya yapıştır, "Ajana gönder"e bas. Kod 5 dakika geçerli ve tek kullanımlık. Oturum `AgentPairing` durumunda olmalı.
 6. DevTools > Network'te `OPTIONS` ve `POST` isteklerini, Console'da varsa uyarıları not et.
 
 **İzin istemini görmek için sayfa genel (public) bir adresten açılmalı.** `localhost` → `127.0.0.1` isteği tarayıcı için aynı adres alanında kalıyor; istem çıkmaz. Genel adresten denemek için test sayfası geçici bir HTTPS adresine konabilir (ör. GitHub Pages veya bir tünel). O adres ajanın `AllowedOrigins` listesine eklenmeli.
@@ -60,7 +60,13 @@ Aşağıdakiler tarayıcıların yayımladığı belgelere göre beklenen davran
 | Firefox … | `http://localhost:5173` | | | | |
 | Firefox … | genel HTTPS adres | | | | |
 
-## Web önyüzü için notlar (S kartları)
+## Web önyüzü için notlar (Şeyma, S2)
+
+Kart Y1, Chrome izin isteminin sonucunun aday ekranındaki yönlendirme metni için S2'ye iletilmesini istiyor. Tablo doldurulunca metin ona göre netleşecek; şimdilik öneri:
+
+> Sınav güvenlik uygulamasıyla bağlantı kuruluyor. Tarayıcınız "yerel ağdaki cihazlara erişim" izni isterse **İzin ver**'i seçin. Bağlantı kurulamazsa güvenlik uygulamasının açık olduğundan emin olup sayfayı yenileyin.
+
+Diğer notlar:
 
 - Kod adaya gösterilmez, konsola veya hata mesajına yazılmaz.
 - Ajan yanıtları: `200 paired`, `409 rejected` (yeni kod alıp tekrar dene), `502 unavailable` (sunucuya ulaşılamadı), `403` (sayfanın origin'i ajanın listesinde yok). Ajan kapalıysa `fetch` hata fırlatır (Y4: ajansız devam akışı).

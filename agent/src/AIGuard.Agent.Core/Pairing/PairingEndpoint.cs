@@ -1,3 +1,4 @@
+using AIGuard.Agent.Core.Platform;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +17,7 @@ internal static class PairingEndpoint
     public static async Task<IResult> HandleAsync(
         LocalPairRequest request,
         IPairingClient client,
+        IDeviceInspector inspector,
         PairingState state,
         ILoggerFactory loggers,
         CancellationToken cancellationToken)
@@ -27,7 +29,8 @@ internal static class PairingEndpoint
             return Results.BadRequest();
         }
 
-        var outcome = await client.PairAsync(request.Code!, cancellationToken);
+        // İşletim sistemini tarayıcı değil ajan bildiriyor; platform modülü (Windows/MacOS) belirliyor.
+        var outcome = await client.PairAsync(request.Code!, inspector.Platform, cancellationToken);
 
         if (outcome.Status == PairingStatus.Paired)
         {

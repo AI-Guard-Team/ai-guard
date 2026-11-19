@@ -10,7 +10,10 @@ namespace AIGuard.Agent.Core.Platform;
 /// </remarks>
 public interface IDeviceInspector
 {
-    /// <summary>Loglarda ve sinyallerde görünen platform adı ("windows", "macos").</summary>
+    /// <summary>
+    /// İşletim sistemi adı: "Windows" veya "MacOS". Sunucudaki <c>AgentPlatform</c> enum'uyla
+    /// aynı yazım (K-05); eşleştirmede sunucuya bu değer gidiyor.
+    /// </summary>
     string Platform { get; }
 
     /// <summary>Bulunan göstergelerin adları; tam süreç listesi değil (Y3).</summary>

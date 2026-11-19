@@ -1,29 +1,32 @@
 using AIGuard.Application.Agents;
+using AIGuard.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIGuard.Api.Controllers;
 
-public sealed record AgentPairRequest(string? Code);
+/// <param name="Code">Tarayıcının ajana verdiği tek kullanımlık kod.</param>
+/// <param name="Os">Ajanın çalıştığı işletim sistemi: "Windows" veya "MacOS".</param>
+public sealed record AgentPairRequest(string? Code, AgentPlatform? Os);
 
 public sealed record AgentPairResponse(Guid PairingId, Guid SessionId);
 
 /// <summary>Güvenlik ajanının çağırdığı uçlar (Y1).</summary>
 /// <remarks>
-/// Ajanın kullanıcı oturumu yok; buradaki kimlik kanıtı tek kullanımlık eşleştirme kodunun
-/// kendisi. Kod yalnızca Development'ta açık olan uçtan üretildiği için (E2'ye kadar)
-/// Production'da eşleşme oluşamıyor.
+/// Bu uç JWT ile değil eşleştirme koduyla korunuyor (kart Y1): ajanın kullanıcı oturumu yok,
+/// kimlik kanıtı tek kullanımlık kodun kendisi. Kod yalnızca Development'ta açık olan uçtan
+/// üretildiği için (E2'ye kadar) Production'da eşleşme oluşamıyor.
 /// </remarks>
 [ApiController]
 [Route("api/agent")]
 public sealed class AgentController(AgentPairingService pairing) : ControllerBase
 {
     [HttpPost("pair")]
-    [RequestSizeLimit(1024)] // gövde tek bir 43 karakterlik alan
+    [RequestSizeLimit(1024)] // gövde iki kısa alan
     [ProducesResponseType<AgentPairResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Pair(AgentPairRequest request, CancellationToken ct)
     {
-        var result = await pairing.PairAsync(request.Code, ct);
+        var result = await pairing.PairAsync(request.Code, request.Os, ct);
 
         // Red nedeni (yok / süresi dolmuş / kullanılmış) yanıtta ayrılmıyor.
         return result.Status == PairAgentStatus.Paired

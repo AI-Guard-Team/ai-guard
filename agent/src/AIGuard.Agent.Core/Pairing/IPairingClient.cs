@@ -16,5 +16,7 @@ public sealed record PairingOutcome(PairingStatus Status, Guid? PairingId = null
 /// <summary>Eşleştirme kodunu sunucuya ileten istemci.</summary>
 public interface IPairingClient
 {
-    Task<PairingOutcome> PairAsync(string code, CancellationToken cancellationToken = default);
+    /// <param name="code">Tarayıcının gönderdiği tek kullanımlık kod.</param>
+    /// <param name="os">Sunucunun beklediği işletim sistemi adı: "Windows" veya "MacOS".</param>
+    Task<PairingOutcome> PairAsync(string code, string os, CancellationToken cancellationToken = default);
 }

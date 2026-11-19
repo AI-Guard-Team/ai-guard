@@ -9,7 +9,9 @@ public enum IssuePairingCodeStatus
 {
     Issued,
     SessionNotFound,
-    SessionClosed,
+
+    /// <summary>Oturum <see cref="SessionState.AgentPairing"/> durumunda değil (kart: kod yalnızca bu durumda üretilir).</summary>
+    NotInPairingState,
 }
 
 public sealed record IssuePairingCodeResult(IssuePairingCodeStatus Status, string? Code = null, DateTimeOffset? ExpiresAt = null);
@@ -18,7 +20,7 @@ public enum PairAgentStatus
 {
     Paired,
 
-    /// <summary>Kod yok, süresi dolmuş, daha önce kullanılmış ya da oturum kapalı.</summary>
+    /// <summary>Kod yok, süresi dolmuş, daha önce kullanılmış, oturum kapalı ya da işletim sistemi bildirilmemiş.</summary>
     Rejected,
 }
 
@@ -36,8 +38,11 @@ public sealed record PairAgentResult(PairAgentStatus Status, Guid? PairingId = n
 /// </remarks>
 public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock)
 {
-    /// <summary>Tarayıcı kodu hemen ajana gönderiyor; kısa süre, sızan bir kodun işe yarama aralığını daraltıyor.</summary>
-    public static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(2);
+    /// <summary>
+    /// Kartta önerilen süre (5 dk). Tarayıcı kodu hemen ajana gönderiyor; ajan yeni açılıyorsa
+    /// birkaç deneme için pay kalıyor. Kısa süre, sızan bir kodun işe yarama aralığını daraltıyor.
+    /// </summary>
+    public static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(5);
 
     private static readonly SessionState[] ClosedStates =
         [SessionState.Completed, SessionState.Cancelled, SessionState.Decided];
@@ -53,9 +58,11 @@ public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock)
             return new(IssuePairingCodeStatus.SessionNotFound);
         }
 
-        if (ClosedStates.Contains(session.State))
+        // Kod yalnızca eşleştirme adımında üretiliyor (UC-08 adım 1). Sınav başladıktan sonra yeni
+        // kod alınıp oturuma başka bir ajan bağlanamasın.
+        if (session.State != SessionState.AgentPairing)
         {
-            return new(IssuePairingCodeStatus.SessionClosed);
+            return new(IssuePairingCodeStatus.NotInPairingState);
         }
 
         var code = PairingCode.Generate();
@@ -84,12 +91,13 @@ public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock)
         return new(IssuePairingCodeStatus.Issued, code, expiresAt);
     }
 
-    public async Task<PairAgentResult> PairAsync(string? code, CancellationToken ct = default)
+    public async Task<PairAgentResult> PairAsync(string? code, AgentPlatform? platform, CancellationToken ct = default)
     {
         // Bütün red nedenleri aynı sonucu dönüyor: kodun var olup olmadığı dışarıya sızmasın.
         var rejected = new PairAgentResult(PairAgentStatus.Rejected);
 
-        if (!PairingCode.IsWellFormed(code))
+        // İşletim sistemi zorunlu: ajan değerlendirmesi (Y7a, Y7b) sonuçları buna göre ayırıyor.
+        if (!PairingCode.IsWellFormed(code) || platform is not { } os || !Enum.IsDefined(os))
         {
             return rejected;
         }
@@ -128,6 +136,7 @@ public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock)
 
         // Süreyi "şimdi"ye çekmek kodu geçersiz kılıyor; şemada ayrı bir "kullanıldı" alanı gerekmiyor.
         pairing.PairedAt = now;
+        pairing.Platform = os;
         pairing.PairingCodeExpiresAt = now;
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);

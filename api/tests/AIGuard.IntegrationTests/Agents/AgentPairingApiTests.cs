@@ -18,10 +18,16 @@ public class AgentPairingApiTests(PostgresFixture fx) : IClassFixture<PostgresFi
             b.UseSetting("ConnectionStrings:Default", fx.ConnectionString);
         }).CreateClient();
 
-    private async Task<Guid> SessionIdAsync()
+    private async Task<Guid> SessionIdAsync(SessionState state = SessionState.AgentPairing)
     {
         await using var db = fx.CreateContext();
-        return (await InProgressSessionAsync(db, SessionState.AgentPairing)).Id;
+        return (await InProgressSessionAsync(db, state)).Id;
+    }
+
+    private static async Task<string> CodeAsync(HttpClient client, Guid sessionId)
+    {
+        var issue = await client.PostAsync($"/api/sessions/{sessionId}/agent-code", null);
+        return (await issue.Content.ReadFromJsonAsync<PairingCodeResponse>())!.Code;
     }
 
     [SkippableFact]
@@ -31,9 +37,9 @@ public class AgentPairingApiTests(PostgresFixture fx) : IClassFixture<PostgresFi
         var client = Client();
         var sessionId = await SessionIdAsync();
 
-        var issue = await client.PostAsync($"/api/sessions/{sessionId}/agent/pairing-code", null);
+        var issue = await client.PostAsync($"/api/sessions/{sessionId}/agent-code", null);
         var code = await issue.Content.ReadFromJsonAsync<PairingCodeResponse>();
-        var pair = await client.PostAsJsonAsync("/api/agent/pair", new { code = code!.Code });
+        var pair = await client.PostAsJsonAsync("/api/agent/pair", new { code = code!.Code, os = "Windows" });
         var body = await pair.Content.ReadFromJsonAsync<AgentPairResponse>();
 
         Assert.Equal(HttpStatusCode.Created, issue.StatusCode);
@@ -42,14 +48,31 @@ public class AgentPairingApiTests(PostgresFixture fx) : IClassFixture<PostgresFi
         Assert.Equal(sessionId, body!.SessionId);
     }
 
+    [SkippableTheory]
+    [InlineData("""{"code":"CODE"}""")]                  // işletim sistemi yok
+    [InlineData("""{"code":"CODE","os":"Linux"}""")]     // tanımsız işletim sistemi
+    [InlineData("""{"code":"CODE","os":0}""")]           // sayı kabul edilmiyor (K-05)
+    [InlineData("""{"code":"yanlis","os":"Windows"}""")] // geçersiz kod
+    public async Task Invalid_pair_requests_return_400_without_revealing_the_reason(string json)
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var client = Client();
+        var code = await CodeAsync(client, await SessionIdAsync());
+
+        var response = await client.PostAsync("/api/agent/pair",
+            new StringContent(json.Replace("CODE", code), System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [SkippableFact]
-    public async Task Rejected_pairing_returns_400_without_revealing_the_reason()
+    public async Task Code_is_not_issued_after_the_pairing_step()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
 
-        var response = await Client().PostAsJsonAsync("/api/agent/pair", new { code = "yanlis" });
+        var response = await Client().PostAsync($"/api/sessions/{await SessionIdAsync(SessionState.InProgress)}/agent-code", null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [SkippableFact]
@@ -57,7 +80,7 @@ public class AgentPairingApiTests(PostgresFixture fx) : IClassFixture<PostgresFi
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
 
-        var response = await Client("Production").PostAsync($"/api/sessions/{await SessionIdAsync()}/agent/pairing-code", null);
+        var response = await Client("Production").PostAsync($"/api/sessions/{await SessionIdAsync()}/agent-code", null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

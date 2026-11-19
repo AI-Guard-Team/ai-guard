@@ -18,11 +18,12 @@ internal sealed class HttpPairingClient(HttpClient http, ILogger<HttpPairingClie
 
     private sealed record PairResponse(Guid PairingId, Guid SessionId);
 
-    public async Task<PairingOutcome> PairAsync(string code, CancellationToken cancellationToken = default)
+    public async Task<PairingOutcome> PairAsync(string code, string os, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var response = await http.PostAsJsonAsync(PairPath, new { code }, cancellationToken);
+            // Kart: POST /api/agent/pair { code, os }. Sunucu işletim sistemini AgentPairing.Platform'a yazıyor.
+            using var response = await http.PostAsJsonAsync(PairPath, new { code, os }, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

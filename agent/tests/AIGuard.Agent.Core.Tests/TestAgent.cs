@@ -1,4 +1,5 @@
 using AIGuard.Agent.Core.Pairing;
+using AIGuard.Agent.Core.Platform;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -14,11 +15,23 @@ internal sealed class FakePairingClient : IPairingClient
 
     public List<string> ReceivedCodes { get; } = [];
 
-    public Task<PairingOutcome> PairAsync(string code, CancellationToken cancellationToken = default)
+    public List<string> ReceivedOs { get; } = [];
+
+    public Task<PairingOutcome> PairAsync(string code, string os, CancellationToken cancellationToken = default)
     {
         ReceivedCodes.Add(code);
+        ReceivedOs.Add(os);
         return Task.FromResult(Outcome);
     }
+}
+
+/// <summary>Platform projesinin yerine; ortak çekirdek bir <see cref="IDeviceInspector"/> bekliyor.</summary>
+internal sealed class FakeDeviceInspector : IDeviceInspector
+{
+    public string Platform => "MacOS";
+
+    public Task<IReadOnlyList<string>> InspectAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
 }
 
 /// <summary>Bellek içi test sunucusunda çalışan ajan.</summary>
@@ -56,6 +69,7 @@ internal sealed class TestAgent : IAsyncDisposable
 
         var client = new FakePairingClient();
         builder.Services.AddSingleton<IPairingClient>(client); // gerçek HTTP istemcisinin yerine
+        builder.Services.AddSingleton<IDeviceInspector, FakeDeviceInspector>();
 
         var app = AgentHost.Build(builder);
         await app.StartAsync();

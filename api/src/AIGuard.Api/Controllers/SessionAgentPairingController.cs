@@ -6,13 +6,15 @@ namespace AIGuard.Api.Controllers;
 
 public sealed record PairingCodeResponse(string Code, DateTimeOffset ExpiresAt);
 
-/// <summary>Tarayıcının ajana göndereceği tek kullanımlık kodu üretir (Y1).</summary>
+/// <summary>Tarayıcının ajana göndereceği tek kullanımlık kodu üretir (Y1, UC-08 adım 1).</summary>
 /// <remarks>
 /// Kod adaya gösterilmemeli; tarayıcı yanıtı alıp doğrudan 127.0.0.1:47321/pair adresine gönderir.
 /// </remarks>
 [ApiController]
-[Route("api/sessions/{sessionId:guid}/agent/pairing-code")]
-[DevelopmentOnly] // E2 gelene kadar: "oturum bu adaya mı ait" kontrolü olmadan dışarı açılmamalı (S-9 ile aynı).
+[Route("api/sessions/{sessionId:guid}/agent-code")]
+// Kart: yalnızca Candidate ve yalnızca kendi oturumu. E2 gelene kadar bu kontrol yapılamadığı için
+// uç dışarı açılmıyor (S-12, olay ucundaki S-9 ile aynı).
+[DevelopmentOnly]
 public sealed class SessionAgentPairingController(AgentPairingService pairing) : ControllerBase
 {
     [HttpPost]
@@ -31,7 +33,7 @@ public sealed class SessionAgentPairingController(AgentPairingService pairing) :
             IssuePairingCodeStatus.Issued =>
                 StatusCode(StatusCodes.Status201Created, new PairingCodeResponse(result.Code!, result.ExpiresAt!.Value)),
             IssuePairingCodeStatus.SessionNotFound => NotFound(),
-            _ => Problem(statusCode: StatusCodes.Status409Conflict, title: "Oturum kapalı."),
+            _ => Problem(statusCode: StatusCodes.Status409Conflict, title: "Oturum ajan eşleştirme aşamasında değil."),
         };
     }
 }
