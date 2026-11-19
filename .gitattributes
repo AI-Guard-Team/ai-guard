@@ -1,0 +1,15 @@
+# Satır sonlarını Windows ve macOS arasında tutarlı tut
+* text=auto eol=lf
+
+*.sln  text eol=crlf
+*.csproj text eol=crlf
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
+*.docx binary

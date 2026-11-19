@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- .NET API ----------
+  api:
+    name: api (.NET build + test)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aiguard
+          POSTGRES_PASSWORD: aiguard_ci
+          POSTGRES_DB: aiguard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aiguard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ConnectionStrings__Default: Host=localhost;Port=5432;Database=aiguard_test;Username=aiguard;Password=aiguard_ci
+      JWT_SECRET: ci_only_secret_not_for_production_32chars
+      VISION_SERVICE_KEY: ci_only
+      EVIDENCE_ENCRYPTION_KEY: Y2lfb25seV9rZXlfMzJfYnl0ZXNfX19fX19fX19fX18=
+    steps:
+      - uses: actions/checkout@v4
+      - name: api projesi var mı?
+        id: check
+        run: |
+          if ls api/*.sln api/*.slnx >/dev/null 2>&1 || find api -name '*.csproj' | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "api klasöründe henüz proje yok, atlanıyor."
+          fi
+      - uses: actions/setup-dotnet@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        if: steps.check.outputs.exists == 'true'
+        working-directory: api
+        run: dotnet restore
+      - name: Build
+        if: steps.check.outputs.exists == 'true'
+        working-directory: api
+        run: dotnet build --no-restore -c Release
+      - name: Test
+        if: steps.check.outputs.exists == 'true'
+        working-directory: api
+        run: dotnet test --no-build -c Release --verbosity normal
+
+  # ---------- Python vision ----------
+  vision:
+    name: vision (lint + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: vision projesi var mı?
+        id: check
+        run: |
+          if [ -f vision/requirements.txt ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "vision/requirements.txt yok, atlanıyor."
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.check.outputs.exists == 'true'
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: vision/requirements.txt
+      - name: Bağımlılıklar
+        if: steps.check.outputs.exists == 'true'
+        working-directory: vision
+        run: |
+          pip install -r requirements.txt
+          pip install ruff pytest
+      - name: Lint (ruff)
+        if: steps.check.outputs.exists == 'true'
+        working-directory: vision
+        run: ruff check .
+      - name: Test (pytest)
+        if: steps.check.outputs.exists == 'true'
+        working-directory: vision
+        run: |
+          set +e
+          pytest -q
+          code=$?
+          # 5 = hiç test bulunamadı; iskelet aşamasında hata sayma
+          if [ $code -eq 5 ]; then echo "Henüz test yok."; exit 0; fi
+          exit $code
+
+  # ---------- React web ----------
+  web:
+    name: web (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: web projesi var mı?
+        id: check
+        run: |
+          if [ -f web/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "web/package.json yok, atlanıyor."
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Kurulum
+        if: steps.check.outputs.exists == 'true'
+        working-directory: web
+        run: npm ci
+      - name: Build
+        if: steps.check.outputs.exists == 'true'
+        working-directory: web
+        run: npm run build
+
+  # ---------- .NET agent ----------
+  agent:
+    name: agent (.NET build + test)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: agent projesi var mı?
+        id: check
+        shell: bash
+        run: |
+          if ls agent/*.sln agent/*.slnx >/dev/null 2>&1 || find agent -name '*.csproj' | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "agent klasöründe henüz proje yok, atlanıyor."
+          fi
+      - uses: actions/setup-dotnet@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build
+        if: steps.check.outputs.exists == 'true'
+        working-directory: agent
+        run: dotnet build -c Release
+      - name: Test
+        if: steps.check.outputs.exists == 'true'
+        working-directory: agent
+        run: dotnet test -c Release --no-build --verbosity normal
