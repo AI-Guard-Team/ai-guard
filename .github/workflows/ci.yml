@@ -186,6 +186,18 @@ jobs:
           code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/api/sessions/00000000-0000-0000-0000-000000000000/events)
           echo "web -> api: $code"
           [ "$code" = "405" ] || { echo "HATA: /api iletimi beklenen 405 yerine $code döndü"; exit 1; }
+      - name: Sağlık kontrolü olan servisler "healthy"
+        run: |
+          # Sayfanın yanıt vermesi yetmiyor; container'ın kendi sağlık kontrolü de geçmeli.
+          for svc in web vision postgres; do
+            for i in $(seq 1 30); do
+              status=$(docker inspect --format '{{.State.Health.Status}}' "$($COMPOSE ps -q $svc)")
+              [ "$status" = "healthy" ] && break
+              sleep 2
+            done
+            echo "$svc: $status"
+            [ "$status" = "healthy" ] || { echo "HATA: $svc sağlıklı değil"; exit 1; }
+          done
       - name: Loglar (hata olursa)
         if: failure()
         run: $COMPOSE logs --no-color

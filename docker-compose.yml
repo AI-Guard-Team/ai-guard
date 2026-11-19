@@ -125,8 +125,9 @@ services:
       api:
         condition: service_started
     healthcheck:
-      # nginx imajında curl yok, wget var.
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      # nginx imajında curl yok, wget var. "localhost" değil 127.0.0.1: container içinde localhost
+      # önce IPv6'ya (::1) çözülüyor, nginx ise yalnızca IPv4 dinliyor; kontrol hep başarısız oluyordu.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
       interval: 5s
       timeout: 5s
       retries: 20
