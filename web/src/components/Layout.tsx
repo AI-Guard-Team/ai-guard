@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router'
 import { logout } from '../api/auth'
 import { ROLE_LABEL, ROLE_MENU } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
+import { Button } from './Button'
 
 export function Layout() {
   const { user } = useAuth()
@@ -31,9 +32,9 @@ export function Layout() {
           <span>
             {user.name ?? user.email ?? 'Kullanıcı'} · {ROLE_LABEL[user.role]}
           </span>
-          <button type="button" onClick={handleSignOut}>
+          <Button variant="secondary" onClick={handleSignOut}>
             Çıkış
-          </button>
+          </Button>
         </div>
       </header>
       <main className="layout-main">

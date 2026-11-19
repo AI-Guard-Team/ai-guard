@@ -1,0 +1,33 @@
+/* Renk ve yazı tipi değişkenlerinin tek kaynağı. Bileşenler bu adları kullanır, renk kodu yazmaz. */
+:root {
+  --font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-size: 16px;
+  --line-height: 1.5;
+
+  --color-bg: #eef2f6;
+  --color-surface: #ffffff;
+  --color-text: #1b2430;
+  --color-muted: #5b6775;
+  --color-border: #d3dbe4;
+  --color-primary: #1d4e89;
+  --color-primary-hover: #163c6b;
+  --color-on-primary: #ffffff;
+  --color-danger: #a12638;
+  --color-danger-hover: #841e2d;
+  --color-focus: #1d4e89;
+
+  --color-success-bg: #e5f4eb;
+  --color-success-text: #146c3a;
+  --color-warning-bg: #fff4d6;
+  --color-warning-text: #7a4e00;
+  --color-danger-bg: #fde8eb;
+  --color-danger-text: #8e1b2c;
+  --color-info-bg: #e6f0fa;
+  --color-info-text: #1d4e89;
+  --color-neutral-bg: #e8edf2;
+  --color-neutral-text: #3d4854;
+
+  --radius: 8px;
+  --shadow: 0 1px 2px rgb(27 36 48 / 8%);
+  --header-height: 60px;
+}
