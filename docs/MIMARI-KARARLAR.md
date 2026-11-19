@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 19 Kasım 2026 (A2)*
+*Son güncelleme: 20 Kasım 2026 (Y1)*
 
 ---
 
@@ -30,6 +30,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Olay kaynağı | Sunucu belirliyor; tarayıcı yalnızca 5 tarayıcı olayını gönderebiliyor (K-16) |
 | Risk skoru | Olaylardan saf fonksiyonla hesaplanıyor; ağırlıklar `riskconfig.json`'da (K-17) |
 | Aynı oturuma eşzamanlı yazma | Oturum satırı kilitleniyor (`LockExamSessionAsync`) (K-18) |
+| Tarayıcı–ajan eşleştirme | Tek kullanımlık kod yalnızca 127.0.0.1 üzerinden ajana gidiyor; ajan kodu TLS ile sunucuya iletiyor (K-19) |
 
 ---
 
@@ -339,6 +340,38 @@ Bu yüzden `EventService` her olayı bir işlem içinde yazıyor ve önce `IAppD
 `LockExamSessionAsync` PostgreSQL'e özgü SQL içerdiği için Infrastructure'da, `IAppDbContext` arkasında duruyor.
 
 **E4'e not:** Oturum durumunu değiştiren işlemler (teslim, otomatik teslim, bağlantı kesildi) de aynı kilidi kullanırsa olay yazımıyla çakışmaz. Kullanmazsa `DbUpdateConcurrencyException` alabilir ve yeniden denemesi gerekir.
+
+---
+
+## K-19 · Tarayıcı ile ajanın eşleştirilmesi
+
+FR-11: sınavı açan tarayıcı ile güvenlik ajanının aynı bilgisayarda çalıştığı doğrulanmalı. Akış:
+
+1. Tarayıcı `POST /api/sessions/{id}/agent/pairing-code` ile kod alıyor. Kod adaya gösterilmiyor.
+2. Tarayıcı kodu `POST http://127.0.0.1:47321/pair` ile ajana gönderiyor.
+3. Ajan kodu `POST /api/agent/pair` ile TLS üzerinden sunucuya iletiyor; sunucu eşleşmeyi kaydediyor.
+
+**"Aynı bilgisayar" kanıtı neye dayanıyor:** Ajan yalnızca `127.0.0.1`'i dinliyor; ağdaki başka bir bilgisayar bu porta bağlanamıyor. Kod tarayıcıdan yalnızca bu yolla çıktığı için kodu sunucuya getirebilen ajan, tarayıcıyla aynı bilgisayardadır. Başka bilgisayardaki bir ajanın tek şansı kodu tahmin etmek. Kod 256 bit rastgele olduğu için bu pratikte imkânsız, bu yüzden deneme sayısı sınırı koymadık.
+
+| Kural | Gerekçe |
+|---|---|
+| Kod 2 dakika geçerli, tek kullanımlık | Tarayıcı kodu hemen gönderiyor; sızan bir kodun işe yarayacağı süre kısa kalıyor |
+| Veritabanında yalnızca kodun SHA-256 özeti | K-08 ile aynı: veritabanı okunsa bile geçerli kod elde edilemiyor |
+| Yeni kod istenince eskisi geçersiz; oturum başına tek `AgentPairing` kaydı | Ajan yeniden başlarsa tarayıcı yeni kodla tekrar eşleştirebilsin |
+| Tek kullanım, oturum satırı kilitlenerek sağlanıyor (K-18) | Aynı kodla eşzamanlı iki istekten yalnızca biri eşleşiyor. `ExecuteUpdate` Application'ı ilişkisel EF paketine bağlayacağı için kullanılmadı |
+| Red nedeni (yok / süresi dolmuş / kullanılmış / oturum kapalı) yanıtta ayrılmıyor | Kodun var olup olmadığı dışarıya sızmasın |
+| Ajan sunucu adresini `https` değilse kabul etmiyor (`http` yalnızca localhost) | Kod ağda açık metin giderse yolda okunup kullanılabilir |
+
+**Ajanın yerel ucu:** CORS başlıkları yalnızca tarayıcının yanıtı okumasını engelliyor, isteğin çalışmasını engellemiyor. Bu yüzden ajan izinsiz origin'den gelen isteği 403 ile reddediyor ve kodu sunucuya hiç göndermiyor. Diğer kurallar:
+
+- Origin başlığı olmayan istek reddediliyor; eşleştirme yalnızca tarayıcıdan.
+- `Host` başlığı `127.0.0.1` veya `localhost` değilse istek reddediliyor. Kötü niyetli bir site kendi alan adını 127.0.0.1'e çözdürse bile (DNS rebinding) geçemiyor.
+- Yalnızca JSON gövde kabul ediliyor. Böylece tarayıcı her istekten önce ön kontrol (preflight) yapıyor.
+- Ön kontrol yanıtında `Access-Control-Allow-Private-Network: true` başlığı var (Chrome'un yerel ağ erişimi kuralı). Tarayıcı denemeleri: `docs/tarayici-deneme-notlari.md`.
+
+**Ajan projesi:** Ortak kod `AIGuard.Agent.Core`'da. `AIGuard.Agent.Windows` ve `AIGuard.Agent.MacOS` yalnızca giriş noktası ve kendi `IDeviceInspector` uygulamasını içeriyor; cihaz incelemesi Y3'te.
+
+**E2'ye not:** Kod üreten uç, olay ucu gibi E2 gelene kadar yalnızca Development'ta açık (S-12).
 
 ---
 
