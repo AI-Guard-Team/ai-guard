@@ -40,4 +40,11 @@ public interface IAppDbContext
     /// sıraya sokmak için; çağıran açık bir işlem içinde olmalı.
     /// </summary>
     Task LockExamSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hata bir benzersizlik kısıtı ihlalinden mi geliyor (PostgreSQL 23505, K-11). Servisler
+    /// eşzamanlı iki isteğin ikincisini anlamlı bir yanıta (ör. 409) çevirebilsin diye; Npgsql'e
+    /// bağlı kontrol Infrastructure'da kalıyor (K-14).
+    /// </summary>
+    bool IsUniqueViolation(DbUpdateException exception);
 }

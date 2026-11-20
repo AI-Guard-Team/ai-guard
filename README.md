@@ -98,6 +98,7 @@ cd api
 dotnet tool restore                      # repodaki EF aracı (dotnet-ef 8.0.11)
 dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=aiguard;Username=postgres;Password=<şifren>" --project src/AIGuard.Api
 dotnet user-secrets set "Seed:DefaultPassword" "<en-az-12-karakter>" --project src/AIGuard.Api
+dotnet user-secrets set "JWT_SECRET" "<en-az-32-karakter-rastgele>" --project src/AIGuard.Api   # E2'den beri zorunlu; yoksa API açılmaz
 
 dotnet ef database update --project src/AIGuard.Infrastructure --startup-project src/AIGuard.Api
 dotnet run --project src/AIGuard.Api     # http://localhost:5080/health -> Healthy

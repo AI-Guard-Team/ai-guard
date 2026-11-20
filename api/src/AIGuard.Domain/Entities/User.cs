@@ -74,4 +74,10 @@ public class RefreshToken : Entity
     /// zincirdeki tüm belirteçleri iptal edebilmek için tutuluyor.
     /// </summary>
     public Guid? ReplacedByTokenId { get; set; }
+
+    /// <summary>
+    /// PostgreSQL xmin sütunu (E2). Aynı belirteçle eşzamanlı iki yenileme isteği gelirse
+    /// ikincisi çakışma hatası alıyor; böylece tek kullanımlık belirteç iki kez kullanılamıyor.
+    /// </summary>
+    public uint Version { get; set; }
 }

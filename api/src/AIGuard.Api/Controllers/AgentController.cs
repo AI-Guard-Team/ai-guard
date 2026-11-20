@@ -1,5 +1,6 @@
 using AIGuard.Application.Agents;
 using AIGuard.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIGuard.Api.Controllers;
@@ -13,11 +14,12 @@ public sealed record AgentPairResponse(Guid PairingId, Guid SessionId);
 /// <summary>Güvenlik ajanının çağırdığı uçlar (Y1).</summary>
 /// <remarks>
 /// Bu uç JWT ile değil eşleştirme koduyla korunuyor (kart Y1): ajanın kullanıcı oturumu yok,
-/// kimlik kanıtı tek kullanımlık kodun kendisi. Kod yalnızca Development'ta açık olan uçtan
-/// üretildiği için (E2'ye kadar) Production'da eşleşme oluşamıyor.
+/// kimlik kanıtı tek kullanımlık kodun kendisi. Kodu yalnızca oturumun sahibi olan aday
+/// alabiliyor (SessionAgentPairingController, E2).
 /// </remarks>
 [ApiController]
 [Route("api/agent")]
+[AllowAnonymous] // varsayılan "giriş gerekli" kuralının dışında; kanıt eşleştirme kodu (K-20)
 public sealed class AgentController(AgentPairingService pairing) : ControllerBase
 {
     [HttpPost("pair")]

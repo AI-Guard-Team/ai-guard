@@ -8,20 +8,22 @@ using static AIGuard.IntegrationTests.Events.EventTestHelpers;
 
 namespace AIGuard.IntegrationTests.Events;
 
-/// <summary>HTTP katmanına özgü davranışlar: JSON biçimi, gövde sınırı, ortam kısıtı.</summary>
+/// <summary>HTTP katmanına özgü davranışlar: JSON biçimi, gövde sınırı, yetki ve oturum sahipliği.</summary>
 public class SessionEventsApiTests(PostgresFixture fx) : IClassFixture<PostgresFixture>
 {
-    private HttpClient Client(string environment = "Development") =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
-        {
-            b.UseEnvironment(environment);
-            b.UseSetting("ConnectionStrings:Default", fx.ConnectionString);
-        }).CreateClient();
+    private TestApi? _api;
+    private TestApi Api => _api ??= new TestApi(fx);
+
+    // Son oluşturulan oturumun sahibi olan aday adına istemci (E2: yalnızca kendi oturumu).
+    private Domain.Entities.User? _owner;
+    private HttpClient Client() => Api.As(_owner ?? throw new InvalidOperationException("Önce EventsUrlAsync çağrılmalı."));
 
     private async Task<string> EventsUrlAsync()
     {
         await using var db = fx.CreateContext();
-        return $"/api/sessions/{(await InProgressSessionAsync(db)).Id}/events";
+        var session = await InProgressSessionAsync(db);
+        _owner = session.Candidate;
+        return $"/api/sessions/{session.Id}/events";
     }
 
     private static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
@@ -50,7 +52,8 @@ public class SessionEventsApiTests(PostgresFixture fx) : IClassFixture<PostgresF
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
 
-        var response = await Client().PostAsync(await EventsUrlAsync(), Json(json));
+        var url = await EventsUrlAsync();
+        var response = await Client().PostAsync(url, Json(json));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -63,18 +66,50 @@ public class SessionEventsApiTests(PostgresFixture fx) : IClassFixture<PostgresF
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
 
+        await EventsUrlAsync(); // istemci için kayıtlı bir aday
+
         var response = await Client().PostAsJsonAsync($"/api/sessions/{Guid.NewGuid()}/events", new { type = "TAB_BLUR" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [SkippableFact]
-    public async Task Endpoint_is_closed_outside_development_until_authentication_exists()
+    public async Task Anonymous_request_is_rejected_with_401()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
 
-        var response = await Client("Production").PostAsJsonAsync(await EventsUrlAsync(), new { type = "TAB_BLUR" });
+        var response = await Api.Anonymous().PostAsJsonAsync(await EventsUrlAsync(), new { type = "TAB_BLUR" });
 
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task Candidate_cannot_write_to_another_candidates_session()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var otherUrl = await EventsUrlAsync();
+        await EventsUrlAsync(); // _owner artık başka bir aday
+
+        var response = await Client().PostAsJsonAsync(otherUrl, new { type = "TAB_BLUR" });
+
+        // 403 değil 404: başka oturumun var olduğu bilgisi verilmiyor.
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task Non_candidate_roles_get_403()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var url = await EventsUrlAsync();
+        var admin = TestData.UserWithRole(Domain.Enums.UserRole.Admin);
+        await using (var db = fx.CreateContext())
+        {
+            db.Users.Add(admin);
+            await db.SaveChangesAsync();
+        }
+
+        var response = await Api.As(admin).PostAsJsonAsync(url, new { type = "TAB_BLUR" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

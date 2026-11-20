@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (Y1)*
+*Son güncelleme: 20 Kasım 2026 (E2)*
 
 ---
 
@@ -31,6 +31,8 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Risk skoru | Olaylardan saf fonksiyonla hesaplanıyor; ağırlıklar `riskconfig.json`'da (K-17) |
 | Aynı oturuma eşzamanlı yazma | Oturum satırı kilitleniyor (`LockExamSessionAsync`) (K-18) |
 | Tarayıcı–ajan eşleştirme | Tek kullanımlık kod yalnızca 127.0.0.1 üzerinden ajana gidiyor; ajan kodu TLS ile sunucuya iletiyor (K-19) |
+| Kimlik doğrulama | 15 dk JWT + tek kullanımlık yenileme belirteci; **her uç varsayılan olarak giriş istiyor**, açık uçlar `[AllowAnonymous]` (K-20) |
+| Oturum uçları | Aday yalnızca kendi oturumuna erişir (`SessionAccessService.IsCandidateOfAsync`); başkasının oturumuna 404 (K-20) |
 
 ---
 
@@ -311,7 +313,7 @@ Kartta olay ucunun gövdesinde `type` ve `source` alması yazıyor. Bunu olduğu
 
 **Sınırlılık:** Tarayıcının bildirdiği süreye (`durationSec`) güvenilemez; aday sekme değiştirme süresini 0 gösterebilir. Tarayıcıyı aday kontrol ettiği için olayı hiç göndermemesi de mümkün. Bu, istemci tarafı izlemenin bilinen sınırı (GAB 1.2). Ağırlıklar bu yüzden kısa olayları da anlamlı puanlıyor.
 
-**E2'ye not:** Kimlik doğrulama gelene kadar uç `[DevelopmentOnly]` ile yalnızca Development'ta açık. E2 birleşince bu öznitelik kaldırılıp aday rolü ve "oturum bu adaya mı ait" kontrolü eklenmeli.
+**Yetki (E2'de yapıldı):** Uç yalnızca `Candidate` rolüne açık ve aday yalnızca kendi oturumuna olay yazabiliyor (K-20). `[DevelopmentOnly]` kaldırıldı.
 
 **IP kontrolü (FR-22):** `SessionIpGuard.CheckAsync` oturumla ilgili her istekte çağrılmalı (E4'ün uçları dahil). İlk IP oturuma yazılıyor; farklı bir IP gelince bir kez `IP_CHANGE` üretiliyor. `::ffff:1.2.3.4` ile `1.2.3.4` aynı sayılıyor. API proxy arkasındaysa `X-Forwarded-For` yalnızca bilinen proxy'den kabul edilmeli (E1b). **E1b'de yapıldı:** Compose'da `web` (nginx) API'nin önünde. `Api/TrustedProxySetup` başlığı yalnızca `ForwardedHeaders:KnownNetworks` ayarındaki adresten (web container'ı, 172.30.47.10) kabul ediyor. Ayar yoksa (Docker'sız çalışma) hiçbir şey değişmiyor.
 
@@ -395,7 +397,58 @@ FR-11: sınavı açan tarayıcı ile güvenlik ajanının aynı bilgisayarda ça
 
 **Ajan projesi:** Ortak kod `AIGuard.Agent.Core`'da. `AIGuard.Agent.Windows` ve `AIGuard.Agent.MacOS` yalnızca giriş noktası ve kendi `IDeviceInspector` uygulamasını içeriyor; cihaz incelemesi Y3'te.
 
-**E2'ye not:** Kod üreten uç, olay ucu gibi E2 gelene kadar yalnızca Development'ta açık (S-12).
+**Yetki (E2'de yapıldı):** Kod üreten uç yalnızca `Candidate` rolüne ve oturumun sahibine açık; `/api/agent/pair` `[AllowAnonymous]`, kanıt kodun kendisi (K-20).
+
+---
+
+## K-20 · Kimlik doğrulama ve yetkilendirme (E2)
+
+FR-01–FR-03. Önyüzle sözleşme `web/src/api/auth.ts` ve `client.ts` ile birebir aynı; bir alanı değiştirirseniz ikisini birlikte değiştirin.
+
+| Uç | Yetki | Gövde → Yanıt |
+|---|---|---|
+| `POST /api/auth/login` | açık | `{email, password}` → `200 {accessToken, accessTokenExpiresAt, refreshToken}` · 401 · 429 (kilit) |
+| `POST /api/auth/refresh` | açık | `{refreshToken}` → `200` yeni çift · 401 |
+| `POST /api/auth/logout` | açık | `{refreshToken}` → `204` (belirteç yoksa da 204) |
+| `POST /api/auth/set-password` | açık | `{token, password}` → `204` · 400 |
+| `POST /api/auth/change-password` | giriş yapmış | `{currentPassword, newPassword}` → `204` · 400 |
+| `POST /api/users` | Admin | `{fullName, email, role}` → `201 {id}` · 400 · 409; davet e-postası gider |
+| `GET /api/users?role=` | Admin | → `[{id, fullName, email, role, isActive, inviteStatus, createdAt}]` |
+| `PATCH /api/users/{id}` | Admin | `{role?, isActive?}` → `204` · 400 · 404 |
+
+- `change-password` kartta yok; GAB 3.4.5'teki "Profil → Şifre Değiştir" ve S1'deki ekran için eklendi (adı Şeyma'nın önyüzünden).
+- `GET` ve `PATCH /api/users` kartta yok; FR-03 (Zorunlu) ve E6'daki yönetici ekranı için eklendi. Yönetici kendi rolünü veya durumunu değiştiremiyor (sistemde yönetici kalmayabilir).
+- Açık kayıt ucu yok.
+
+**Belirteçler**
+
+| Kural | Değer | Gerekçe |
+|---|---|---|
+| Erişim belirteci | HMAC-SHA256 JWT, 15 dk; talepler `sub`, `role`, `email`, `name`, `jti` | Önyüz kısa adları okuyor (`web/src/auth/jwt.ts`); `MapInboundClaims = false` |
+| Anahtar | `JWT_SECRET` (ortam değişkeni / user-secrets), en az 32 bayt; yoksa uygulama açılmıyor | Koda gömülü varsayılan yok |
+| Yenileme belirteci | 256 bit rastgele, 7 gün, tek kullanımlık; veritabanında SHA-256 özeti (K-08) | Her kullanımda yenisi veriliyor (rotation); kartta süre yok |
+| Yenilenmiş belirteç tekrar gelirse | Kullanıcının bütün yenileme belirteçleri iptal | Çalınma belirtisi; saldırgan mı kullanıcı mı bilinemiyor |
+| Eşzamanlı yenileme | `refresh_tokens.xmin` iyimser kilidi; ikinci istek 401 | Tek kullanım iki eşzamanlı istekle aşılmasın |
+| Davet | 72 saat, tek kullanımlık; kullanılınca özet siliniyor | Kart |
+| Hatalı giriş | 5 denemede 15 dk kilit (429); kilitliyken şifre denenmiyor | Kart; 15 dk bizim seçimimiz |
+| Şifre kuralı | 8–128 karakter, yalnızca boşluk olamaz | NIST SP 800-63B; üst sınır PBKDF2'yi yormamak için |
+| Şifre değişince | Bütün yenileme belirteçleri iptal | Çalınmış oturum kapanmalı; mevcut sekme de en geç 15 dk sonra yeniden giriş ister |
+
+**Her istekte kullanıcı kontrolü (FR-02).** JWT'nin imzası ve süresi geçerli olsa da `OnTokenValidated` kullanıcıyı veritabanından okuyor: pasif ya da rolü belirteçtekinden farklıysa istek 401 alıyor. Pasife alınan kullanıcının yenileme belirteçleri de iptal ediliyor.
+
+**Varsayılan olarak giriş gerekli.** `FallbackPolicy = RequireAuthenticatedUser`. Yeni bir uç yazarken rolü belirtin (`[Authorize(Roles = nameof(UserRole.Admin))]`). Herkese açık uçlar yalnızca şunlar: `/health`, `api/auth/*` (change-password hariç), `/api/agent/pair` (kanıt eşleştirme kodu). Yeni bir açık uç gerekirse `[AllowAnonymous]` ve gerekçesi yazılmalı. Y2'deki ajan sinyal ucu da JWT değil HMAC ile korunacağı için `[AllowAnonymous]` olacak.
+
+**Oturum sahipliği.** Oturum kimliği alan aday uçları önce `SessionAccessService.IsCandidateOfAsync(sessionId, User.GetUserId())` çağırıyor; başkasının oturumuna 403 değil 404 dönüyor (oturumun var olduğu bilgisi sızmasın). E4, A3 ve S4'teki yeni oturum uçları da aynı kontrolü yapmalı. Değerlendiricinin "yalnızca atandığı sınav" kontrolü E3/A4'te benzer bir yöntemle eklenmeli.
+
+**Hata yanıtları.** ProblemDetails; kullanıcıya gösterilecek Türkçe metin `detail` alanında (önyüz bunu gösteriyor). Giriş hatasında e-postanın var olup olmadığı veya hesabın pasif olup olmadığı ayrılmıyor; var olmayan e-postada da sahte bir özet doğrulanıyor ki yanıt süresinden anlaşılmasın. `change-password`'da yanlış mevcut şifre 401 değil 400: 401 önyüzde belirteç yenilemeyi tetikleyip kullanıcıyı çıkarırdı.
+
+**Denetim kaydı (FR-35).** `user.login`, `user.lockout`, `user.create`, `user.invite_accept`, `user.password_change`, `user.role_change`, `user.activate`, `user.deactivate`, `auth.refresh_reuse`. Eski ve yeni değere yalnızca rol ve durum yazılıyor (K-10).
+
+**E-posta.** Kartta istendiği gibi sahte gönderici (`Infrastructure/Email/LoggingEmailSender`) davet bağlantısını loga yazıyor. Bağlantı `Web:BaseUrl` ayarı (varsayılan `http://localhost:5173`) + `/set-password?token=`. Bağlantı bir kimlik bilgisi olduğu için gerçek kullanımda SMTP gibi bir gönderici gerekir (S-15).
+
+**Testlerde.** HTTP testleri `IntegrationTests/TestApi` ile yazılıyor: `Api.As(user)` kayıtlı kullanıcı adına belirteçli istemci, `Api.Anonymous()` girişsiz istemci, `Api.Emails.InviteTokenFor(email)` yakalanan davet belirteci. Testlerdeki JWT anahtarı sabit (`TestApi.JwtSecret`).
+
+**Yerel kurulum.** `dotnet user-secrets set "JWT_SECRET" "<en-az-32-karakter-rastgele>" --project src/AIGuard.Api` (README).
 
 ---
 
@@ -433,16 +486,17 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | # | Konu | İlgili | Öneri |
 |---|---|---|---|
 | S-1 | A4'teki not ucu için ayrı tablo mu, `ReviewerDecision.Note` mu? | Ayşe, Şeyma | Birden fazla not gerekecekse A4'te `ReviewerNote` tablosu |
-| S-2 | Şifre özetleme yöntemi | Esma | Şimdilik PasswordHasher; değişirse yalnızca `IdentityPasswordHasher` etkilenir |
+| S-2 | Şifre özetleme yöntemi | Esma | **Karar (E2):** ASP.NET Core Identity PasswordHasher (PBKDF2) kalıyor; değişirse yalnızca `IdentityPasswordHasher` etkilenir |
 | S-3 | HMAC anahtarının şifreli saklanması (K-08) | Yağmur | Y2'de bu alanın kullanılması |
 | S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | **Çözüldü (E1b):** compose'daki tek seferlik `migrate` servisi EF göç paketini (`efbundle`) çalıştırıyor; `api` bunun başarıyla bitmesini bekliyor |
 | S-5 | A6, E5b'ye bağlı ama tarihleri çakışıyor | Ayşe, Esma | Locust betiği 29 Kasım'da, ölçüm E5b'den sonra |
 | S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | Serviste kontrol ve test; gerekirse `answers.exam_id` ile bileşik yabancı anahtar |
 | S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı; göçler ayrı kullanıcıyla |
 | S-8 | `agent_signals` hızlı büyüyor; kullanıcı silme talebi | Ayşe (A5) | Saklama görevine eklenmesi; kişisel alanların anonimleştirilmesi |
-| S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açık | Esma (E2), Ayşe | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü |
+| S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Ayşe | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
-| S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açık; kart Candidate rolü ve "yalnızca kendi oturumu" istiyor | Esma (E2), Yağmur | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü (S-9 ile aynı) |
+| S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Yağmur | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |
 | S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | Y2'de eşleşme anında HMAC oturum anahtarı üretilip `EncryptedSessionKey`'e yazılması ve ajana bu yanıtta verilmesi; ajan uçları JWT değil HMAC ile korunur |
+| S-15 | Davet e-postası sahte gönderici ile loga yazılıyor; davet yeniden gönderme ucu yok | Esma | Gerçek gönderim gerekirse SMTP göndericisi `IEmailSender` arkasına; süresi dolan davet için `POST /api/users/{id}/invite` eklenebilir (ekip kararı) |

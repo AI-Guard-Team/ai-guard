@@ -1,5 +1,8 @@
-using AIGuard.Api.Filters;
+using AIGuard.Api.Auth;
 using AIGuard.Application.Agents;
+using AIGuard.Application.Sessions;
+using AIGuard.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIGuard.Api.Controllers;
@@ -12,10 +15,9 @@ public sealed record PairingCodeResponse(string Code, DateTimeOffset ExpiresAt);
 /// </remarks>
 [ApiController]
 [Route("api/sessions/{sessionId:guid}/agent-code")]
-// Kart: yalnızca Candidate ve yalnızca kendi oturumu. E2 gelene kadar bu kontrol yapılamadığı için
-// uç dışarı açılmıyor (S-12, olay ucundaki S-9 ile aynı).
-[DevelopmentOnly]
-public sealed class SessionAgentPairingController(AgentPairingService pairing) : ControllerBase
+// Kart: yalnızca Candidate ve yalnızca kendi oturumu (E2, S-12).
+[Authorize(Roles = nameof(UserRole.Candidate))]
+public sealed class SessionAgentPairingController(AgentPairingService pairing, SessionAccessService access) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType<PairingCodeResponse>(StatusCodes.Status201Created)]
@@ -23,6 +25,12 @@ public sealed class SessionAgentPairingController(AgentPairingService pairing) :
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Post(Guid sessionId, CancellationToken ct)
     {
+        // Başka adayın oturumuna kod alınıp kendi ajanını o oturuma bağlayamasın.
+        if (!await access.IsCandidateOfAsync(sessionId, User.GetUserId(), ct))
+        {
+            return NotFound();
+        }
+
         var result = await pairing.IssueCodeAsync(sessionId, ct);
 
         // Kod bir kimlik bilgisi: tarayıcı veya ara sunucu önbelleğine yazılmasın.

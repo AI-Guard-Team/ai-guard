@@ -34,6 +34,9 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         b.Property(t => t.TokenHash).HasMaxLength(128);
         b.HasIndex(t => t.TokenHash).IsUnique();
 
+        // xmin: tek kullanımlık belirteç eşzamanlı iki istekle iki kez yenilenemesin (E2).
+        b.Property(t => t.Version).IsRowVersion();
+
         b.HasOne(t => t.User)
             .WithMany(u => u.RefreshTokens)
             .HasForeignKey(t => t.UserId)

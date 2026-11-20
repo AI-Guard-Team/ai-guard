@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using AIGuard.Api;
+using AIGuard.Api.Auth;
 using AIGuard.Application;
 using AIGuard.Application.Risk;
 using AIGuard.Infrastructure;
@@ -16,6 +17,9 @@ builder.Services.AddOptions<RiskOptions>()
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// JWT doğrulaması; varsayılan olarak her uç giriş istiyor (E2, K-20).
+builder.Services.AddJwtAuthentication();
 
 builder.Services.AddControllers().AddJsonOptions(o =>
     // Enum'lar kartlardaki adlarla ("TAB_BLUR", "InProgress"); sayı olarak kabul edilmiyor (K-05).
@@ -36,7 +40,11 @@ if (behindProxy)
     app.UseForwardedHeaders();
 }
 
-app.MapHealthChecks("/health");
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Compose ve CI giriş yapmadan kontrol ediyor.
+app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();
 
 // Göçler burada uygulanmıyor (K-07); örnek veri yalnızca Development'ta yükleniyor (K-06).

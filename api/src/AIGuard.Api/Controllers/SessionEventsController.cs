@@ -1,14 +1,18 @@
-using AIGuard.Api.Filters;
+using AIGuard.Api.Auth;
 using AIGuard.Application.Events;
+using AIGuard.Application.Sessions;
+using AIGuard.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIGuard.Api.Controllers;
 
 /// <summary>Tarayıcıdan gelen sınav olayları (A2, S4).</summary>
+/// <remarks>Yalnızca aday ve yalnızca kendi oturumuna yazabilir (E2, S-9).</remarks>
 [ApiController]
 [Route("api/sessions/{sessionId:guid}/events")]
-[DevelopmentOnly] // E2 gelene kadar; ayrıntı DevelopmentOnlyAttribute'ta.
-public sealed class SessionEventsController(EventService events, SessionIpGuard ipGuard) : ControllerBase
+[Authorize(Roles = nameof(UserRole.Candidate))]
+public sealed class SessionEventsController(EventService events, SessionIpGuard ipGuard, SessionAccessService access) : ControllerBase
 {
     [HttpPost]
     [RequestSizeLimit(2048)] // gövde birkaç alan; büyük gövdeyle sunucuyu yorma girişimine karşı
@@ -19,6 +23,12 @@ public sealed class SessionEventsController(EventService events, SessionIpGuard 
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Post(Guid sessionId, BrowserEventRequest request, CancellationToken ct)
     {
+        // Başkasının oturumu "yok" gibi yanıtlanıyor; oturum kimliğinin var olup olmadığı sızmasın.
+        if (!await access.IsCandidateOfAsync(sessionId, User.GetUserId(), ct))
+        {
+            return NotFound();
+        }
+
         await ipGuard.CheckAsync(sessionId, HttpContext.Connection.RemoteIpAddress, ct);
 
         var result = await events.RecordBrowserEventAsync(sessionId, request, ct);
