@@ -104,6 +104,19 @@ dotnet ef database update --project src/AIGuard.Infrastructure --startup-project
 dotnet run --project src/AIGuard.Api     # http://localhost:5080/health -> Healthy
 ```
 
+Kayıt fotoğrafı ve doğrulama uçlarını (A3) yerelde deneyeceksen iki değer daha gerekiyor. Bunlar yoksa API yine açılır, yalnızca bu uçlar hata verir:
+
+```powershell
+# AES-256 anahtarı: rastgele 32 bayt, Base64
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+dotnet user-secrets set "EVIDENCE_ENCRYPTION_KEY" ([Convert]::ToBase64String($bytes)) --project src/AIGuard.Api
+dotnet user-secrets set "VISION_SERVICE_KEY" "<vision ile aynı değer>" --project src/AIGuard.Api
+# VISION_SERVICE_URL verilmezse http://localhost:8000
+```
+
+Anahtar değişirse önceden şifrelenmiş yüz vektörleri ve kanıt kareleri açılamaz; yerel denemede sorun değil, yeni fotoğraf yüklemek yeterli.
+
 Alternatif olarak `ConnectionStrings__Default` ortam değişkeni de okunur (CI ve Docker böyle çalışır).
 İlk açılışta Development ortamında örnek veri yüklenir: `admin@aiguard.local`, `reviewer@aiguard.local`, `aday1@aiguard.local`, `aday2@aiguard.local` (şifre: `Seed:DefaultPassword`) ve bir örnek sınav.
 
@@ -113,6 +126,15 @@ Testler:
 dotnet test                                                    # birim testleri (veritabanı gerekmez)
 $env:ConnectionStrings__Default = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=<şifren>"
 dotnet test                                                    # + entegrasyon testleri (geçici DB açıp siler)
+```
+
+Görüntü servisiyle sözleşme testi (A3 ↔ D2). Vision çalışırken API'nin onunla aynı dili konuştuğunu gösterir; değişkenler verilmezse atlanır:
+
+```powershell
+$env:VISION_CONTRACT_URL = "http://localhost:8000"
+$env:VISION_SERVICE_KEY  = "<vision ile aynı değer>"
+$env:AIGUARD_TEST_FACE   = "C:\yol\kendi-fotografin.jpg"   # isteğe bağlı; fotoğraf repoya eklenmez
+dotnet test tests/AIGuard.IntegrationTests --filter "FullyQualifiedName~VisionContractTests"
 ```
 
 Veritabanı modeli: [docs/er-diagram.md](docs/er-diagram.md) · Mimari kararlar ve nedenleri: [docs/MIMARI-KARARLAR.md](docs/MIMARI-KARARLAR.md)

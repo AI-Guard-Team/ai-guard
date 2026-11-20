@@ -3,6 +3,7 @@ using AIGuard.Application.Auth;
 using AIGuard.Application.Exams;
 using AIGuard.Application.Sessions;
 using AIGuard.Application.Users;
+using AIGuard.Application.Biometrics;
 using AIGuard.Application.Events;
 using AIGuard.Application.Risk;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,12 @@ public static class DependencyInjection
         // E4: oturum akışı ve süre denetimi.
         services.AddScoped<SessionService>();
         services.AddScoped<SessionTimekeeper>();
+
+        // A3: kayıt fotoğrafı, oturum rızası ve sınav başı doğrulama.
+        // Eşikler appsettings.json'daki "Biometrics" bölümünden; Api'de bağlanıyor.
+        services.AddSingleton<IValidateOptions<BiometricOptions>, BiometricOptionsValidator>();
+        services.AddScoped<BiometricEnrollmentService>();
+        services.AddScoped<SessionVerificationService>();
 
         return services;
     }

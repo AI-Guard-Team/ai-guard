@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using AIGuard.Api;
 using AIGuard.Api.Auth;
 using AIGuard.Application;
+using AIGuard.Application.Biometrics;
 using AIGuard.Application.Events;
 using AIGuard.Application.Risk;
 using AIGuard.Infrastructure;
@@ -20,6 +21,11 @@ builder.Services.AddOptions<RiskOptions>()
 builder.Configuration.AddJsonFile("vpn-ip-blocks.json", optional: false, reloadOnChange: false);
 builder.Services.AddOptions<VpnIpBlockOptions>()
     .Bind(builder.Configuration.GetSection(VpnIpBlockOptions.SectionName))
+    .ValidateOnStart();
+
+// Doğrulama eşikleri ve rıza metni sürümleri (A3); değerlerin varsayılanı sınıfta.
+builder.Services.AddOptions<BiometricOptions>()
+    .Bind(builder.Configuration.GetSection(BiometricOptions.SectionName))
     .ValidateOnStart();
 
 builder.Services.AddApplication();

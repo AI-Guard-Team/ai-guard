@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (D1)*
+*Son güncelleme: 20 Kasım 2026 (A3)*
 
 ---
 
@@ -38,6 +38,8 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Ajansız / göstergeli devam | Gerekçe oturuma, işlem denetim kaydına; `Flags += NoAgent` / `Indicated`; ajan çalışırken ajansız devam yok (K-25) |
 | Sınav yönetimi | Doğru seçenek yalnızca Admin'e; oturum başlamış sınav kilitli (409); başlatma kuralı `ExamRules.CanStart` (K-23) |
 | Oturum durumu | Yalnızca `session.TransitionTo(...)`; tablo dışı geçiş 409. Süre ve hak `InProgress`'e geçişte başlar (K-24) |
+| Şifreleme | Tek sınıf (`IFieldEncryptor`), AES-256-GCM, kayda bağlı bağlam; kanıt kareleri şifreli dosyada (K-26) |
+| Biyometrik akış | Fotoğraf saklanmıyor; geçti/kaldı kararı görüntü servisinde, durum geçişleri E4'ten; başarısız deneme olay ve kanıt karesiyle (K-27) |
 
 ---
 
@@ -163,7 +165,7 @@ dotnet ef database update --project src/AIGuard.Infrastructure --startup-project
 
 `KeyVersion` alanları anahtar değiştirildiğinde eski kayıtların hangi anahtarla açılacağını belirtiyor. Anahtarlar ortam değişkenlerinden okunuyor.
 
-GAB'da ajan için "oturum anahtarı özeti" yazıyor. A1'de özetten HMAC imzası doğrulanamadığı için anahtarı şifreli tutmayı planlamıştık; Y2 kartının revize hâli GAB'ı esas aldı: veritabanında yalnızca özet, anahtarın kendisi API belleğinde (K-21). `EncryptedSessionKey` alanı bu yüzden kullanılmıyor (S-16). AES-GCM yardımcı sınıfı A3'te yazılacak ve diğer şifreli alanlar için ortak kullanılacak.
+GAB'da ajan için "oturum anahtarı özeti" yazıyor. A1'de özetten HMAC imzası doğrulanamadığı için anahtarı şifreli tutmayı planlamıştık; Y2 kartının revize hâli GAB'ı esas aldı: veritabanında yalnızca özet, anahtarın kendisi API belleğinde (K-21). `EncryptedSessionKey` alanı bu yüzden kullanılmıyor (S-16). Diğer şifreli alanlar için ortak sınıf A3'te yazıldı: `IFieldEncryptor` (K-26).
 
 ---
 
@@ -596,7 +598,7 @@ Hepsi yalnızca `Candidate` ve yalnızca kendi oturumu (K-20); her istekte IP ko
 | A3 | Rıza verildi / reddedildi | `session.TransitionTo(AgentPairing)` / `TransitionTo(Cancelled)` (iptalde hak tüketilmiyor) |
 | A3 | İlk doğrulama başarılı | `SessionService.BeginExamAsync(sessionId)`: süreyi ve hakkı başlatır |
 | A3 | Kesinti sonrası doğrulama başarılı | `SessionService.ResumeAfterReconnectAsync(sessionId)`: `Disconnected → InProgress` ve kesinti süresiyle `CONNECTION_LOST` olayı |
-| A3 | Kayıt fotoğrafı yoksa sınav başlamaz (FR-04) | `SessionService.StartAsync` içinde `ReferenceFaceTemplates` kontrolü eklenmeli (şimdilik yok; eklenince E5a öncesi fotoğraf yükleme gerekir) |
+| A3 | Kayıt fotoğrafı yoksa sınav başlamaz (FR-04) | A3'te oturum rızası adımında yapıldı (K-27); `StartAsync` değişmedi. E5a'da aday önce fotoğraf yüklemeli |
 | A3/A5 | Biyometrik rıza sınav sırasında geri alındı | `TransitionTo(Cancelled)` + denetim kaydı (FR-05) |
 | S4 | Kamera/mikrofon izni kaldırıldı / verildi | `PermissionPending` geçişleri; ucu S4 (ya da A2) ekleyecek |
 | Y4 | Ajansız / göstergeli devam | `TransitionTo(IdentityVerification)` + `Flags` |
@@ -661,6 +663,59 @@ FR-12, FR-20, FR-23 (İstenen), FR-35, FR-36, GAB 3.3.1, UC-08 4a/4b.
 
 ---
 
+## K-26 · Şifreleme ve kanıt deposu
+
+Şifreli alanların hepsi tek sınıftan geçiyor: `IFieldEncryptor` (Application), uygulaması `AesGcmFieldEncryptor` (Infrastructure). Y2'deki ajan oturum anahtarı ve A5'teki işlemler de bunu kullanmalı; başka bir şifreleme kodu yazılmamalı.
+
+| Kural | Gerekçe |
+|---|---|
+| AES-256-GCM; çıktı nonce (12 bayt) + etiket (16 bayt) + şifreli veri | GCM hem gizlilik hem bütünlük sağlıyor; değiştirilen veri açılmıyor |
+| Her şifrelemede yeni rastgele nonce | Aynı anahtarla nonce tekrarı GCM'nin güvenliğini bozuyor |
+| Her çağrıda bir bağlam (associated data) veriliyor: `face-template:{userId}`, `evidence:{storageKey}` | Bir adayın şifreli vektörü başka bir adayın satırına kopyalansa bile açılmıyor. Yeni şifreli alan eklenirken kaydın sahibini içeren bir bağlam seçilmeli |
+| Anahtar `EVIDENCE_ENCRYPTION_KEY` (Base64, 32 bayt); ortam değişkeni veya user-secrets | Koda gömülü yedek anahtar yok. Değişken adı E1b'de kanıt kareleri için konmuştu; aynı anahtar yüz vektörleri için de kullanılıyor |
+| Anahtar ilk kullanımda okunuyor, açılışta değil | Anahtarı olmayan bir geliştiricinin bilgisayarında API yine açılıyor, yalnızca biyometrik uçlar hata veriyor. Docker Compose ve CI değişkeni zaten zorunlu tutuyor |
+| `KeyVersion` şimdilik hep 1; bilinmeyen sürüm reddediliyor | Anahtar değiştirmek gerekirse eski anahtar sürüm numarasıyla eklenecek |
+
+**Kanıt kareleri:** `IEvidenceStore` / `FileEvidenceStore`. Kare şifrelenip `EVIDENCE_STORAGE_PATH` klasörüne yazılıyor (varsayılan: uygulama klasöründe `data/evidence`; Docker'da `evidence` volume'u). Dosya adını sunucu üretiyor (`{guid}.bin`); silmede ad biçimi kontrol ediliyor, `../` ile klasör dışına çıkılamıyor. Kaydı veritabanına yazılamayan dosya geri siliniyor. Okuma (kısa ömürlü imzalı bağlantı) A4'te, süresi dolanların silinmesi A5'te eklenecek.
+
+---
+
+## K-27 · Kayıt fotoğrafı ve sınav başı doğrulama
+
+A3'ün akışı (FR-04, FR-05, FR-10, UC-12):
+
+1. `POST /api/me/photo` (multipart: `photo`, `consent`, `consentTextVersion`). Ayrı açık rıza ve güncel metin sürümü zorunlu. Fotoğraf görüntü servisine (`/internal/face/enroll`) gidiyor, dönen 512 boyutlu vektör şifrelenip `ReferenceFaceTemplate`'e yazılıyor. Fotoğraf hiçbir yere kaydedilmiyor.
+2. `POST /api/sessions/{id}/consent` (`accepted`, `textVersion`). Kabulde kayıt fotoğrafı yoksa 409 (FR-04), varsa oturum `AgentPairing`'e geçiyor. Rette oturum `Cancelled` oluyor ve hak tüketilmiyor (FR-10).
+3. `POST /api/sessions/{id}/verify` (multipart: 3–5 kare, `frames`). Oturum `IdentityVerification` veya `Disconnected` durumunda olmalı. Görüntü servisi (`/internal/face/verify`, `docs/contracts.md` 4. bölüm) canlılık ve benzerlik skoruyla birlikte `passed` ve başarısızsa `reason` dönüyor.
+   - Başarılıysa oturum E4'e devrediliyor: ilk doğrulamada `SessionService.BeginExamAsync` (süre ve hak başlar), kesintiden dönüşte `ResumeAfterReconnectAsync` (süre baştan başlamaz, kesinti `CONNECTION_LOST` olarak yazılır). Süre dolmuşsa devam edilmiyor (409).
+   - Başarısızsa oturum olduğu adımda kalıyor. `VERIFICATION_FAILED` olayı (ayrıntıda `reason` ve skorlar) ve ilk kare kanıt olarak kaydediliyor; yanıtta "Canlı yüz algılanamadı" ya da "Kimlik doğrulanamadı" ve "yeniden deneyin / destek talep edin" mesajı var.
+4. `DELETE /api/me/biometric-consent`: rıza kayıtları kapatılıyor, vektör siliniyor, durum makinesinin izin verdiği açık oturumlar (rıza adımı ve sınav sırası) iptal ediliyor (FR-05, S-23).
+
+| Kural | Gerekçe |
+|---|---|
+| Geçti/kaldı kararı görüntü servisinin (`passed`); API skorları ve sonucu `Verification`'a yazıyor | S-19 kararı: eşikler tek yerde, vision'ın `config.yaml` dosyasında dursun; D2'deki eşik betiği ve D6 sonucu yalnızca orayı değiştirsin |
+| `reason`: `LIVENESS_FAILED`, `NO_FACE` ve çözülemeyen kare (`INVALID_IMAGE`) → "Canlı yüz algılanamadı"; `IDENTITY_MISMATCH`, `MULTIPLE_FACES` ve tanınmayan neden → "Kimlik doğrulanamadı" | UC-12 4a/4b'deki iki mesaj; ayrıntı yalnızca olay kaydında. Tanınmayan neden de ret sayılıyor, günlüğe uyarı düşüyor |
+| Kayıtta reddedilen fotoğrafın nedeni adaya çözümüyle dönüyor (`NO_FACE`, `MULTIPLE_FACES`, `FACE_TOO_SMALL`, `IMAGE_TOO_BLURRY`, `INVALID_IMAGE`) | S2: her hatada neden ve çözüm. Kodlar `FaceIssue` sınıfında tek yerde |
+| Vision'dan gelen yanıt iki gruba ayrılıyor: adayla ilgili sonuç (yukarıdaki kodlar, `passed=false`) ve servis/sözleşme sorunu (bağlantı hatası, 401, 503, `VALIDATION_ERROR`, tanınmayan hata kodu, eksik ya da aralık dışı alan). İkincisi 503; deneme, olay ve kanıt karesi yazılmıyor | Bizim isteğimizdeki ya da servisteki bir hata adayın hanesine geçmesin |
+| Kayıtta dönen vektör 512 boyutlu, sonlu ve birim uzunlukta (±0,01) olmalı; değilse saklanmıyor | Sözleşme L2 ile normalize vektör istiyor; normalize olmayan vektörle sonraki benzerlikler sessizce bozulur |
+| Vision sorunları günlüğe yalnızca uç, HTTP durumu ve hata koduyla yazılıyor; görüntü, vektör ve skor yazılmıyor | Entegrasyonda sorun ayırt edilebilsin (anahtar uyuşmazlığı, modeller yüklenmedi, sözleşme kayması); KVKK |
+| Görüntü servisi çağrısı oturum kilidi dışında yapılıyor, sonuç kilit altında durum yeniden kontrol edilerek yazılıyor | Çağrı birkaç saniye sürebilir; bu sırada oturuma gelen olaylar beklemesin. Eşzamanlı iki denemede ikincisi birincinin sonucunu görüyor |
+| İki deneme arasında en az 5 sn (`VerificationCooldownSeconds`); deneme sayısı sınırı yok | GAB adayın tekrar deneyebilmesini istiyor; bekleme süresi görüntü servisini yormayı ve hızlı fotoğraf denemelerini engelliyor |
+| Doğrulama aşamasından sonra kayıt fotoğrafı değiştirilemiyor | Aday sınavın ortasında başka birinin fotoğrafını yükleyip yeniden girişte onunla doğrulanamasın |
+| Rıza geri alınınca rıza adımındaki ve süren oturumlar iptal ediliyor; geçiş `TransitionTo(Cancelled)` | FR-05, K-24. Rıza adımında hak kullanılmadığı için aday yeniden başlayabiliyor. Eşleştirme ve doğrulama adımı için tabloda geçiş yok (S-23) |
+| Görüntüler JPEG, PNG ve WebP imzasına bakılarak kabul ediliyor (fotoğraf 5 MB, kare 1 MB, 3–5 kare) | İstemcinin bildirdiği Content-Type'a güvenilmiyor. Çok parçalı gövde diske tamponlanmıyor, ham görüntü geçici dosyaya da yazılmıyor |
+| Rızada `accepted` alanı zorunlu | Eksik alan varsayılan `false`'a düşüp oturumu iptal etmesin |
+
+**Gerçek servisle sözleşme testi.** `VisionContractTests`, A3'ün istemcisini çalışan vision'a karşı sınıyor: yanlış anahtar, yüzsüz fotoğraf, yüzsüz kareler ve isteğe bağlı olarak gerçek bir yüz (birim vektör, kendisiyle yüksek benzerlik). `VISION_CONTRACT_URL` ve `VISION_SERVICE_KEY` verilmezse atlanıyor; çalıştırma adımı README'de. D2 birleşmeden ve eşik değiştirildikten sonra çalıştırılmalı.
+
+**Durum geçişleri E4'ten (K-24).** Rızada `TransitionTo(AgentPairing / Cancelled)`, başarılı doğrulamada `BeginExamAsync` / `ResumeAfterReconnectAsync`. Deneme kaydı kendi işleminde yazılıyor, devir ayrı işlemde (`ResumeAfterReconnectAsync` kendi işlemini açıyor); arada ikinci bir deneme bekleme süresine takılıyor. Oturum hakkı kontrolü E4'teki oturum başlatmada (`ExamRules.CanStart`), burada tekrarlanmıyor.
+
+**Kayıt fotoğrafı kontrolü (FR-04)** oturum rızası adımında yapılıyor: fotoğraf yoksa rıza 409 alıyor ve oturum `ConsentPending`'de kalıyor. Bu yüzden E4'teki `StartAsync`'e ayrıca kontrol eklenmedi.
+
+**Yetki:** Uçlar yalnızca `Candidate` rolüne açık (K-20). Oturum uçlarında aday yalnızca kendi oturumunu görüyor; başkasının oturumuna 404. Diğer oturum uçları gibi her istekte IP kontrolü var (`SessionIpGuard`, FR-22). Fotoğraf ve rıza uçları kimliği JWT'den alıyor, istekte kullanıcı kimliği yok.
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -677,8 +732,8 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 
 ### A3 · Kayıt fotoğrafı ve doğrulama
 
-- **Rıza geri alma oturumu da etkiler (FR-05).** Biyometrik rıza geri alınınca yüz vektörü silinir. Aday o sırada sınavdaysa oturum iptal edilir (E4 ile birlikte).
-- **Kayıt fotoğrafı yoksa sınav başlamaz (FR-04).** Oturum başlatılırken adayın `ReferenceFaceTemplate` kaydı kontrol edilmeli.
+- **Rıza geri alma oturumu da etkiler (FR-05).** Biyometrik rıza geri alınınca yüz vektörü silinir. Aday o sırada sınavdaysa oturum iptal edilir. *A3'te yapıldı (K-27).*
+- **Kayıt fotoğrafı yoksa sınav başlamaz (FR-04).** Oturum başlatılırken adayın `ReferenceFaceTemplate` kaydı kontrol edilmeli. *A3'te oturum rızası adımında kontrol ediliyor (K-27).*
 
 ### A4 · Rapor API'si ve inceleme bildirimleri
 
@@ -715,7 +770,8 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-17 | Ajan oturum anahtarları tek API sürecinin belleğinde; API yeniden başlarsa ya da birden fazla örnekle çalışırsa doğrulanamıyor | Yağmur, Esma | Proje tek örnekle çalışıyor; gerekirse paylaşılan önbellek (ör. Redis) ya da ajanın yeniden eşleşmesi |
 | S-18 | `vpn-ip-blocks.json` yalnızca örnek bloklar içeriyor; gerçek VPN/veri merkezi listesinin kaynağı belirlenmedi (FR-23, İstenen) | Yağmur, Ayşe | Pilot oturum öncesi bir kaynak seçilip liste doldurulması; seçilen kaynak ve tarih dosyaya yazılmalı |
 | S-16 | Rıza/eşleştirme/doğrulama adımında kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok) | Esma, Ayşe (A4) | Raporda "başlamadı" olarak gösterilmesi ya da zamanlanmış görevle iptal edilmesi; ekip kararı |
-| S-19 | Yüz doğrulamada `passed` kararını kim veriyor: vision mı, API mi? `Verification.Passed` yorumu "sonuç sunucuda eşiklere göre belirleniyor" diyor | Ayşe (A3), Dilan (D2) | Eşikler tek yerde dursun diye vision `config.yaml`'a göre `passed` dönsün, API skorları ve sonucu `Verification`'a yazsın. API eşikleri kendisi tutmak isterse vision yalnızca skor döner (`docs/contracts.md` 4. bölüm) |
+| S-19 | Yüz doğrulamada `passed` kararını kim veriyor: vision mı, API mi? `Verification.Passed` yorumu "sonuç sunucuda eşiklere göre belirleniyor" diyor | Ayşe (A3), Dilan (D2) | **Çözüldü (A3):** kararı vision veriyor (`config.yaml`), API skorları, sonucu ve `reason`'ı kaydediyor; API'de eşik yok (K-27) |
 | S-20 | Kamera olay kuralları ("art arda 3 ölçümde yüz yok", "art arda 5 ölçümde bakış sapması") nerede çalışacak? | Ayşe, Dilan (D4) | API'de (K-16). Vision çok işçili ve durumsuz çalışacağı için oturum sayacı tutamaz; her kare için yalnızca ölçüm döner (`docs/contracts.md` 5. bölüm) |
 | S-21 | `POST /internal/analyze/frame` isteğinde `referenceVector` D4 kartında yok, ama vision vektör saklamadığı için 60 sn'lik kimlik kontrolünde gerekli | Ayşe, Dilan (D4) | Yalnızca `tasks` içinde `identity` varken gönderilsin; vision bu durumda alanı zorunlu tutuyor |
 | S-22 | Ses parçasının uzunluğu ve biçimi belirlenmedi | Yağmur (S4), Dilan (D5) | ~1 sn WebM/Opus (WAV da kabul ediliyor); vision 16 kHz mono'ya kendisi dönüştürüyor |
+| S-23 | Biyometrik rıza geri alınınca `AgentPairing` ve `IdentityVerification` adımındaki oturumlar iptal edilemiyor: durum makinesinde bu adımlardan `Cancelled` geçişi yok (GAB 3.4.4) | Ayşe (A3), Esma (E4) | Şimdilik oturum olduğu adımda kalıyor, vektör silindiği için doğrulamayı geçemiyor ve son başlangıç zamanını kaçıran takılı oturumlarla (K-24'teki S-16) aynı şekilde ele alınıyor. Tabloya bu iki geçişin eklenmesi önerilir |

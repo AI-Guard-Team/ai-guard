@@ -44,5 +44,8 @@ COPY --from=build /out/api .
 # .NET 8 imajları varsayılan olarak 8080'i dinler; kartta istenen port da bu.
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
+# Şifreli kanıt kareleri (A3, K-26). Uygulama root olmadan çalıştığı için klasör "app" kullanıcısına
+# veriliyor; compose'daki volume ilk oluşturulurken bu sahipliği alıyor.
+RUN mkdir -p /app/data/evidence && chown $APP_UID /app/data/evidence
 USER $APP_UID
 ENTRYPOINT ["dotnet", "AIGuard.Api.dll"]
