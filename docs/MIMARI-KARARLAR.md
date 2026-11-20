@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 19 Kasım 2026 (GAB uyumu)*
+*Son güncelleme: 20 Kasım 2026 (Y1)*
 
 ---
 
@@ -30,6 +30,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Olay kaynağı | Sunucu belirliyor; tarayıcı yalnızca 5 tarayıcı olayını gönderebiliyor (K-16) |
 | Risk skoru | Olaylardan saf fonksiyonla hesaplanıyor; ağırlıklar `riskconfig.json`'da (K-17) |
 | Aynı oturuma eşzamanlı yazma | Oturum satırı kilitleniyor (`LockExamSessionAsync`) (K-18) |
+| Tarayıcı–ajan eşleştirme | Tek kullanımlık kod yalnızca 127.0.0.1 üzerinden ajana gidiyor; ajan kodu TLS ile sunucuya iletiyor (K-19) |
 
 ---
 
@@ -362,6 +363,42 @@ Bu yüzden `EventService` her olayı bir işlem içinde yazıyor ve önce `IAppD
 
 ---
 
+## K-19 · Tarayıcı ile ajanın eşleştirilmesi
+
+FR-11: sınavı açan tarayıcı ile güvenlik ajanının aynı bilgisayarda çalıştığı doğrulanmalı. Akış:
+
+1. Oturum `AgentPairing` durumundayken tarayıcı `POST /api/sessions/{id}/agent-code` ile kod alıyor (UC-08 adım 1). Kod adaya gösterilmiyor.
+2. Tarayıcı kodu `POST http://127.0.0.1:47321/pair { code }` ile ajana gönderiyor.
+3. Ajan kodu `POST /api/agent/pair { code, os }` ile TLS üzerinden sunucuya iletiyor. Sunucu kodu doğrulayıp kullanılmış sayıyor, işletim sistemini (`AgentPairing.Platform`) ve eşleşme zamanını kaydediyor.
+
+`/api/agent/pair` JWT ile değil eşleştirme koduyla korunuyor; ajanın JWT'si yok. Y2'deki sinyal uçları da HMAC ile korunacak (S-14).
+
+**"Aynı bilgisayar" kanıtı neye dayanıyor:** Ajan yalnızca `127.0.0.1`'i dinliyor; ağdaki başka bir bilgisayar bu porta bağlanamıyor. Kod tarayıcıdan yalnızca bu yolla çıktığı için kodu sunucuya getirebilen ajan, tarayıcıyla aynı bilgisayardadır. Başka bilgisayardaki bir ajanın tek şansı kodu tahmin etmek. Kod 256 bit rastgele olduğu için bu pratikte imkânsız, bu yüzden deneme sayısı sınırı koymadık.
+
+| Kural | Gerekçe |
+|---|---|
+| Kod 5 dakika geçerli, tek kullanımlık (kartta önerilen süre) | Tarayıcı kodu hemen gönderiyor; sızan bir kodun işe yarayacağı süre kısa kalıyor |
+| Kod yalnızca oturum `AgentPairing` durumundayken üretiliyor | Sınav başladıktan sonra yeni kod alınıp oturuma başka bir ajan bağlanamasın |
+| İşletim sistemi (`os`) zorunlu; bildirilmezse eşleşme reddediliyor, kod tüketilmiyor | Ajan değerlendirmesi (Y7a, Y7b) sonuçları işletim sistemine göre ayırıyor. Değeri tarayıcı değil ajanın platform modülü veriyor |
+| Veritabanında yalnızca kodun SHA-256 özeti | K-08 ile aynı: veritabanı okunsa bile geçerli kod elde edilemiyor |
+| Yeni kod istenince eskisi geçersiz; oturum başına tek `AgentPairing` kaydı | Ajan yeniden başlarsa tarayıcı yeni kodla tekrar eşleştirebilsin |
+| Tek kullanım, oturum satırı kilitlenerek sağlanıyor (K-18) | Aynı kodla eşzamanlı iki istekten yalnızca biri eşleşiyor. `ExecuteUpdate` Application'ı ilişkisel EF paketine bağlayacağı için kullanılmadı |
+| Red nedeni (yok / süresi dolmuş / kullanılmış / oturum kapalı) yanıtta ayrılmıyor | Kodun var olup olmadığı dışarıya sızmasın |
+| Ajan sunucu adresini `https` değilse kabul etmiyor (`http` yalnızca localhost) | Kod ağda açık metin giderse yolda okunup kullanılabilir |
+
+**Ajanın yerel ucu:** CORS başlıkları yalnızca tarayıcının yanıtı okumasını engelliyor, isteğin çalışmasını engellemiyor. Bu yüzden ajan izinsiz origin'den gelen isteği 403 ile reddediyor ve kodu sunucuya hiç göndermiyor. Diğer kurallar:
+
+- Origin başlığı olmayan istek reddediliyor; eşleştirme yalnızca tarayıcıdan.
+- `Host` başlığı `127.0.0.1` veya `localhost` değilse istek reddediliyor. Kötü niyetli bir site kendi alan adını 127.0.0.1'e çözdürse bile (DNS rebinding) geçemiyor.
+- Yalnızca JSON gövde kabul ediliyor. Böylece tarayıcı her istekten önce ön kontrol (preflight) yapıyor.
+- Ön kontrol yanıtında `Access-Control-Allow-Private-Network: true` başlığı var (Chrome'un yerel ağ erişimi kuralı). Tarayıcı denemeleri: `docs/tarayici-deneme-notlari.md`.
+
+**Ajan projesi:** Ortak kod `AIGuard.Agent.Core`'da. `AIGuard.Agent.Windows` ve `AIGuard.Agent.MacOS` yalnızca giriş noktası ve kendi `IDeviceInspector` uygulamasını içeriyor; cihaz incelemesi Y3'te.
+
+**E2'ye not:** Kod üreten uç, olay ucu gibi E2 gelene kadar yalnızca Development'ta açık (S-12).
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -406,4 +443,6 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açık | Esma (E2), Ayşe | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
+| S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açık; kart Candidate rolü ve "yalnızca kendi oturumu" istiyor | Esma (E2), Yağmur | E2 birleşince `[DevelopmentOnly]` yerine aday rolü ve oturum sahipliği kontrolü (S-9 ile aynı) |
 | S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |
+| S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | Y2'de eşleşme anında HMAC oturum anahtarı üretilip `EncryptedSessionKey`'e yazılması ve ajana bu yanıtta verilmesi; ajan uçları JWT değil HMAC ile korunur |

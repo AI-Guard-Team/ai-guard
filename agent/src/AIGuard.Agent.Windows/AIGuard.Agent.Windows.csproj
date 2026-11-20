@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Windows 10/11 ajanı. Şimdilik yalnızca ortak çekirdeği başlatıyor; Windows'a özgü
+       inceleme (WMI, kayıt defteri vb.) Y3'te. O zaman TargetFramework net8.0-windows olabilir. -->
+  <PropertyGroup>
+    <AssemblyName>aiguard-agent</AssemblyName>
+    <RootNamespace>AIGuard.Agent.Windows</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AIGuard.Agent.Core\AIGuard.Agent.Core.csproj" />
+  </ItemGroup>
+
+</Project>

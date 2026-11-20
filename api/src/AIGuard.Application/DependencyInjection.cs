@@ -1,3 +1,4 @@
+using AIGuard.Application.Agents;
 using AIGuard.Application.Events;
 using AIGuard.Application.Risk;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,8 @@ public static class DependencyInjection
 
         services.AddScoped<EventService>();
         services.AddScoped<SessionIpGuard>();
+
+        services.AddScoped<AgentPairingService>();
 
         return services;
     }
