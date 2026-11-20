@@ -18,9 +18,11 @@ export class PairingError extends Error {
   }
 }
 
-export function canContinueWithoutAgent(kind: PairingFailure): boolean {
-  return kind === 'timeout' || kind === 'unreachable' || kind === 'unavailable' || kind === 'forbidden'
-}
+/**
+ * Windows kurulum paketinin yayın adresi. Paket henüz bir adreste yok; adres belli olunca
+ * sınav sayfasındaki "Güvenlik ajanını indir" bağlantısı buraya bağlanır (K-25).
+ */
+export const AGENT_DOWNLOAD_URL = ''
 
 async function issueCode(sessionId: string): Promise<string> {
   const data = await apiRequest<{ code?: string }>(`/api/sessions/${sessionId}/agent-code`, { method: 'POST' })
