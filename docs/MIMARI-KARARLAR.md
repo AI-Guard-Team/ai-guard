@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (Y3)*
+*Son güncelleme: 20 Kasım 2026 (E3)*
 
 ---
 
@@ -35,6 +35,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Oturum uçları | Aday yalnızca kendi oturumuna erişir (`SessionAccessService.IsCandidateOfAsync`); başkasının oturumuna 404 (K-20) |
 | Ajan sinyali | HMAC-SHA256 imzalı, ±30 sn, tek kullanımlık nonce; anahtar API belleğinde, veritabanında özeti (K-21) |
 | Cihaz göstergeleri | `{ type, name, detail }`, yalnızca eşleşenler; ilk görüldüğünde olay; hipervizör yalnızca bilgi (K-22) |
+| Sınav yönetimi | Doğru seçenek yalnızca Admin'e; oturum başlamış sınav kilitli (409); başlatma kuralı `ExamRules.CanStart` (K-23) |
 
 ---
 
@@ -511,6 +512,49 @@ FR-18, FR-19, UC-08 4a/4b. Ajan sanal makine, genel hipervizör ve yasaklı yaz�
 **Y4'e not:** Göstergeli oturumda (`VM_DETECTED` veya `FORBIDDEN_APP`) oturum `AgentPairing`'de bekliyor. Gerekçeyle devam ve `SessionFlags.Indicated` Y4'te.
 
 **Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil. macOS göstergeleri bu kartta yok.
+
+---
+
+## K-23 · Sınav, soru ve atama yönetimi (E3)
+
+FR-06–FR-08. Kod: `Application/Exams/` (`ExamService`, `AssignmentService`, `ExamRules`), `Api/Controllers/ExamsController.cs`.
+
+| Uç | Yetki | Not |
+|---|---|---|
+| `GET /api/exams` | giriş yapmış | Admin hepsini; Reviewer ve Candidate yalnızca atandığı sınavları görür |
+| `GET /api/exams/{id}` | giriş yapmış | Atanmadığı sınav 404 (var olduğu bilgisi verilmiyor) |
+| `POST /api/exams` · `PUT/DELETE /api/exams/{id}` | Admin | `{name, type, durationMinutes, windowStartAt, windowEndAt, retentionDays?}` |
+| `GET/POST /api/exams/{id}/questions` | Admin | `{text, options[], correctOptionIndex, order?}`; `order` yoksa sona eklenir |
+| `PUT/DELETE /api/questions/{id}` | Admin | Sıralama `PUT` ile `order` alanından |
+| `GET/POST /api/exams/{id}/assignments` | Admin | `{userId, role: Candidate/Reviewer}` |
+| `DELETE /api/assignments/{id}` | Admin | |
+
+`GET /api/exams/{id}/assignments` kartta yok; E6'daki atama ekranı için eklendi.
+
+**Sınav yanıtı (`ExamSummary`):** `latestStartAt` (= pencere bitişi − süre), `questionCount` ve yalnızca adaya dönen `attemptUsed` (GAB 3.3.1: aday listede pencereyi, son başlangıç zamanını ve hakkını görür). Sorular ve doğru seçenek bu yanıtta hiç yok.
+
+**Doğru seçenek adaya gitmiyor.** Doğru seçenekli soru listesi yalnızca Admin'e açık. Adaya sorular E4'teki oturum ucundan, doğru seçeneği olmayan ayrı bir DTO ile gitmeli.
+
+**Kurallar `ExamRules` içinde (veritabanısız, birim testli):**
+
+| Kural | Değer |
+|---|---|
+| Son başlangıç zamanı | `WindowEndAt − DurationMinutes`; pencere sınav süresinden kısa olamaz |
+| Başlatma izni | `ExamRules.CanStart(exam, assignment, now)` → `null` ya da `NotAssigned` / `AttemptUsed` / `WindowNotOpen` / `TooLate`. **E4'teki oturum başlatma ucu bu fonksiyonu kullanmalı**, kuralı ikinci kez yazmamalı |
+| Süre | 1–600 dk |
+| Saklama süresi | 1–3650 gün, verilmezse 30 (GAB veri yaşam döngüsü) |
+| Soru | Metin 1–2000 karakter; 2–10 seçenek, her biri 1–500 karakter; doğru seçenek aralıkta |
+| Zamanlar | UTC'ye çevrilerek saklanıyor (K-15) |
+
+**Oturum başlamış sınav kilitli.** Sınavda tek bir oturum bile varsa sınav düzenlenemiyor, silinemiyor, soru eklenemiyor, düzenlenemiyor ve silinemiyor (409). Aksi hâlde adayların bir kısmı eski sorularla, bir kısmı yenileriyle sınava girmiş olur ve verilen cevaplar anlamsızlaşır. Kartta yok; veri bütünlüğü için eklendi.
+
+**Atama kuralları.** Atama rolü kullanıcının rolüyle aynı olmalı (aday hesabı değerlendirici olarak atanıp başka adayların kanıtlarını göremesin). Pasif kullanıcı atanamıyor. Aynı kullanıcı aynı sınava ikinci kez atanınca 409 (benzersiz indeks, `IAppDbContext.IsUniqueViolation`). Sınava girmiş adayın ataması kaldırılamıyor (409).
+
+**Swagger.** Yalnızca Development'ta: `http://localhost:5080/swagger`. Sağ üstteki **Authorize** düğmesine `/api/auth/login` yanıtındaki `accessToken` yapıştırılınca uçlar denenebiliyor. Controller'lardaki `///` açıklamaları Swagger'da görünüyor (`GenerateDocumentationFile`).
+
+**Örnek veri.** Kartın istediği örnek sınav A1'deki `DevDataSeeder`'da zaten var: 3 soruluk Genel Yetenek sınavı, iki aday ve değerlendirici atanmış.
+
+**Değerlendirici için sonraki kartlar.** "Değerlendirici yalnızca atandığı sınavı görür" kuralı burada sınav listesi için uygulandı. A4'teki inceleme uçları da aynı kontrolü yapmalı: `ExamAssignments`'ta `(ExamId, UserId, Role = Reviewer)` kaydı.
 
 ---
 
