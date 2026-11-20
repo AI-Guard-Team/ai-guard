@@ -1,0 +1,17 @@
+# AI-Guard vision eşikleri. Değerler kartlardan alınmıştır; null olanlar ilgili kartta ayarlanacak.
+
+enroll:
+  min_face_px: null        # D2: en küçük yüz kenarı (piksel)
+  min_sharpness: null      # D2: Laplacian varyansı alt sınırı
+
+verify:
+  match_threshold: null    # D2: kosinüs benzerliği, LFW ile FAR ~%1 hedefi
+  liveness_threshold: null # D2: Silent-Face-Anti-Spoofing ortalama skoru
+
+frame:
+  gaze_yaw_deg: 30         # D4: sağ-sol sapma eşiği
+  gaze_pitch_deg: 20       # D4: yukarı-aşağı sapma eşiği
+  phone_confidence: null   # D4: YOLO "cell phone" sınıfı güven eşiği
+
+audio:
+  vad_threshold: null      # D5: Silero VAD olasılık eşiği

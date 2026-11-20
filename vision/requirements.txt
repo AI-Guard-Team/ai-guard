@@ -1,3 +1,8 @@
 # Sürümler sabit: CI ve Docker imajı aynı paketlerle kurulsun.
 fastapi==0.115.6
 uvicorn==0.34.0
+pydantic==2.10.4
+PyYAML==6.0.2
+# FastAPI TestClient için; CI yalnızca bu dosyayı ve ruff/pytest'i kuruyor.
+httpx==0.28.1
+# Model paketleri D1'in ikinci adımında (benchmark) eklenecek.
