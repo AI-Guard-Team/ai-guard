@@ -21,7 +21,7 @@ public static class AgentHost
 
     public static readonly TimeSpan ServerTimeout = TimeSpan.FromSeconds(10);
 
-    /// <summary>Kurulum paketi oluşturulurken yazılan ayar dosyası (agent/build/publish-windows.ps1).</summary>
+    /// <summary>Kurulum paketi oluşturulurken yazılan ayar dosyası (agent/scripts/publish-windows.ps1).</summary>
     public const string DeploymentSettingsFile = "deployment.json";
 
     public static WebApplicationBuilder CreateBuilder(string[] args)

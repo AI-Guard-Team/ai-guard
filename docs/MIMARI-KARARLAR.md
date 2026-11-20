@@ -654,7 +654,7 @@ FR-12, FR-20, FR-23 (İstenen), FR-35, FR-36, GAB 3.3.1, UC-08 4a/4b.
 
 ### Kurulum paketi
 
-- `agent/build/publish-windows.ps1 -ApiBaseUrl … -AllowedOrigins …` → `agent/dist/windows/aiguard-agent.exe`: self-contained, tek dosya (yaklaşık 45 MB). `appsettings.json`, `forbidden-apps.json` ve kurumun ayarları (`deployment.json`) exe'nin içinde.
+- `agent/scripts/publish-windows.ps1 -ApiBaseUrl … -AllowedOrigins …` → `agent/dist/windows/aiguard-agent.exe`: self-contained, tek dosya (yaklaşık 45 MB). `appsettings.json`, `forbidden-apps.json` ve kurumun ayarları (`deployment.json`) exe'nin içinde.
 - Ajan ayarları exe'nin klasöründen okuyor (`ContentRootPath = AppContext.BaseDirectory`); İndirilenler'den çift tıklanınca da çalışıyor.
 - Aday için iki adım: indir, çalıştır (SmartScreen onayı hariç; GAB 3.3.1 en fazla üç). Eşleştirme sınav sayfasından. Kılavuz: `docs/ajan-kurulum-windows.md`.
 - Exe imzasız; SmartScreen "Windows bilgisayarınızı korudu" uyarısı veriyor. Kod imzalama sertifikası kapsam dışı.

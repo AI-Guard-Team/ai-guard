@@ -239,7 +239,7 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         shell: pwsh
         run: |
-          ./agent/build/publish-windows.ps1 -ApiBaseUrl https://api.sinav.ornek.edu.tr -AllowedOrigins https://sinav.ornek.edu.tr -Output agent/dist/windows
+          ./agent/scripts/publish-windows.ps1 -ApiBaseUrl https://api.sinav.ornek.edu.tr -AllowedOrigins https://sinav.ornek.edu.tr -Output agent/dist/windows
           $files = Get-ChildItem agent/dist/windows
           if ($files.Count -ne 1 -or $files[0].Name -ne 'aiguard-agent.exe') { throw "Paket tek dosya değil: $($files.Name -join ', ')" }
       - uses: actions/upload-artifact@v4

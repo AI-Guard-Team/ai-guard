@@ -26,7 +26,7 @@
     <InternalsVisibleTo Include="AIGuard.Agent.Windows.Tests" />
   </ItemGroup>
 
-  <!-- Tek dosyalık kurulum paketi (Y4): agent/build/publish-windows.ps1 bu ayarlarla yayımlıyor.
+  <!-- Tek dosyalık kurulum paketi (Y4): agent/scripts/publish-windows.ps1 bu ayarlarla yayımlıyor.
        Ayar dosyaları exe'nin içine gömülüyor ve ilk açılışta exe'nin yanındaki geçici klasöre çıkarılıyor;
        aday yalnızca tek bir dosya indiriyor. -->
   <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">

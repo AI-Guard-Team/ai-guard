@@ -57,7 +57,7 @@ Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-denem
 
 ```powershell
 cd agent
-./build/publish-windows.ps1 -ApiBaseUrl https://api.sinav.ornek.edu.tr -AllowedOrigins https://sinav.ornek.edu.tr
+./scripts/publish-windows.ps1 -ApiBaseUrl https://api.sinav.ornek.edu.tr -AllowedOrigins https://sinav.ornek.edu.tr
 ```
 
 Çıktı `agent/dist/windows/aiguard-agent.exe`: tek dosya, .NET kurulumu gerektirmez. Sunucu adresi ve sınav sitesi `deployment.json` olarak exe'nin içine gömülür ve `appsettings.json`'daki değerlerin üzerine yazar. Aday için kurulum kılavuzu (SmartScreen dahil): [docs/ajan-kurulum-windows.md](../docs/ajan-kurulum-windows.md).
