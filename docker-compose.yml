@@ -99,6 +99,8 @@ services:
       # Varsayılan yapılandırma dosyaları (GAB 3.3.7). İmajda zaten var; buradan bağlanınca pilot oturumda
       # ağırlıklar (S-10) imajı yeniden derlemeden değiştirilebiliyor: düzenle + "docker compose restart api".
       - ./api/src/AIGuard.Api/riskconfig.json:/app/riskconfig.json:ro
+      # Bilinen VPN/veri merkezi IP blokları (Y4, FR-23); aynı şekilde yeniden derlemeden değiştirilebiliyor.
+      - ./api/src/AIGuard.Api/vpn-ip-blocks.json:/app/vpn-ip-blocks.json:ro
     ports:
       - "8080:8080"
     depends_on:

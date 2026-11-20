@@ -14,8 +14,9 @@ namespace AIGuard.Application.Events;
 /// IP, HttpContext.Connection.RemoteIpAddress'ten gelmeli. API bir proxy arkasındaysa
 /// X-Forwarded-For yalnızca bilinen proxy'den gelirken dikkate alınmalı; aksi hâlde istemci
 /// başlığı değiştirerek IP'sini gizleyebilir (E1b).
+/// Y4 (FR-23): oturumun ilk IP'si ve her yeni IP, bilinen VPN/veri merkezi bloklarıyla da karşılaştırılıyor.
 /// </remarks>
-public sealed class SessionIpGuard(IAppDbContext db, EventService events, TimeProvider clock)
+public sealed class SessionIpGuard(IAppDbContext db, EventService events, TimeProvider clock, VpnIpBlockList? vpnBlocks = null)
 {
     public async Task CheckAsync(Guid sessionId, IPAddress? clientIp, CancellationToken ct = default)
     {
@@ -43,8 +44,10 @@ public sealed class SessionIpGuard(IAppDbContext db, EventService events, TimePr
             catch (DbUpdateConcurrencyException)
             {
                 // Aynı anda başka bir istek ilk IP'yi yazdıysa onunki geçerli; sonraki istek karşılaştırır.
+                return;
             }
 
+            await CheckVpnBlockAsync(sessionId, ip, ct);
             return;
         }
 
@@ -67,6 +70,22 @@ public sealed class SessionIpGuard(IAppDbContext db, EventService events, TimePr
 
         var payload = JsonSerializer.Serialize(new { from = session.InitialIpAddress.ToString(), to = ip.ToString() });
         await events.RecordSystemEventAsync(sessionId, new SystemEvent(EventType.IP_CHANGE, clock.GetUtcNow(), Payload: payload), ct);
+        await CheckVpnBlockAsync(sessionId, ip, ct);
+    }
+
+    /// <summary>
+    /// IP bilinen bir VPN/veri merkezi bloğundaysa VPN_PROXY (FR-23). Her IP için bir kez çağrılıyor: ilk IP
+    /// yazıldığında ve her yeni IP'de (IP_CHANGE ile aynı anda). Ayrıntı ajanın göstergeleriyle aynı biçimde.
+    /// </summary>
+    private async Task CheckVpnBlockAsync(Guid sessionId, IPAddress ip, CancellationToken ct)
+    {
+        if (vpnBlocks?.Match(ip) is not { } block)
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(new { name = block.Label, detail = $"IP bloğu {block.Cidr}", ip = ip.ToString() });
+        await events.RecordSystemEventAsync(sessionId, new SystemEvent(EventType.VPN_PROXY, clock.GetUtcNow(), Payload: payload), ct);
     }
 
     private static string? LastReportedIp(string? payload)

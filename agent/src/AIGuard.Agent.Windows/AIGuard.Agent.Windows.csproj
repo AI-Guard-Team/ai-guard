@@ -19,11 +19,35 @@
 
   <ItemGroup>
     <!-- Yasaklı yazılım listesi ajanın yanına kopyalanıyor; değiştirmek için yeniden derleme gerekmiyor. -->
-    <None Update="forbidden-apps.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Update="forbidden-apps.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="AIGuard.Agent.Windows.Tests" />
+  </ItemGroup>
+
+  <!-- Tek dosyalık kurulum paketi (Y4): agent/scripts/publish-windows.ps1 bu ayarlarla yayımlıyor.
+       Ayar dosyaları exe'nin içine gömülüyor ve ilk açılışta exe'nin yanındaki geçici klasöre çıkarılıyor;
+       aday yalnızca tek bir dosya indiriyor. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Web SDK'nın IIS ve statik dosya çıktıları ajanda kullanılmıyor. -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <!-- Web SDK appsettings.json'ı varsayılan olarak tek dosyanın dışında bırakıyor; ajanda içeride olmalı. -->
+  <ItemGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <Content Update="appsettings.json" ExcludeFromSingleFile="false" />
+    <Content Update="forbidden-apps.json" ExcludeFromSingleFile="false" />
+  </ItemGroup>
+
+  <!-- Kurum ayarları (sunucu adresi, sınav sitesi): betik deployment.json yazıp yolunu bu özellikle veriyor. -->
+  <ItemGroup Condition="'$(DeploymentSettingsFile)' != ''">
+    <None Include="$(DeploymentSettingsFile)" Link="deployment.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="false" />
   </ItemGroup>
 
 </Project>

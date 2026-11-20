@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (E4)*
+*Son güncelleme: 20 Kasım 2026 (Y4)*
 
 ---
 
@@ -35,6 +35,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Oturum uçları | Aday yalnızca kendi oturumuna erişir (`SessionAccessService.IsCandidateOfAsync`); başkasının oturumuna 404 (K-20) |
 | Ajan sinyali | HMAC-SHA256 imzalı, ±30 sn, tek kullanımlık nonce; anahtar API belleğinde, veritabanında özeti (K-21) |
 | Cihaz göstergeleri | `{ type, name, detail }`, yalnızca eşleşenler; ilk görüldüğünde olay; hipervizör yalnızca bilgi (K-22) |
+| Ajansız / göstergeli devam | Gerekçe oturuma, işlem denetim kaydına; `Flags += NoAgent` / `Indicated`; ajan çalışırken ajansız devam yok (K-25) |
 | Sınav yönetimi | Doğru seçenek yalnızca Admin'e; oturum başlamış sınav kilitli (409); başlatma kuralı `ExamRules.CanStart` (K-23) |
 | Oturum durumu | Yalnızca `session.TransitionTo(...)`; tablo dışı geçiş 409. Süre ve hak `InProgress`'e geçişte başlar (K-24) |
 
@@ -248,7 +249,7 @@ A1 kartında geçmeyen bazı alanları, ilgili kartlar başladığında yeni gö
 | `ExamSession.VerificationAttempts`; `ConsentRecord.TextVersion` | A3 |
 | `Event.IsFalseAlarm`, `FalseAlarmMarkedById`, `FalseAlarmMarkedAt` | A4 |
 | `EvidenceFrame.StorageKey`, `KeyVersion`, `DeleteAfter` | A5 |
-| `ExamSession.ContinueJustification` | Y4 |
+| `ExamSession.ContinueJustification` | Y4 (kullanılıyor, K-25) |
 | `AgentPairing.EncryptedSessionKey`, `LastSignalAt`; `AgentSignal.SignatureValid` | Y2 |
 | `AgentPairing.Platform` (Windows / macOS) | Y1, Y7a, Y7b (GAB nesne modeli) |
 | `ExamAssignment.AttemptUsedAt` (oturum hakkı kullanıldı mı) | E4 (GAB nesne modeli, FR-10) |
@@ -614,6 +615,52 @@ Hepsi yalnızca `Candidate` ve yalnızca kendi oturumu (K-20); her istekte IP ko
 
 ---
 
+## K-25 · Ağ göstergeleri, ajansız ve göstergeli devam, kurulum paketi (Y4)
+
+FR-12, FR-20, FR-23 (İstenen), FR-35, FR-36, GAB 3.3.1, UC-08 4a/4b.
+
+### Ağ göstergeleri (ajan)
+
+| Kural | Gerekçe |
+|---|---|
+| Etkin (Up) VPN/TUN/TAP bağdaştırıcıları `VPN_PROXY` "VPN bağdaştırıcısı"; ad ya da açıklamada `TAP`, `TUN`, `VPN`, `Tunnel` (tam kelime) veya bilinen marka (Wintun, WireGuard, OpenVPN, NordLynx, AnyConnect, GlobalProtect, Fortinet, Cloudflare WARP …); Windows'un kendi VPN bağlantıları (PPP) | Kart: NetworkInterface API. Hyper-V vEthernet, WSL, Docker, VirtualBox Host-Only ve VMware VMnet bağdaştırıcıları eşleşmiyor (denendi) |
+| Sistem vekil sunucu: kullanıcı ayarı (WinINet), PAC betiği ve bilgisayar geneli WinHTTP vekili ayrı ayrı `VPN_PROXY` | Kart. "Ayarları otomatik algıla" (WPAD) Windows'ta varsayılan açık; gösterge sayılmıyor |
+| Bilinen VPN uygulamaları `forbidden-apps.json`'da `"type": "VPN_PROXY"` ile (OpenVPN, WireGuard, NordVPN, ProtonVPN, ExpressVPN, Cloudflare WARP, Windscribe, Psiphon, Tor) | Ayrı bir liste dosyası yerine aynı dosya; yazılım eklemek için yeniden derleme gerekmiyor |
+| Ağ denetimi süreç taramasıyla aynı aralıkta (`ProcessScanIntervalSeconds`, 15 sn) | GAB 3.3.3; ölçüm tek çekirdeğe göre %0,5 |
+| `VPN_PROXY` kaynağı `Network` (EventCatalog) | Ortak olay listesi; ajandan ya da IP bloğundan gelmesi fark etmiyor |
+
+### Durum ve devam uçları (API)
+
+- `GET /api/sessions/{id}/agent`: `{ state, paired, agentActive, lastSignalAt, indicators[{ type, name, message, fix }], canContinueIndicated, canContinueWithoutAgent }`. Göstergeler son geçerli sinyalden; hipervizör bilgisi listede yok (UC-08 4b). Neden ve çözüm metni sunucuda üretiliyor (`IndicatorAdvice`).
+- `POST /api/sessions/{id}/agent/continue { mode: "noAgent" | "indicated", reason }`: 200 `{ state: "IdentityVerification" }` · 400 geçersiz mod ya da boş/2000 karakterden uzun gerekçe · 404 · 409.
+- İki uç da yalnızca aday ve yalnızca kendi oturumu (K-20); her istekte IP kontrolü (FR-22).
+
+| Kural | Gerekçe |
+|---|---|
+| Devam yalnızca `AgentPairing` durumunda; geçiş `TransitionTo(IdentityVerification)` | K-24 |
+| `noAgent`: ajan çalışıyorsa 409. Ajan eşleşmiş ve son 30 sn içinde sinyal göndermişse (ilk sinyal gelene kadar eşleşme anı sayılıyor) "çalışıyor" | Ajansız devam, cihaz denetimini kapatmanın yolu olmasın |
+| `indicated`: son geçerli sinyalde engelleyici gösterge yoksa 409 | Göstergesiz oturum zaten kendiliğinden geçiyor (K-21) |
+| Gerekçe `ExamSession.ContinueJustification`'a; `Flags += NoAgent` ya da `Indicated` | Kart. İşaretli oturum risk skorundan bağımsız incelemeye düşüyor (K-24, FR-12) |
+| `noAgent` sonrası ajanın anahtarı geçersiz; sinyal kabul edilmiyor, `AGENT_SIGNAL_LOST` yazılmıyor | FR-12: ajansız oturumda cihaz ve ağ denetimi yapılmıyor |
+| `indicated` sonrası ajan çalışmaya devam ediyor; yeni göstergeler olay oluyor | FR-20 |
+| Denetim kaydı: `session.continue_no_agent` / `session.continue_indicated`; aktör aday, hedef oturum; `NewValue` = `{ mode, reason, indicators[{type,name}] }` | FR-35 (K-10) |
+| Gösterge giderilince (ör. uygulama kapatılınca) sonraki temiz sinyalde oturum kendiliğinden geçiyor | Çözüm adımının işe yaraması için; aday gerekçe yazmak zorunda değil |
+
+### IP blok listesi (FR-23, İstenen)
+
+- `api/src/AIGuard.Api/vpn-ip-blocks.json` (`VpnIpBlocks:Blocks[{ Cidr, Label }]`), compose'da container'a salt okunur bağlı. Bozuk CIDR varsa API açılmıyor.
+- `SessionIpGuard` oturumun ilk IP'sini ve her yeni IP'yi bloklarla karşılaştırıyor; eşleşirse `VPN_PROXY` `{ name: label, detail: "IP bloğu <cidr>", ip }`. Ajansız oturumda da çalışıyor.
+- Repodaki liste yalnızca belgelendirme bloklarını içeriyor (RFC 5737, RFC 3849). Gerçek listenin kaynağı ekip kararı (S-18).
+
+### Kurulum paketi
+
+- `agent/scripts/publish-windows.ps1 -ApiBaseUrl … -AllowedOrigins …` → `agent/dist/windows/aiguard-agent.exe`: self-contained, tek dosya (yaklaşık 45 MB). `appsettings.json`, `forbidden-apps.json` ve kurumun ayarları (`deployment.json`) exe'nin içinde.
+- Ajan ayarları exe'nin klasöründen okuyor (`ContentRootPath = AppContext.BaseDirectory`); İndirilenler'den çift tıklanınca da çalışıyor.
+- Aday için iki adım: indir, çalıştır (SmartScreen onayı hariç; GAB 3.3.1 en fazla üç). Eşleştirme sınav sayfasından. Kılavuz: `docs/ajan-kurulum-windows.md`.
+- Exe imzasız; SmartScreen "Windows bilgisayarınızı korudu" uyarısı veriyor. Kod imzalama sertifikası kapsam dışı.
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -666,4 +713,5 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-15 | Davet e-postası sahte gönderici ile loga yazılıyor; davet yeniden gönderme ucu yok | Esma | Gerçek gönderim gerekirse SMTP göndericisi `IEmailSender` arkasına; süresi dolan davet için `POST /api/users/{id}/invite` eklenebilir (ekip kararı) |
 | S-16 | `AgentPairing.EncryptedSessionKey` artık kullanılmıyor (K-21: veritabanında yalnızca özet) | Ayşe, Yağmur | Bir sonraki göçle kaldırılması; K-13 gereği önce ekipte konuşulacak |
 | S-17 | Ajan oturum anahtarları tek API sürecinin belleğinde; API yeniden başlarsa ya da birden fazla örnekle çalışırsa doğrulanamıyor | Yağmur, Esma | Proje tek örnekle çalışıyor; gerekirse paylaşılan önbellek (ör. Redis) ya da ajanın yeniden eşleşmesi |
+| S-18 | `vpn-ip-blocks.json` yalnızca örnek bloklar içeriyor; gerçek VPN/veri merkezi listesinin kaynağı belirlenmedi (FR-23, İstenen) | Yağmur, Ayşe | Pilot oturum öncesi bir kaynak seçilip liste doldurulması; seçilen kaynak ve tarih dosyaya yazılmalı |
 | S-16 | Rıza/eşleştirme/doğrulama adımında kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok) | Esma, Ayşe (A4) | Raporda "başlamadı" olarak gösterilmesi ya da zamanlanmış görevle iptal edilmesi; ekip kararı |

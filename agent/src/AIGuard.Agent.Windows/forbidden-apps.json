@@ -1,12 +1,16 @@
-// Yasaklı yazılım listesi (Y3, FR-19). Ajan çalışan süreçlerin adlarını bu listeyle karşılaştırır ve
-// sunucuya yalnızca eşleşenleri FORBIDDEN_APP olarak gönderir; tam süreç listesi gönderilmez.
+// Yasaklı yazılım listesi (Y3, FR-19) ve bilinen VPN uygulamaları (Y4, FR-20). Ajan çalışan süreçlerin
+// adlarını bu listeyle karşılaştırır ve sunucuya yalnızca eşleşenleri gönderir; tam süreç listesi gönderilmez.
 //
-// - name: değerlendiricinin göreceği ad (en fazla 64 karakter)
+// - name: değerlendiricinin ve adayın göreceği ad (en fazla 64 karakter)
 // - processes: süreç adları; büyük/küçük harf ve ".exe" farkı yok sayılır
+// - type: "FORBIDDEN_APP" (varsayılan) ya da "VPN_PROXY"
 //
 // Uzak Masaüstü: mstsc.exe yalnızca adayın BAŞKA bir bilgisayara bağlandığını gösterir. Adayın
 // bilgisayarına dışarıdan bağlanılması süreç listesinde görünmez; ajan onu ayrıca denetler
 // (GetSystemMetrics(SM_REMOTESESSION)) ve "Uzak Masaüstü oturumu" olarak bildirir.
+//
+// VPN: uygulama sürecinin yanında etkin VPN/TUN/TAP bağdaştırıcıları ve sistem vekil sunucu ayarı da
+// denetlenir (kodda, bu dosyada değil); bağlantı uygulamasız kurulsa da bulunur.
 {
   "apps": [
     { "name": "AnyDesk", "processes": [ "AnyDesk.exe" ] },
@@ -16,6 +20,16 @@
     { "name": "Zoom", "processes": [ "Zoom.exe" ] },
     // Yeni Teams'in süreç adı farklı (ms-teams.exe); iki ad da listede.
     { "name": "Microsoft Teams", "processes": [ "Teams.exe", "ms-teams.exe" ] },
-    { "name": "Discord", "processes": [ "Discord.exe" ] }
+    { "name": "Discord", "processes": [ "Discord.exe" ] },
+
+    { "name": "OpenVPN", "processes": [ "openvpn.exe", "openvpn-gui.exe", "OpenVPNConnect.exe" ], "type": "VPN_PROXY" },
+    { "name": "WireGuard", "processes": [ "wireguard.exe" ], "type": "VPN_PROXY" },
+    { "name": "NordVPN", "processes": [ "NordVPN.exe" ], "type": "VPN_PROXY" },
+    { "name": "ProtonVPN", "processes": [ "ProtonVPN.exe", "ProtonVPN.Client.exe" ], "type": "VPN_PROXY" },
+    { "name": "ExpressVPN", "processes": [ "ExpressVPN.exe" ], "type": "VPN_PROXY" },
+    { "name": "Cloudflare WARP", "processes": [ "Cloudflare WARP.exe" ], "type": "VPN_PROXY" },
+    { "name": "Windscribe", "processes": [ "Windscribe.exe" ], "type": "VPN_PROXY" },
+    { "name": "Psiphon", "processes": [ "psiphon3.exe" ], "type": "VPN_PROXY" },
+    { "name": "Tor", "processes": [ "tor.exe" ], "type": "VPN_PROXY" }
   ]
 }

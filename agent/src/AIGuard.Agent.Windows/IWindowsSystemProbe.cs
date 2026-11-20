@@ -9,6 +9,18 @@ internal sealed record MachineInfo(
     string? BiosVersion = null,
     string? BiosSerial = null);
 
+/// <summary>Etkin (Up) bir ağ bağdaştırıcısı: ad, açıklama ve tür (Y4).</summary>
+internal sealed record NetworkAdapter(string Name, string Description, string Kind);
+
+/// <summary>
+/// Sistem vekil sunucu ayarı (Y4). Boş alan ayar yok demek. "Ayarları otomatik algıla" (WPAD) Windows'ta
+/// varsayılan açık olduğu için burada yok; gösterge sayılmıyor.
+/// </summary>
+/// <param name="UserProxy">Kullanıcının elle girdiği vekil sunucu (WinINet, "Ayarlar → Ağ → Ara sunucu").</param>
+/// <param name="UserPacUrl">Kurulum betiği adresi (PAC).</param>
+/// <param name="MachineProxy">Bilgisayar geneli WinHTTP vekili (<c>netsh winhttp set proxy</c>).</param>
+internal sealed record ProxySettings(string? UserProxy = null, string? UserPacUrl = null, string? MachineProxy = null);
+
 /// <summary>
 /// İşletim sisteminden okunan ham bilgiler. Kurallar (<see cref="MachineDetector"/>,
 /// <see cref="WindowsDeviceInspector"/>) bu arayüz üzerinden çalışıyor; testlerde sahte uygulama
@@ -31,4 +43,10 @@ internal interface IWindowsSystemProbe
 
     /// <summary>Bu oturum Uzak Masaüstü üzerinden mi açılmış (GetSystemMetrics(SM_REMOTESESSION)).</summary>
     bool IsRemoteSession();
+
+    /// <summary>Etkin ağ bağdaştırıcıları (loopback hariç).</summary>
+    IReadOnlyList<NetworkAdapter> ActiveNetworkAdapters();
+
+    /// <summary>WinINet (kullanıcı) ve WinHTTP (bilgisayar) vekil sunucu ayarları.</summary>
+    ProxySettings ReadProxySettings();
 }

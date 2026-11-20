@@ -234,3 +234,17 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         working-directory: agent
         run: dotnet test -c Release --no-build --verbosity normal
+      # Y4: tek dosyalık kurulum paketi üretilebiliyor mu (örnek adreslerle; gerçek paket kurum adresleriyle üretilir).
+      - name: Kurulum paketi
+        if: steps.check.outputs.exists == 'true'
+        shell: pwsh
+        run: |
+          ./agent/scripts/publish-windows.ps1 -ApiBaseUrl https://api.sinav.ornek.edu.tr -AllowedOrigins https://sinav.ornek.edu.tr -Output agent/dist/windows
+          $files = Get-ChildItem agent/dist/windows
+          if ($files.Count -ne 1 -or $files[0].Name -ne 'aiguard-agent.exe') { throw "Paket tek dosya değil: $($files.Name -join ', ')" }
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          name: aiguard-agent-windows-ornek
+          path: agent/dist/windows/aiguard-agent.exe
+          retention-days: 7

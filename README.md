@@ -147,7 +147,7 @@ Tüm sistemi birlikte çalıştırmak ve entegrasyon günleri (E5a, E5b) için. 
 | `postgres` | `localhost:5432` | PostgreSQL 16, veri `aiguard_pgdata` volume'unda kalıcı |
 | `migrate` | — | Göçleri uygulayıp kapanır; `api` bunu bekler |
 
-- **Yapılandırma dosyaları:** `api/src/AIGuard.Api/riskconfig.json` container'a salt okunur bağlanıyor. Ağırlıkları değiştirdikten sonra `docker compose restart api` yeterli, yeniden derleme gerekmiyor. Yasaklı yazılım listesi `forbidden-apps.json` ise ajanın yanında duruyor (`agent/src/AIGuard.Agent.Windows/`); API kullanmadığı için container'a bağlanmıyor (K-22).
+- **Yapılandırma dosyaları:** `api/src/AIGuard.Api/riskconfig.json` container'a salt okunur bağlanıyor. Ağırlıkları değiştirdikten sonra `docker compose restart api` yeterli, yeniden derleme gerekmiyor. `vpn-ip-blocks.json` (bilinen VPN/veri merkezi IP blokları, Y4) de aynı şekilde bağlı. Yasaklı yazılım listesi `forbidden-apps.json` ise ajanın yanında duruyor (`agent/src/AIGuard.Agent.Windows/`); API kullanmadığı için container'a bağlanmıyor (K-22).
 - **Önyüz API'yi `/api` üzerinden çağırmalı** (ör. `fetch('/api/...')`). Böylece tarayıcı için aynı adres oluyor ve API'de CORS gerekmiyor.
 - **İstemci IP'si:** API, `X-Forwarded-For` başlığını yalnızca `web` container'ından (172.30.47.10) kabul ediyor (K-16). Bilgisayarda 172.30.47.0/24 ağı başka bir şeyle çakışırsa `docker-compose.yml` içinde ikisi birlikte değiştirilmeli.
 

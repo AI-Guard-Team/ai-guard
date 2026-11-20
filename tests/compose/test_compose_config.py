@@ -63,6 +63,10 @@ def test_default_config_files_are_given_to_api_read_only(config: dict) -> None:
     risk = mounts["/app/riskconfig.json"]
     assert risk["type"] == "bind" and risk.get("read_only") is True
     assert Path(risk["source"]).name == "riskconfig.json" and Path(risk["source"]).exists()
+    # Y4 (FR-23): VPN/veri merkezi IP blokları da aynı şekilde.
+    vpn = mounts["/app/vpn-ip-blocks.json"]
+    assert vpn["type"] == "bind" and vpn.get("read_only") is True
+    assert Path(vpn["source"]).name == "vpn-ip-blocks.json" and Path(vpn["source"]).exists()
 
 
 def test_vision_publishes_no_ports(config: dict) -> None:

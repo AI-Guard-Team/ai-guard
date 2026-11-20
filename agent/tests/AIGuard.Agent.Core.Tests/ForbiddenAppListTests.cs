@@ -49,6 +49,28 @@ public class ForbiddenAppListTests
     }
 
     [Fact]
+    public void Vpn_apps_are_reported_as_vpn_proxy()
+    {
+        var list = ForbiddenAppList.Parse("""
+            { "apps": [ { "name": "WireGuard", "processes": [ "wireguard.exe" ], "type": "VPN_PROXY" },
+                        { "name": "Zoom", "processes": [ "Zoom.exe" ] } ] }
+            """);
+
+        var found = list.Match(["wireguard", "Zoom"]);
+
+        Assert.Equal([("VPN_PROXY", "WireGuard"), ("FORBIDDEN_APP", "Zoom")], found.Select(i => (i.Type, i.Name)));
+    }
+
+    [Theory]
+    [InlineData("VM_DETECTED")]
+    [InlineData("vpn_proxy")]
+    public void Unknown_type_in_the_list_fails_at_startup(string type)
+    {
+        Assert.Throws<InvalidOperationException>(() => ForbiddenAppList.Parse(
+            $$"""{ "apps": [ { "name": "X", "processes": [ "x.exe" ], "type": "{{type}}" } ] }"""));
+    }
+
+    [Fact]
     public void Nothing_running_means_no_indicator()
     {
         Assert.Empty(List.Match(["explorer", "svchost"]));

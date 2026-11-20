@@ -8,7 +8,7 @@ namespace AIGuard.Application.Agents;
 /// Ajanın bulduğu tek gösterge (Y3, FR-18, FR-19): <c>{ type, name, detail }</c>. Ajan yalnızca
 /// eşleşen göstergeleri gönderiyor; tam süreç listesi hiçbir zaman gelmiyor (KVKK).
 /// </summary>
-/// <param name="Type">Olay türü: <c>VM_DETECTED</c>, <c>HYPERVISOR_INFO</c> veya <c>FORBIDDEN_APP</c>.</param>
+/// <param name="Type">Olay türü: <c>VM_DETECTED</c>, <c>HYPERVISOR_INFO</c>, <c>FORBIDDEN_APP</c> veya <c>VPN_PROXY</c> (Y4).</param>
 /// <param name="Name">Ne bulunduğu (ör. "VirtualBox", "AnyDesk").</param>
 /// <param name="Detail">Nereden anlaşıldığı (ör. "wmi:model", "AnyDesk.exe"); değerlendirici için.</param>
 /// <remarks>
@@ -29,6 +29,7 @@ public sealed record AgentIndicator(
         [nameof(EventType.VM_DETECTED)] = EventType.VM_DETECTED,
         [nameof(EventType.HYPERVISOR_INFO)] = EventType.HYPERVISOR_INFO,
         [nameof(EventType.FORBIDDEN_APP)] = EventType.FORBIDDEN_APP,
+        [nameof(EventType.VPN_PROXY)] = EventType.VPN_PROXY,
     };
 
     [JsonIgnore]

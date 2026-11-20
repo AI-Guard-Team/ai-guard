@@ -45,12 +45,22 @@ Sinyaldeki `indicators` alanı: `[{ "type": "...", "name": "...", "detail": "...
 | `HYPERVISOR_INFO` | Hyper-V, WSL2, VBS veya Docker açık (sanal makine değilse) | `Win32_ComputerSystem.HypervisorPresent`; düşük ağırlıklı bilgi, oturumu tek başına bekletmez |
 | `FORBIDDEN_APP` | `forbidden-apps.json`'daki bir yazılım çalışıyor | Süreç adları listeyle karşılaştırılır (büyük/küçük harf ve `.exe` farkı yok) |
 | `FORBIDDEN_APP` "Uzak Masaüstü oturumu" | Bilgisayara dışarıdan Uzak Masaüstü ile bağlanılmış | `GetSystemMetrics(SM_REMOTESESSION)`; `mstsc.exe` bunu göstermez |
+| `VPN_PROXY` (Y4) | Etkin VPN/TUN/TAP bağdaştırıcısı, sistem vekil sunucu ayarı ya da bilinen VPN uygulaması | `NetworkInterface`, WinINet/WinHTTP vekil ayarı, `forbidden-apps.json`'daki `"type": "VPN_PROXY"` kayıtları |
 
-Sanal makine ve hipervizör bir kez, süreç listesi `ProcessScanIntervalSeconds` aralıkla, uzak masaüstü her sinyalde denetlenir. Hepsi kullanıcı modunda; yönetici izni gerekmez. Olayları sunucu üretir: aynı gösterge yalnızca ilk görüldüğünde olay olur (K-22).
+Sanal makine ve hipervizör bir kez; süreç listesi, ağ bağdaştırıcıları ve vekil sunucu `ProcessScanIntervalSeconds` aralıkla; uzak masaüstü her sinyalde denetlenir. Hepsi kullanıcı modunda; yönetici izni gerekmez. Olayları sunucu üretir: aynı gösterge yalnızca ilk görüldüğünde olay olur (K-22).
 
 **Listeye yazılım eklemek:** `forbidden-apps.json`'a `{ "name": "...", "processes": [ "x.exe" ] }` ekleyip ajanı yeniden başlatmak yeterli; yeniden derleme gerekmez. Dosya bozuksa ajan açılmaz.
 
 Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-deneme-notlari.md)
+
+## Kurulum paketi (Y4)
+
+```powershell
+cd agent
+./scripts/publish-windows.ps1 -ApiBaseUrl https://api.sinav.ornek.edu.tr -AllowedOrigins https://sinav.ornek.edu.tr
+```
+
+Çıktı `agent/dist/windows/aiguard-agent.exe`: tek dosya, .NET kurulumu gerektirmez. Sunucu adresi ve sınav sitesi `deployment.json` olarak exe'nin içine gömülür ve `appsettings.json`'daki değerlerin üzerine yazar. Aday için kurulum kılavuzu (SmartScreen dahil): [docs/ajan-kurulum-windows.md](../docs/ajan-kurulum-windows.md).
 
 ## Ayarlar (`appsettings.json`, "Agent" bölümü)
 

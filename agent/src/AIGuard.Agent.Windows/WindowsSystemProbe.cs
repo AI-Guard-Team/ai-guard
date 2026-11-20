@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Management;
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
@@ -99,4 +100,93 @@ internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : I
     }
 
     public bool IsRemoteSession() => GetSystemMetrics(SM_REMOTESESSION) != 0;
+
+    public IReadOnlyList<NetworkAdapter> ActiveNetworkAdapters()
+    {
+        try
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .Select(n => new NetworkAdapter(n.Name, n.Description, n.NetworkInterfaceType.ToString()))
+                .ToList();
+        }
+        catch (NetworkInformationException ex)
+        {
+            logger.LogWarning("Ağ bağdaştırıcıları okunamadı ({Error}).", ex.Message);
+            return [];
+        }
+    }
+
+    public ProxySettings ReadProxySettings()
+    {
+        string? userProxy = null, pac = null, machine = null;
+
+        var ie = default(WinHttpCurrentUserIeProxyConfig);
+        if (WinHttpGetIEProxyConfigForCurrentUser(ref ie))
+        {
+            userProxy = TakeString(ie.Proxy);
+            pac = TakeString(ie.AutoConfigUrl);
+            _ = TakeString(ie.ProxyBypass);
+        }
+
+        var info = default(WinHttpProxyInfo);
+        if (WinHttpGetDefaultProxyConfiguration(ref info))
+        {
+            var proxy = TakeString(info.Proxy);
+            _ = TakeString(info.ProxyBypass);
+            machine = info.AccessType == WINHTTP_ACCESS_TYPE_NAMED_PROXY ? proxy : null;
+        }
+
+        return new ProxySettings(userProxy, pac, machine);
+    }
+
+    // winhttp.dll: yönetici izni gerektirmiyor. Dönen metinler GlobalFree ile serbest bırakılmalı.
+    private const uint WINHTTP_ACCESS_TYPE_NAMED_PROXY = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WinHttpCurrentUserIeProxyConfig
+    {
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool AutoDetect;
+        public IntPtr AutoConfigUrl;
+        public IntPtr Proxy;
+        public IntPtr ProxyBypass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WinHttpProxyInfo
+    {
+        public uint AccessType;
+        public IntPtr Proxy;
+        public IntPtr ProxyBypass;
+    }
+
+    [DllImport("winhttp.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WinHttpGetIEProxyConfigForCurrentUser(ref WinHttpCurrentUserIeProxyConfig config);
+
+    [DllImport("winhttp.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WinHttpGetDefaultProxyConfiguration(ref WinHttpProxyInfo info);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GlobalFree(IntPtr handle);
+
+    private static string? TakeString(IntPtr ptr)
+    {
+        if (ptr == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            var value = Marshal.PtrToStringUni(ptr);
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+        finally
+        {
+            GlobalFree(ptr);
+        }
+    }
 }

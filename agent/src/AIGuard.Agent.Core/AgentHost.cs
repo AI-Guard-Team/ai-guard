@@ -21,9 +21,17 @@ public static class AgentHost
 
     public static readonly TimeSpan ServerTimeout = TimeSpan.FromSeconds(10);
 
+    /// <summary>Kurulum paketi oluşturulurken yazılan ayar dosyası (agent/scripts/publish-windows.ps1).</summary>
+    public const string DeploymentSettingsFile = "deployment.json";
+
     public static WebApplicationBuilder CreateBuilder(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        // Ayar dosyaları exe'nin yanında (tek dosyalık pakette exe'nin açıldığı klasörde) aranıyor; aday exe'yi
+        // İndirilenler'den çift tıklayıp açtığında çalışma klasörü farklı olabilir (Y4).
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
+
+        // Kurulum paketine gömülen kurum ayarları (sunucu adresi, sınav sitesi); appsettings.json'ın üzerine yazar (Y4).
+        builder.Configuration.AddJsonFile(DeploymentSettingsFile, optional: true, reloadOnChange: false);
 
         builder.Services.AddOptions<AgentOptions>()
             .Bind(builder.Configuration.GetSection(AgentOptions.SectionName))
