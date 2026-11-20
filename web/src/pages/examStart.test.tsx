@@ -21,27 +21,56 @@ function renderWizard(handler: FetchHandler) {
 }
 
 async function acceptConsent() {
-  await userEvent.click(screen.getByRole('checkbox'))
+  await userEvent.click(await screen.findByRole('checkbox'))
   await userEvent.click(screen.getByRole('button', { name: 'Devam' }))
   expect(await screen.findByRole('button', { name: 'Ajanla eşleştir' })).toBeInTheDocument()
 }
 
+/** Sunucudaki gibi: rıza kaydedilene kadar oturum ConsentPending görünür, sonrası `handler`a kalır. */
 function consentOr(handler: FetchHandler): FetchHandler {
+  let consented = false
   return (url, init) => {
-    if (url.includes('/consent')) return jsonResponse(204)
+    if (url.includes('/consent')) {
+      consented = true
+      return jsonResponse(204)
+    }
+    if (!consented && isAgentStatusGet(url, init)) {
+      return jsonResponse(200, agentStatus({ state: 'ConsentPending', canContinueWithoutAgent: false }))
+    }
     return handler(url, init)
   }
+}
+
+function consentCall(fetchMock: ReturnType<typeof mockFetch>) {
+  return fetchMock.mock.calls.find(([url]) => String(url).includes('/consent'))
+}
+
+function agentStatus(overrides: Record<string, unknown> = {}) {
+  return {
+    state: 'AgentPairing',
+    paired: false,
+    agentActive: false,
+    lastSignalAt: null,
+    indicators: [],
+    canContinueIndicated: false,
+    canContinueWithoutAgent: true,
+    ...overrides,
+  }
+}
+
+function isAgentStatusGet(url: string, init?: RequestInit): boolean {
+  return url.endsWith('/agent') && (init?.method ?? 'GET') === 'GET'
 }
 
 describe('sınav öncesi sihirbazı', () => {
   it('rıza onaylanmadan devam etmez ve kamerayı göstermez', async () => {
     const fetchMock = renderWizard(() => jsonResponse(204))
 
+    await userEvent.click(await screen.findByRole('button', { name: 'Devam' }))
     expect(screen.queryByRole('button', { name: 'Kamerayı aç' })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Devam' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('aydınlatma metnini onaylayın')
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(consentCall(fetchMock)).toBeUndefined()
   })
 
   it('açık rızayı oturuma kaydedip ajan adımına geçer', async () => {
@@ -49,9 +78,10 @@ describe('sınav öncesi sihirbazı', () => {
 
     await acceptConsent()
 
-    expect(fetchMock.mock.calls[0][0]).toBe(`/api/sessions/${SESSION}/consent`)
-    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toEqual({
-      granted: true,
+    const call = consentCall(fetchMock)
+    expect(call?.[0]).toBe(`/api/sessions/${SESSION}/consent`)
+    expect(JSON.parse(call?.[1]?.body as string)).toEqual({
+      accepted: true,
       textVersion: 'kvkk-session-v1',
     })
   })
@@ -59,38 +89,89 @@ describe('sınav öncesi sihirbazı', () => {
   it('rıza reddedilince oturumun iptal edildiğini söyler', async () => {
     const fetchMock = renderWizard(() => jsonResponse(204))
 
-    await userEvent.click(screen.getByRole('button', { name: 'Rızayı reddet' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Rızayı reddet' }))
 
     expect(await screen.findByText(/oturum iptal edildi/)).toBeInTheDocument()
-    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toEqual({
-      granted: false,
+    expect(JSON.parse(consentCall(fetchMock)?.[1]?.body as string)).toEqual({
+      accepted: false,
       textVersion: 'kvkk-session-v1',
     })
   })
 
-  it('eşleştirme kodunu ekrana yazmadan ajana gönderir', async () => {
+  it('rıza 409 dönerse sunucunun bildirdiği nedeni gösterir', async () => {
+    renderWizard((url) =>
+      url.includes('/consent')
+        ? jsonResponse(409, { title: 'Kayıt fotoğrafı yüklenmeden sınava başlanamaz.', status: 409 })
+        : jsonResponse(204),
+    )
+
+    await userEvent.click(await screen.findByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Devam' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kayıt fotoğrafı yüklenmeden sınava başlanamaz.')
+    expect(screen.queryByRole('button', { name: 'Ajanla eşleştir' })).not.toBeInTheDocument()
+  })
+
+  it('rızası alınmış oturumda sayfa yeniden açılınca ajan adımından devam eder', async () => {
+    const fetchMock = renderWizard((url, init) =>
+      isAgentStatusGet(url, init) ? jsonResponse(200, agentStatus()) : jsonResponse(500),
+    )
+
+    expect(await screen.findByRole('button', { name: 'Ajanla eşleştir' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(consentCall(fetchMock)).toBeUndefined()
+  })
+
+  it('kimlik adımındaki oturumda sayfa yeniden açılınca kamera adımından devam eder', async () => {
+    renderWizard((url, init) =>
+      isAgentStatusGet(url, init)
+        ? jsonResponse(200, agentStatus({ state: 'IdentityVerification', canContinueWithoutAgent: false }))
+        : jsonResponse(500),
+    )
+
+    expect(await screen.findByRole('button', { name: 'Kamerayı aç' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('eşleşmeden sonra sunucu kimlik adımına geçince kameraya gider', async () => {
+    let paired = false
     const fetchMock = renderWizard(
-      consentOr((url) => {
+      consentOr((url, init) => {
         if (url.includes('/agent-code')) return jsonResponse(201, { code: CODE, expiresAt: '2026-11-20T12:00:00Z' })
-        if (url === AGENT_PAIR_URL) return jsonResponse(200, { status: 'paired' })
+        if (url === AGENT_PAIR_URL) {
+          paired = true
+          return jsonResponse(200, { status: 'paired' })
+        }
+        if (isAgentStatusGet(url, init)) {
+          return jsonResponse(
+            200,
+            paired
+              ? agentStatus({ state: 'IdentityVerification', paired: true, agentActive: true, canContinueWithoutAgent: false })
+              : agentStatus(),
+          )
+        }
         return jsonResponse(500)
       }),
     )
     await acceptConsent()
+    expect(screen.getByText(/aiguard-agent.exe/)).toBeInTheDocument()
+    expect(screen.getByText(/Yine de çalıştır/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Ajanla eşleştir' }))
 
     expect(await screen.findByRole('button', { name: 'Kamerayı aç' })).toBeInTheDocument()
     expect(screen.queryByText(CODE)).not.toBeInTheDocument()
     const pairCall = fetchMock.mock.calls.find(([url]) => url === AGENT_PAIR_URL)
     expect(JSON.parse(pairCall?.[1]?.body as string)).toEqual({ code: CODE })
+    expect(fetchMock.mock.calls.some(([url, init]) => isAgentStatusGet(String(url), init))).toBe(true)
   })
 
-  it('ajan bulunamazsa gerekçe ile ajansız devam ettirir', async () => {
+  it('ajan bulunamazsa gerekçeyi noAgent ile gönderir', async () => {
     const fetchMock = renderWizard(
-      consentOr((url) => {
+      consentOr((url, init) => {
         if (url.includes('/agent-code')) return jsonResponse(201, { code: CODE, expiresAt: '2026-11-20T12:00:00Z' })
         if (url === AGENT_PAIR_URL) throw new TypeError('Failed to fetch')
-        if (url.includes('/continue-without-agent')) return jsonResponse(204)
+        if (url.endsWith('/agent/continue')) return jsonResponse(200, { state: 'IdentityVerification' })
+        if (isAgentStatusGet(url, init)) return jsonResponse(200, agentStatus())
         return jsonResponse(500)
       }),
     )
@@ -105,8 +186,83 @@ describe('sınav öncesi sihirbazı', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Ajansız devam et' }))
 
     expect(await screen.findByRole('button', { name: 'Kamerayı aç' })).toBeInTheDocument()
-    const skip = fetchMock.mock.calls.find(([url]) => String(url).includes('/continue-without-agent'))
-    expect(JSON.parse(skip?.[1]?.body as string)).toEqual({ justification: 'Ajan bu bilgisayarda kurulu değil.' })
+    const skip = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/agent/continue'))
+    expect(JSON.parse(skip?.[1]?.body as string)).toEqual({ mode: 'noAgent', reason: 'Ajan bu bilgisayarda kurulu değil.' })
+  })
+
+  it('göstergelerin nedenini ve çözümünü gösterir, gerekçeyi indicated ile gönderir', async () => {
+    const fetchMock = renderWizard(
+      consentOr((url, init) => {
+        if (url.endsWith('/agent/continue')) return jsonResponse(200, { state: 'IdentityVerification' })
+        if (isAgentStatusGet(url, init)) {
+          return jsonResponse(
+            200,
+            agentStatus({
+              paired: true,
+              agentActive: true,
+              canContinueWithoutAgent: false,
+              canContinueIndicated: true,
+              indicators: [
+                {
+                  type: 'FORBIDDEN_APP',
+                  name: 'AnyDesk',
+                  message: 'Sınav sırasında açık olmaması gereken bir uygulama çalışıyor: AnyDesk.',
+                  fix: 'AnyDesk uygulamasını tamamen kapatın.',
+                },
+              ],
+            }),
+          )
+        }
+        return jsonResponse(500)
+      }),
+    )
+    await acceptConsent()
+
+    expect(await screen.findByText(/uygulama çalışıyor: AnyDesk/)).toBeInTheDocument()
+    expect(screen.getByText('AnyDesk uygulamasını tamamen kapatın.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ajansız devam et' })).not.toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText('Gerekçe'), 'Uygulamayı kapatamıyorum.')
+    await userEvent.click(screen.getByRole('button', { name: 'Gerekçeyle devam et' }))
+
+    expect(await screen.findByRole('button', { name: 'Kamerayı aç' })).toBeInTheDocument()
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/agent/continue'))
+    expect(JSON.parse(call?.[1]?.body as string)).toEqual({ mode: 'indicated', reason: 'Uygulamayı kapatamıyorum.' })
+  })
+
+  it('ajan varken ajansız devamı gizler', async () => {
+    renderWizard(
+      consentOr((url, init) => {
+        if (isAgentStatusGet(url, init)) {
+          return jsonResponse(200, agentStatus({ paired: true, agentActive: true, canContinueWithoutAgent: false }))
+        }
+        return jsonResponse(500)
+      }),
+    )
+    await acceptConsent()
+
+    expect(await screen.findByText('Eşleşme alındı. Denetim birkaç saniye içinde yenilenir.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ajansız devam et' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('ajansız devam 409 alınca adımda kalır ve ajanın çalıştığını söylemez', async () => {
+    renderWizard(
+      consentOr((url, init) => {
+        if (url.endsWith('/agent/continue')) {
+          return jsonResponse(409, { detail: 'Güvenlik ajanı çalışıyor; ajansız devam edilemez.' })
+        }
+        if (isAgentStatusGet(url, init)) return jsonResponse(200, agentStatus())
+        return jsonResponse(500)
+      }),
+    )
+    await acceptConsent()
+    await userEvent.type(await screen.findByLabelText('Gerekçe'), 'Ajan açılmıyor.')
+    await userEvent.click(screen.getByRole('button', { name: 'Ajansız devam et' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ajansız devam edilemiyor.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('çalışıyor')
+    expect(screen.queryByRole('button', { name: 'Kamerayı aç' })).not.toBeInTheDocument()
   })
 
   it('doğrulama başarısızsa yeniden deneme ve destek talebini gösterir', async () => {
@@ -121,10 +277,22 @@ describe('sınav öncesi sihirbazı', () => {
       callback(new Blob(['kare'], { type: 'image/jpeg' }))
     }
 
+    let paired = false
     renderWizard(
-      consentOr((url) => {
+      consentOr((url, init) => {
         if (url.includes('/agent-code')) return jsonResponse(201, { code: CODE, expiresAt: '2026-11-20T12:00:00Z' })
-        if (url === AGENT_PAIR_URL) return jsonResponse(200, { status: 'paired' })
+        if (url === AGENT_PAIR_URL) {
+          paired = true
+          return jsonResponse(200, { status: 'paired' })
+        }
+        if (isAgentStatusGet(url, init)) {
+          return jsonResponse(
+            200,
+            paired
+              ? agentStatus({ state: 'IdentityVerification', paired: true, agentActive: true, canContinueWithoutAgent: false })
+              : agentStatus(),
+          )
+        }
         if (url.includes('/verify')) return jsonResponse(200, { passed: false })
         return jsonResponse(500)
       }),
