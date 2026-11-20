@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (E3)*
+*Son güncelleme: 20 Kasım 2026 (E4)*
 
 ---
 
@@ -36,6 +36,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Ajan sinyali | HMAC-SHA256 imzalı, ±30 sn, tek kullanımlık nonce; anahtar API belleğinde, veritabanında özeti (K-21) |
 | Cihaz göstergeleri | `{ type, name, detail }`, yalnızca eşleşenler; ilk görüldüğünde olay; hipervizör yalnızca bilgi (K-22) |
 | Sınav yönetimi | Doğru seçenek yalnızca Admin'e; oturum başlamış sınav kilitli (409); başlatma kuralı `ExamRules.CanStart` (K-23) |
+| Oturum durumu | Yalnızca `session.TransitionTo(...)`; tablo dışı geçiş 409. Süre ve hak `InProgress`'e geçişte başlar (K-24) |
 
 ---
 
@@ -558,11 +559,68 @@ FR-06–FR-08. Kod: `Application/Exams/` (`ExamService`, `AssignmentService`, `E
 
 ---
 
+## K-24 · Oturum durum makinesi ve sınav akışı (E4)
+
+FR-09, FR-26, GAB 3.4.4. Kod: `Domain/Sessions/SessionStateMachine.cs`, `Application/Sessions/` (`SessionService`, `SessionTimekeeper`), `Api/Controllers/SessionsController.cs`.
+
+**Durum yalnızca durum makinesinden değişir.** `session.TransitionTo(SessionState.X)`; tabloda olmayan geçiş `InvalidSessionTransitionException` fırlatır, API bunu 409 ProblemDetails'e çevirir. `session.State = ...` diye doğrudan atama yapmayın (testlerde kurulum hariç). Tablo GAB 3.4.4 ile birebir; `SessionStateMachineTests` her durum çiftini sınıyor. Y2'deki `AgentPairing → IdentityVerification` geçişi de artık buradan.
+
+| Uç | Yanıt |
+|---|---|
+| `POST /api/exams/{examId}/sessions` | 201 `{sessionId, state}` yeni oturum (ConsentPending) · 200 adayın açık oturumu varsa aynısı · 404 atanmamış · 409 pencere dışında / hak kullanılmış (Türkçe `detail`) |
+| `GET /api/sessions/{id}` | `{id, examId, examName, state, durationMinutes, startedAt, endsAt, serverTime, questions[], answers[], lastSeq}` |
+| `POST /api/sessions/{id}/answers` | `{questionId, selectedOption, seq, clientTime}` → 201 kaydedildi · 200 aynı seq tekrar geldi · 400 · 409 süre doldu / durum uygun değil |
+| `POST /api/sessions/{id}/submit` | 204 · 409 zaten teslim edildi / sınav başlamadı |
+
+Hepsi yalnızca `Candidate` ve yalnızca kendi oturumu (K-20); her istekte IP kontrolü (`SessionIpGuard`, FR-22).
+
+**Süre ve oturum hakkı `InProgress`'e geçişte başlar.** `StartedAt = şimdi`, `EndsAt = şimdi + süre` (sunucu saati), `ExamAssignment.AttemptUsedAt = şimdi`. Böylece rızayı reddeden adayın hakkı tüketilmiyor (FR-10) ve risk gerekçelerindeki "12. dakikada" sayımı (K-17) aynı andan başlıyor. Rıza, eşleştirme ve doğrulama adımları süreye dahil değil. Başlatma kuralları E3'teki `ExamRules.CanStart`'tan (K-23).
+
+**Cevaplar.** Her gönderim ayrı satır; bir soru için en yüksek `seq` geçerli (geç gelen eski cevap yenisinin üzerine yazamıyor). Aynı `seq` aynı cevapla tekrar gelirse 200 ve yeni kayıt yok; farklı cevapla gelirse 409. `selectedOption: null` cevabı temizler. Soru oturumun sınavına ait olmalı (S-6). Süre dolduktan sonra gelen cevap, otomatik teslim görevi henüz çalışmamış olsa da reddediliyor. `clientTime` yalnızca kayıt için.
+
+**Sorular** yalnızca `InProgress`'te dönüyor, doğru seçenek olmadan. `PermissionPending`'de sorular gizli ve cevap kabul edilmiyor (FR-17).
+
+**Otomatik teslim ve bağlantı kesintisi (`SessionTimekeeper`, 5 sn'de bir).**
+- `EndsAt` geçen ve süren (`InProgress`, `PermissionPending`, `Disconnected`) oturum `Completed` olur; `EndedAt = EndsAt` (FR-26: sunucudaki cevaplarla teslim).
+- `InProgress` oturumdan **30 sn** istek gelmezse (`LastSeenAt`) oturum `Disconnected` olur; `DisconnectedAt = LastSeenAt`. Süre işlemeye devam eder.
+- `Disconnected` iken gelen cevaplar `Unmonitored = true` ("izlenmeyen sürede verildi", FR-09).
+- Ayar: `Sessions:TimekeeperEnabled` (testlerde kapalı), `Sessions:TimekeeperIntervalSeconds`.
+
+**Eşzamanlılık.** Teslim, otomatik teslim, cevap ve olay aynı oturum satırını kilitliyor (K-18); aynı anda gelseler de sırayla işleniyor.
+
+**Diğer kartların çağıracağı geçişler:**
+
+| Kart | Ne zaman | Çağrı |
+|---|---|---|
+| A3 | Rıza verildi / reddedildi | `session.TransitionTo(AgentPairing)` / `TransitionTo(Cancelled)` (iptalde hak tüketilmiyor) |
+| A3 | İlk doğrulama başarılı | `SessionService.BeginExamAsync(sessionId)`: süreyi ve hakkı başlatır |
+| A3 | Kesinti sonrası doğrulama başarılı | `SessionService.ResumeAfterReconnectAsync(sessionId)`: `Disconnected → InProgress` ve kesinti süresiyle `CONNECTION_LOST` olayı |
+| A3 | Kayıt fotoğrafı yoksa sınav başlamaz (FR-04) | `SessionService.StartAsync` içinde `ReferenceFaceTemplates` kontrolü eklenmeli (şimdilik yok; eklenince E5a öncesi fotoğraf yükleme gerekir) |
+| A3/A5 | Biyometrik rıza sınav sırasında geri alındı | `TransitionTo(Cancelled)` + denetim kaydı (FR-05) |
+| S4 | Kamera/mikrofon izni kaldırıldı / verildi | `PermissionPending` geçişleri; ucu S4 (ya da A2) ekleyecek |
+| Y4 | Ajansız / göstergeli devam | `TransitionTo(IdentityVerification)` + `Flags` |
+| A4 | Değerlendirici kararı | `TransitionTo(Decided)` |
+
+**Önyüz (S3) için.**
+- Kalan süre `endsAt − (serverTime + yerel geçen süre)` ile hesaplanmalı, istemci saatiyle değil.
+- Sınav sürerken `GET /api/sessions/{id}` **en geç 10 sn'de bir** çağrılmalı (S4'teki kamera kareleri gelince bu doğal olarak sağlanır). 30 sn istek gelmezse oturum `Disconnected` sayılıyor.
+- Sayfa yenilenince `answers` ve `lastSeq` ile kaldığı yerden devam edilir; yeni `seq` = `max(yerel seq, lastSeq) + 1`.
+- Bağlantı geri gelince önce IndexedDB kuyruğu gönderilmeli (`Disconnected` iken; cevaplar işaretlenir), sonra yeniden doğrulama (A3).
+- 409 yanıtlarındaki `detail` adaya gösterilebilir.
+
+**Uzun kesinti (S-13).** Ayrı olay türü eklenmedi; kesinti `CONNECTION_LOST` olarak süresiyle yazılıyor ve süre çarpanı (K-17) uzun kesintiyi ağırlaştırıyor. 5 dakika üstü için ayrıca ağırlık gerekirse `riskconfig.json`'da pilot oturumda ayarlanır.
+
+**Açık konu (S-16).** Rıza, eşleştirme veya doğrulama adımında takılı kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok). Aday yeniden başlamaya çalışınca 409 "son başlangıç zamanı geçti" alıyor. Bu oturumların raporda nasıl görüneceğine A4'te karar verilmeli.
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
 
 ### E4 · Sınav oturumu durum makinesi
+
+*E4'te uygulandı (K-24): rıza reddi hakkı tüketmiyor, iptal geçişleri tabloda, uzun kesinti `CONNECTION_LOST` süresiyle, kesinti sonrası dönüş `ResumeAfterReconnectAsync` ile. Rıza, doğrulama ve izin uçları A3/S4'te.*
 
 - **Rıza reddi oturum hakkını tüketmez (FR-10).** Rıza Bekliyor durumunda aday rızayı reddederse oturum `Cancelled` olur ve aday alternatif yönteme yönlendirilir. Hak kullanılmış sayılmaz; aynı aday sonra yeni oturum açabilir. Veritabanı buna hazır: tek oturum indeksi iptal edilen oturumları saymıyor (K-11). `ExamAssignment.AttemptUsedAt` yalnızca oturum gerçekten başladığında doldurulmalı; doluysa yeni oturum açılmamalı.
 - **Sınav sırasında biyometrik rıza geri alınırsa oturum iptal olur (FR-05).** `InProgress`, `PermissionPending` veya `Disconnected` durumundaki oturum `Cancelled`'a geçer, izleme durur, işlem denetim kaydına yazılır.
@@ -596,15 +654,16 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-3 | HMAC anahtarının şifreli saklanması (K-08) | Yağmur | Y2'de bu alanın kullanılması |
 | S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | **Çözüldü (E1b):** compose'daki tek seferlik `migrate` servisi EF göç paketini (`efbundle`) çalıştırıyor; `api` bunun başarıyla bitmesini bekliyor |
 | S-5 | A6, E5b'ye bağlı ama tarihleri çakışıyor | Ayşe, Esma | Locust betiği 29 Kasım'da, ölçüm E5b'den sonra |
-| S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | Serviste kontrol ve test; gerekirse `answers.exam_id` ile bileşik yabancı anahtar |
+| S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | **Çözüldü (E4):** serviste kontrol ve test (K-24) |
 | S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı; göçler ayrı kullanıcıyla |
 | S-8 | `agent_signals` hızlı büyüyor; kullanıcı silme talebi | Ayşe (A5) | Saklama görevine eklenmesi; kişisel alanların anonimleştirilmesi |
 | S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Ayşe | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | **Çözüldü (Y3):** gösterge yalnızca ilk görüldüğünde ve kaybolup yeniden göründüğünde olay oluyor (K-22) |
 | S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Yağmur | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
-| S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |
+| S-13 | GAB FR-26: 5 dakikadan uzun kesinti "uzun kesinti olayı" üretmeli; ortak listede tür yok | Esma (E4), Ayşe | **Karar (E4):** ayrı tür eklenmedi; `CONNECTION_LOST` süresiyle yazılıyor, süre çarpanı ağırlaştırıyor (K-24). Gerekirse pilot oturumda ağırlık ayarı |
 | S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | **Çözüldü (Y2):** anahtar eşleşmede üretilip yanıtta veriliyor; veritabanında özeti (K-21) |
 | S-15 | Davet e-postası sahte gönderici ile loga yazılıyor; davet yeniden gönderme ucu yok | Esma | Gerçek gönderim gerekirse SMTP göndericisi `IEmailSender` arkasına; süresi dolan davet için `POST /api/users/{id}/invite` eklenebilir (ekip kararı) |
 | S-16 | `AgentPairing.EncryptedSessionKey` artık kullanılmıyor (K-21: veritabanında yalnızca özet) | Ayşe, Yağmur | Bir sonraki göçle kaldırılması; K-13 gereği önce ekipte konuşulacak |
 | S-17 | Ajan oturum anahtarları tek API sürecinin belleğinde; API yeniden başlarsa ya da birden fazla örnekle çalışırsa doğrulanamıyor | Yağmur, Esma | Proje tek örnekle çalışıyor; gerekirse paylaşılan önbellek (ör. Redis) ya da ajanın yeniden eşleşmesi |
+| S-16 | Rıza/eşleştirme/doğrulama adımında kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok) | Esma, Ayşe (A4) | Raporda "başlamadı" olarak gösterilmesi ya da zamanlanmış görevle iptal edilmesi; ekip kararı |

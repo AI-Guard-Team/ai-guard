@@ -527,6 +527,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTimeOffset?>("DisconnectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disconnected_at");
+
                     b.Property<DateTimeOffset?>("EndedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ended_at");
@@ -546,6 +550,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.Property<IPAddress>("InitialIpAddress")
                         .HasColumnType("inet")
                         .HasColumnName("initial_ip_address");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
 
                     b.Property<double>("RiskScore")
                         .HasColumnType("double precision")

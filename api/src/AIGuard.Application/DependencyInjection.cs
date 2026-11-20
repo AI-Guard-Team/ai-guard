@@ -38,6 +38,10 @@ public static class DependencyInjection
         services.AddScoped<ExamService>();
         services.AddScoped<AssignmentService>();
 
+        // E4: oturum akışı ve süre denetimi.
+        services.AddScoped<SessionService>();
+        services.AddScoped<SessionTimekeeper>();
+
         return services;
     }
 }

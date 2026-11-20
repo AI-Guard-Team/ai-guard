@@ -26,6 +26,7 @@ Görev kartları Trello'da (kart kodları: E*, A*, Y*, S*, D*). Kaynak belgeler:
 - Testlerde Testcontainers kullanılmaz; testler yerel veya CI PostgreSQL'ine bağlanır (K-09).
 - Her değişiklikle birlikte test yaz; CI her PR'da build + test çalıştırır.
 - **API'de her uç varsayılan olarak giriş ister** (K-20). Uca rol ver (`[Authorize(Roles = nameof(UserRole.Admin))]`); herkese açık uç gerekiyorsa `[AllowAnonymous]` ve gerekçesini yaz. Aday oturum uçları `SessionAccessService.IsCandidateOfAsync` ile sahiplik kontrolü yapar.
+- **Oturum durumu yalnızca `session.TransitionTo(...)` ile değişir** (K-24); `State`'e doğrudan atama yapma. Sınavı başlatmak ve kesintiden dönmek için `SessionService.BeginExamAsync` / `ResumeAfterReconnectAsync` kullan.
 - Kartta yazmayan bir özelliği kendiliğinden ekleme; gerekiyorsa önce sor.
 
 ## Ortak adlar (değiştirme)

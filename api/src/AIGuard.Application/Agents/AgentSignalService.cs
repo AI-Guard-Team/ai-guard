@@ -3,6 +3,7 @@ using AIGuard.Application.Abstractions;
 using AIGuard.Application.Events;
 using AIGuard.Domain.Entities;
 using AIGuard.Domain.Enums;
+using AIGuard.Domain.Sessions;
 using Microsoft.EntityFrameworkCore;
 
 namespace AIGuard.Application.Agents;
@@ -144,11 +145,11 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
         tracked.LastSignalAt = now;
 
         // UC-08 adım 4–5: ilk geçerli sinyalde gösterge yoksa kimlik doğrulamaya geçiliyor. Gösterge
-        // varsa adayın gerekçeyle devam etmesi Y4'te. Durum makinesi (E4) gelince geçiş oraya taşınmalı.
+        // varsa adayın gerekçeyle devam etmesi Y4'te. Geçiş durum makinesinden (E4, K-24).
         // Genel hipervizör tek başına oturumu göstergeli yapmıyor (UC-08 4b, Y3).
         if (tracked.ExamSession.State == SessionState.AgentPairing && indicators.All(i => i.IsInformational))
         {
-            tracked.ExamSession.State = SessionState.IdentityVerification;
+            tracked.ExamSession.TransitionTo(SessionState.IdentityVerification);
         }
 
         await db.SaveChangesAsync(ct);

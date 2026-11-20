@@ -24,6 +24,9 @@ internal sealed class TestApi
             b.UseEnvironment(environment);
             b.UseSetting("ConnectionStrings:Default", fx.ConnectionString);
             b.UseSetting("JWT_SECRET", JwtSecret);
+            // Testler sabit tarihli oturumlar kullanıyor; arka plandaki otomatik teslim onları kapatmasın (E4).
+            // Süre denetimi SessionTimekeeper testlerinde FakeTimeProvider ile ayrıca sınanıyor.
+            b.UseSetting("Sessions:TimekeeperEnabled", "false");
             // Sonra eklenen kayıt geçerli: sahte gönderici yerine davetleri biriktiren gönderici.
             b.ConfigureServices(s => s.AddSingleton<IEmailSender>(Emails));
         });
