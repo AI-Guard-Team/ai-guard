@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { ApiError } from '../api/client'
 import { changePassword } from '../api/auth'
 import { ROLE_LABEL } from '../auth/roles'
@@ -60,6 +61,12 @@ export function ProfilePage() {
         <dt>Rol</dt>
         <dd>{ROLE_LABEL[user.role]}</dd>
       </dl>
+
+      {user.role === 'Candidate' ? (
+        <p>
+          <Link to="/profile/photo">Kayıt fotoğrafı</Link>
+        </p>
+      ) : null}
 
       <h2>Şifre değiştir</h2>
       <p className="auth-lead">Mevcut şifrenizi doğrulayıp yeni bir şifre belirleyin.</p>

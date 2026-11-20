@@ -54,16 +54,24 @@ async function readBody(response: Response): Promise<unknown> {
   return contentType.includes('json') ? JSON.parse(text) : text
 }
 
+function requestBody(body: unknown): BodyInit | undefined {
+  if (body === undefined) return undefined
+  // FormData'da Content-Type yazılmaz; tarayıcı sınır bilgisini kendisi ekler.
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return body
+  return JSON.stringify(body)
+}
+
 async function send(path: string, options: RequestOptions, accessToken: string | null): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' }
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  const body = requestBody(options.body)
+  if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json'
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
   try {
     return await fetch(path, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body,
       signal: options.signal,
     })
   } catch (error) {
