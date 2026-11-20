@@ -18,8 +18,13 @@ public class SignalSignerTests
     [Fact]
     public void Known_answer_matches_the_server()
     {
-        Assert.Equal("J1SHo9DqrRaH0vnJ79Vwnegs1h17ovczMFhMHML4ZNA=",
-            SignalSigner.Sign(Key, SessionId, 1795000000, "AAAAAAAAAAAAAAAAAAAAAA", ["VM_DETECTED", "ANYDESK"]));
+        DeviceIndicator[] sample = [new("VM_DETECTED", "VirtualBox", "wmi:model"), new("FORBIDDEN_APP", "AnyDesk")];
+
+        Assert.Equal(
+            """11111111-2222-3333-4444-555555555555|1795000000|AAAAAAAAAAAAAAAAAAAAAA|[{"type":"VM_DETECTED","name":"VirtualBox","detail":"wmi:model"},{"type":"FORBIDDEN_APP","name":"AnyDesk","detail":null}]""",
+            SignalSigner.CanonicalMessage(SessionId, 1795000000, "AAAAAAAAAAAAAAAAAAAAAA", sample));
+        Assert.Equal("Uu1Z9ZVrLmt7t5lQIIkbxZSHpfqRXmh2aJy3Igh88DU=",
+            SignalSigner.Sign(Key, SessionId, 1795000000, "AAAAAAAAAAAAAAAAAAAAAA", sample));
         Assert.Equal("OeLgVDkYiPEcpOeOR3+aaKrlOZT1kcCMsuhFI2y7aUU=",
             SignalSigner.Sign(Key, SessionId, 1795000000, "AAAAAAAAAAAAAAAAAAAAAA", []));
     }
@@ -53,16 +58,16 @@ public class SignalSenderTests
         }
     }
 
-    private sealed class Inspector(Func<IReadOnlyList<string>> inspect) : IDeviceInspector
+    private sealed class Inspector(Func<IReadOnlyList<DeviceIndicator>> inspect) : IDeviceInspector
     {
         public string Platform => "Windows";
-        public Task<IReadOnlyList<string>> InspectAsync(CancellationToken cancellationToken = default) => Task.FromResult(inspect());
+        public Task<IReadOnlyList<DeviceIndicator>> InspectAsync(CancellationToken cancellationToken = default) => Task.FromResult(inspect());
     }
 
     private static readonly byte[] Key = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
 
     private static (SignalSender Sender, PairingState State, FakeSignalClient Client) Create(
-        bool paired = true, Func<IReadOnlyList<string>>? inspect = null)
+        bool paired = true, Func<IReadOnlyList<DeviceIndicator>>? inspect = null)
     {
         var state = new PairingState();
         if (paired)
@@ -88,13 +93,14 @@ public class SignalSenderTests
     [Fact]
     public async Task Signal_carries_the_indicators_and_is_signed_with_the_session_key()
     {
-        var (sender, state, client) = Create(inspect: () => ["VM_DETECTED"]);
+        DeviceIndicator vm = new("VM_DETECTED", "VirtualBox", "wmi");
+        var (sender, state, client) = Create(inspect: () => [vm]);
 
         await sender.SendOnceAsync();
 
         var s = Assert.Single(client.Sent);
         Assert.Equal(state.Current!.SessionId, s.SessionId);
-        Assert.Equal(["VM_DETECTED"], s.Indicators);
+        Assert.Equal([vm], s.Indicators);
         Assert.Equal(SignalSigner.Sign(Key, s.SessionId, s.Ts, s.Nonce, s.Indicators), s.Sig);
     }
 
@@ -160,13 +166,14 @@ public class HttpSignalClientTests
         var stub = new Stub(status);
         var client = new HttpSignalClient(new HttpClient(stub) { BaseAddress = new Uri("https://api.ornek.edu.tr/") },
             NullLogger<HttpSignalClient>.Instance);
-        var signal = new SignalRequest(Guid.Empty, 1795000000, "AAAAAAAAAAAAAAAAAAAAAA", ["VM_DETECTED"], "c2ln");
+        var signal = new SignalRequest(Guid.Empty, 1795000000, "AAAAAAAAAAAAAAAAAAAAAA",
+            [new DeviceIndicator("FORBIDDEN_APP", "AnyDesk", "AnyDesk.exe")], "c2ln");
 
         var result = await client.SendAsync(signal);
 
         Assert.Equal(expected, result);
         Assert.Equal("/api/agent/signal", stub.Path);
-        Assert.Equal("""{"sessionId":"00000000-0000-0000-0000-000000000000","ts":1795000000,"nonce":"AAAAAAAAAAAAAAAAAAAAAA","indicators":["VM_DETECTED"],"sig":"c2ln"}""", stub.Body);
+        Assert.Equal("""{"sessionId":"00000000-0000-0000-0000-000000000000","ts":1795000000,"nonce":"AAAAAAAAAAAAAAAAAAAAAA","indicators":[{"type":"FORBIDDEN_APP","name":"AnyDesk","detail":"AnyDesk.exe"}],"sig":"c2ln"}""", stub.Body);
     }
 }
 

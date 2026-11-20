@@ -58,13 +58,13 @@ public class AgentSignalServiceTests(PostgresFixture fx) : IClassFixture<Postgre
         await using var db = fx.CreateContext();
         var agent = await PairedAgent.CreateAsync(db);
 
-        var result = await agent.Signals(db).ProcessAsync(agent.Signal(["VM_DETECTED"]));
+        var result = await agent.Signals(db).ProcessAsync(agent.Signal([PairedAgent.Vm()]));
 
         Assert.Equal(AgentSignalStatus.Accepted, result.Status);
         await using var check = fx.CreateContext();
         Assert.Equal(SessionState.AgentPairing, (await check.ExamSessions.FindAsync(agent.SessionId))!.State);
         var stored = await check.AgentSignals.SingleAsync(s => s.AgentPairing.ExamSessionId == agent.SessionId);
-        Assert.Equal("""["VM_DETECTED"]""", stored.Indicators.Replace(" ", ""));
+        Assert.Equal([PairedAgent.Vm()], AgentIndicator.ParseStored(stored.Indicators));
     }
 
     [SkippableFact]
@@ -74,7 +74,7 @@ public class AgentSignalServiceTests(PostgresFixture fx) : IClassFixture<Postgre
         await using var db = fx.CreateContext();
         var agent = await PairedAgent.CreateAsync(db);
         // İmza göstergesiz sinyal için atılmış, gövdede gösterge var (aday göstergeyi gizlemeye ya da eklemeye çalışıyor).
-        var signal = agent.Signal() with { Indicators = ["VM_DETECTED"] };
+        var signal = agent.Signal() with { Indicators = [PairedAgent.Vm()] };
 
         var result = await agent.Signals(db).ProcessAsync(signal);
 
@@ -216,6 +216,9 @@ public class AgentSignalServiceTests(PostgresFixture fx) : IClassFixture<Postgre
     [InlineData("nonce")]
     [InlineData("sig")]
     [InlineData("indicators")]
+    [InlineData("type")]
+    [InlineData("name")]
+    [InlineData("detail")]
     [InlineData("ts")]
     public async Task Malformed_signals_are_refused_without_storing_anything(string field)
     {
@@ -227,7 +230,10 @@ public class AgentSignalServiceTests(PostgresFixture fx) : IClassFixture<Postgre
         {
             "nonce" => s with { Nonce = "kısa" },
             "sig" => s with { Sig = null },
-            "indicators" => s with { Indicators = Enumerable.Repeat("X", AgentSignalService.MaxIndicators + 1).ToArray() },
+            "indicators" => s with { Indicators = Enumerable.Repeat(PairedAgent.App(), AgentSignalService.MaxIndicators + 1).ToArray() },
+            "type" => s with { Indicators = [new AgentIndicator("ANYDESK", "AnyDesk")] },
+            "name" => s with { Indicators = [new AgentIndicator("FORBIDDEN_APP", "")] },
+            "detail" => s with { Indicators = [new AgentIndicator("FORBIDDEN_APP", "AnyDesk", new string('x', AgentIndicator.MaxDetailLength + 1))] },
             _ => s with { Ts = -1 },
         };
 

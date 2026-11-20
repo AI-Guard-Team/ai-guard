@@ -30,8 +30,8 @@ internal sealed class FakeDeviceInspector : IDeviceInspector
 {
     public string Platform => "MacOS";
 
-    public Task<IReadOnlyList<string>> InspectAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<string>>([]);
+    public Task<IReadOnlyList<DeviceIndicator>> InspectAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DeviceIndicator>>([]);
 }
 
 /// <summary>Bellek içi test sunucusunda çalışan ajan.</summary>

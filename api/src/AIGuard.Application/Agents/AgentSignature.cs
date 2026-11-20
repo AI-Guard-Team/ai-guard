@@ -13,7 +13,7 @@ namespace AIGuard.Application.Agents;
 /// <list type="bullet">
 /// <item><c>sessionId</c>: Guid, küçük harf, tireli ("D" biçimi)</item>
 /// <item><c>ts</c>: Unix zamanı, saniye</item>
-/// <item><c>indicatorsJson</c>: gösterge dizisinin System.Text.Json varsayılan ayarlarıyla sıkışık JSON'u (ör. <c>["VM_DETECTED"]</c>, boşsa <c>[]</c>)</item>
+/// <item><c>indicatorsJson</c>: gösterge dizisinin System.Text.Json varsayılan ayarlarıyla sıkışık JSON'u (<see cref="AgentIndicator"/> nesneleri, ör. <c>[{"type":"VM_DETECTED","name":"VirtualBox","detail":"wmi:model"}]</c>, boşsa <c>[]</c>)</item>
 /// </list>
 /// Ajandaki <c>SignalSigner</c> aynı biçimi üretiyor; iki taraftaki <c>Known_answer</c> testi aynı
 /// sabit örnekte aynı imzayı bekliyor. Biçim değişirse ikisi birlikte değiştirilmeli.
@@ -28,17 +28,17 @@ public static class AgentSignature
     /// <summary>Veritabanına yazılan özet (K-08): veritabanı okunsa bile anahtar elde edilemiyor.</summary>
     public static string HashKey(byte[] key) => Convert.ToHexString(SHA256.HashData(key));
 
-    public static string CanonicalMessage(Guid sessionId, long ts, string nonce, IReadOnlyList<string> indicators) =>
+    public static string CanonicalMessage(Guid sessionId, long ts, string nonce, IReadOnlyList<AgentIndicator> indicators) =>
         string.Join('|',
             sessionId.ToString("D"),
             ts.ToString(CultureInfo.InvariantCulture),
             nonce,
             JsonSerializer.Serialize(indicators));
 
-    public static string Sign(byte[] key, Guid sessionId, long ts, string nonce, IReadOnlyList<string> indicators) =>
+    public static string Sign(byte[] key, Guid sessionId, long ts, string nonce, IReadOnlyList<AgentIndicator> indicators) =>
         Convert.ToBase64String(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(CanonicalMessage(sessionId, ts, nonce, indicators))));
 
-    public static bool Verify(byte[] key, Guid sessionId, long ts, string nonce, IReadOnlyList<string> indicators, string? signature)
+    public static bool Verify(byte[] key, Guid sessionId, long ts, string nonce, IReadOnlyList<AgentIndicator> indicators, string? signature)
     {
         Span<byte> received = stackalloc byte[HMACSHA256.HashSizeInBytes];
         if (signature is null || !Convert.TryFromBase64String(signature, received, out var written)

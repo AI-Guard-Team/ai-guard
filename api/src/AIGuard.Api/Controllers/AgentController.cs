@@ -40,13 +40,13 @@ public sealed class AgentController(AgentPairingService pairing, AgentSignalServ
             : Problem(statusCode: StatusCodes.Status400BadRequest, title: "Eşleştirme kodu geçersiz veya süresi dolmuş.");
     }
 
-    /// <summary>İmzalı ajan sinyali (Y2): <c>{ sessionId, ts, nonce, indicators[], sig }</c>.</summary>
+    /// <summary>İmzalı ajan sinyali (Y2): <c>{ sessionId, ts, nonce, indicators[{ type, name, detail }], sig }</c>.</summary>
     /// <remarks>
     /// 202: kabul · 400: bozuk gövde · 401: imza/zaman/tekrar ya da anahtar yok · 404: eşleşme yok ·
     /// 410: oturum bitti, ajan göndermeyi bırakmalı. Red nedeni ajana ayrılmıyor; olay ayrıntısında.
     /// </remarks>
     [HttpPost("signal")]
-    [RequestSizeLimit(4096)] // en fazla 32 kısa gösterge
+    [RequestSizeLimit(8192)] // en fazla 32 gösterge { type, name, detail } (Y3)
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -26,7 +26,7 @@ public class AgentSignalApiTests(PostgresFixture fx) : IClassFixture<PostgresFix
         return (session.Id, Convert.FromBase64String(body.SessionKey));
     }
 
-    private static object Signal(Guid sessionId, byte[] key, string[]? indicators = null)
+    private static object Signal(Guid sessionId, byte[] key, AgentIndicator[]? indicators = null)
     {
         indicators ??= [];
         var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -43,6 +43,33 @@ public class AgentSignalApiTests(PostgresFixture fx) : IClassFixture<PostgresFix
         var response = await Api.Anonymous().PostAsJsonAsync("/api/agent/signal", Signal(sessionId, key));
 
         Assert.Equal(32, key.Length);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task Signal_with_indicators_survives_the_http_round_trip()
+    {
+        // Gövdedeki göstergeler sunucuda yeniden JSON'a çevrilip imzalanan metin kuruluyor; alan adları,
+        // boş ayrıntı ve Türkçe karakterler bu dönüşümde değişirse imza tutmaz (Y3).
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var (sessionId, key) = await PairAsync();
+        AgentIndicator[] indicators =
+        [
+            new("FORBIDDEN_APP", "Uzak Masaüstü oturumu", "gelen bağlantı"),
+            new("HYPERVISOR_INFO", "Hipervizör"),
+        ];
+        var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var nonce = PairedAgent.NewNonce();
+        var sig = AgentSignature.Sign(key, sessionId, ts, nonce, indicators);
+        var body = $$"""
+            {"sessionId":"{{sessionId}}","ts":{{ts}},"nonce":"{{nonce}}","sig":"{{sig}}",
+             "indicators":[{"type":"FORBIDDEN_APP","name":"Uzak Masaüstü oturumu","detail":"gelen bağlantı"},
+                           {"type":"HYPERVISOR_INFO","name":"Hipervizör"}]}
+            """;
+
+        var response = await Api.Anonymous().PostAsync("/api/agent/signal",
+            new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
 

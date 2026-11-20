@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (Y2)*
+*Son güncelleme: 20 Kasım 2026 (Y3)*
 
 ---
 
@@ -34,6 +34,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Kimlik doğrulama | 15 dk JWT + tek kullanımlık yenileme belirteci; **her uç varsayılan olarak giriş istiyor**, açık uçlar `[AllowAnonymous]` (K-20) |
 | Oturum uçları | Aday yalnızca kendi oturumuna erişir (`SessionAccessService.IsCandidateOfAsync`); başkasının oturumuna 404 (K-20) |
 | Ajan sinyali | HMAC-SHA256 imzalı, ±30 sn, tek kullanımlık nonce; anahtar API belleğinde, veritabanında özeti (K-21) |
+| Cihaz göstergeleri | `{ type, name, detail }`, yalnızca eşleşenler; ilk görüldüğünde olay; hipervizör yalnızca bilgi (K-22) |
 
 ---
 
@@ -396,7 +397,7 @@ FR-11: sınavı açan tarayıcı ile güvenlik ajanının aynı bilgisayarda ça
 - Yalnızca JSON gövde kabul ediliyor. Böylece tarayıcı her istekten önce ön kontrol (preflight) yapıyor.
 - Ön kontrol yanıtında `Access-Control-Allow-Private-Network: true` başlığı var (Chrome'un yerel ağ erişimi kuralı). Tarayıcı denemeleri: `docs/tarayici-deneme-notlari.md`.
 
-**Ajan projesi:** Ortak kod `AIGuard.Agent.Core`'da. `AIGuard.Agent.Windows` ve `AIGuard.Agent.MacOS` yalnızca giriş noktası ve kendi `IDeviceInspector` uygulamasını içeriyor; cihaz incelemesi Y3'te.
+**Ajan projesi:** Ortak kod `AIGuard.Agent.Core`'da. `AIGuard.Agent.Windows` ve `AIGuard.Agent.MacOS` yalnızca giriş noktası ve kendi `IDeviceInspector` uygulamasını içeriyor. Windows cihaz incelemesi Y3'te yapıldı (K-22).
 
 **Yetki (E2'de yapıldı):** Kod üreten uç yalnızca `Candidate` rolüne ve oturumun sahibine açık; `/api/agent/pair` `[AllowAnonymous]`, kanıt kodun kendisi (K-20).
 
@@ -459,7 +460,7 @@ FR-21: ajan sinyalleri sahte üretilememeli ve tekrar oynatılamamalı. Akış (
 
 1. Eşleşmede (`POST /api/agent/pair`) sunucu 32 baytlık rastgele oturum anahtarı üretiyor ve yanıtta (`sessionKey`, Base64) TLS üzerinden ajana veriyor. Yeniden eşleşmede yeni anahtar üretiliyor, eskisi geçersiz.
 2. Ajan anahtarı yalnızca bellekte tutuyor ve `Agent:SignalIntervalSeconds` (varsayılan 5 sn) aralıkla imzalı sinyal gönderiyor: `POST /api/agent/signal { sessionId, ts, nonce, indicators[], sig }`.
-3. `sig = Base64(HMAC-SHA256(anahtar, "{sessionId}|{ts}|{nonce}|{indicatorsJson}"))`. `sessionId` küçük harf tireli Guid, `ts` Unix saniye, `indicatorsJson` System.Text.Json varsayılanıyla sıkışık dizi (`[]`, `["VM_DETECTED"]`). Biçim iki projede ayrı yazıldığı için (`Application/Agents/AgentSignature`, `Agent.Core/Signals/SignalSigner`) iki taraftaki `Known_answer` testi aynı sabit örnekte aynı imzayı bekliyor.
+3. `sig = Base64(HMAC-SHA256(anahtar, "{sessionId}|{ts}|{nonce}|{indicatorsJson}"))`. `sessionId` küçük harf tireli Guid, `ts` Unix saniye, `indicatorsJson` gösterge nesnelerinin System.Text.Json varsayılanıyla sıkışık dizisi (`[]`, `[{"type":"VM_DETECTED","name":"VirtualBox","detail":"wmi"}]`; Y3, K-22). Biçim iki projede ayrı yazıldığı için (`Application/Agents/AgentSignature`, `Agent.Core/Signals/SignalSigner`) iki taraftaki `Known_answer` testi aynı sabit örnekte aynı imzayı bekliyor.
 
 | Kural | Gerekçe |
 |---|---|
@@ -471,10 +472,10 @@ FR-21: ajan sinyalleri sahte üretilememeli ve tekrar oynatılamamalı. Akış (
 | Her sinyal `AgentSignal` olarak saklanıyor, geçersizler dahil; `SignatureValid` yalnızca kabul edilenlerde true | Gecikmiş sinyalin imzası doğru olsa da kabul edilmiyor. Tekrar gönderilen sinyal ikinci kez saklanamıyor (benzersiz indeks), yalnızca olay yazılıyor |
 | Anahtar bellekte yoksa (API yeniden başladı) sinyal 401, olay yazılmıyor | Ajan suçsuz; sinyaller doğrulanamadığı için 30 sn sonra `AGENT_SIGNAL_LOST` yine üretiliyor |
 | Geçerli sinyal `LastSignalAt`'i sunucu saatiyle güncelliyor | 30 sn kuralı ajanın saatine bağlı olmasın |
-| İlk geçerli ve göstergesiz sinyalde `AgentPairing → IdentityVerification` | UC-08 adım 5. Durum makinesi (E4) gelince bu geçiş oraya taşınmalı. Gösterge varsa geçiş yok; gerekçeyle devam Y4'te |
+| İlk geçerli ve göstergesiz sinyalde `AgentPairing → IdentityVerification` (Y3: yalnızca `HYPERVISOR_INFO` varsa da) | UC-08 adım 5. Durum makinesi (E4) gelince bu geçiş oraya taşınmalı. Gösterge varsa geçiş yok; gerekçeyle devam Y4'te |
 | Oturum bitince (`Completed`, `Cancelled`, `Decided`) anahtar bellekten siliniyor, özet boşaltılıyor; sinyal 410 alıyor ve ajan anahtarı unutup göndermeyi bırakıyor | FR-21 |
 | 30 sn sinyal yoksa (eşleşmeden ya da son geçerli sinyalden beri) `AGENT_SIGNAL_LOST`; her kesinti için tek olay, başlangıcı son sinyalin anı | Kart. Her denetimde yeni olay yazılsaydı skor kesinti süresince durmadan artardı |
-| `/api/agent/signal` `[AllowAnonymous]`; kanıt HMAC imzası, gövde en fazla 4 KB, en fazla 32 gösterge | Ajanın JWT'si yok (K-20) |
+| `/api/agent/signal` `[AllowAnonymous]`; kanıt HMAC imzası, gövde en fazla 8 KB (Y3'te 4 KB'tan çıktı), en fazla 32 gösterge | Ajanın JWT'si yok (K-20) |
 | Anahtar, imza ve kod loglara yazılmıyor | Kart |
 
 **Zamanlayıcı:** `Api/Agents/AgentSignalWatchdog` her 5 sn'de `AgentSignalMonitor.RunOnceAsync`'i çalıştırıyor: biten oturumların anahtarlarını siliyor, sessiz oturumlara `AGENT_SIGNAL_LOST` yazıyor. Mantık `Application`'da; testler saati ileri alarak bekleme yapmadan sınıyor.
@@ -482,6 +483,34 @@ FR-21: ajan sinyalleri sahte üretilememeli ve tekrar oynatılamamalı. Akış (
 **E4'e not:** Oturumu bitiren kod `AgentSignalService.RevokeAsync(sessionId)` çağırırsa anahtar hemen geçersiz oluyor; çağrılmazsa zamanlayıcı en geç 5 sn içinde yapıyor. `AgentPairing → IdentityVerification` geçişi durum makinesi gelince oraya taşınmalı.
 
 **Sınırlılıklar:** API yeniden başlarsa bellekteki anahtarlar kaybolur, o oturumlar `AGENT_SIGNAL_LOST` alır (kart). Anahtarlar tek süreçte tutulduğu için API birden fazla örnekle çalıştırılırsa anahtar paylaşılmaz (S-17).
+
+---
+
+## K-22 · Cihaz göstergeleri (Y3)
+
+FR-18, FR-19, UC-08 4a/4b. Ajan sanal makine, genel hipervizör ve yasaklı yazılım göstergelerini imzalı sinyalin `indicators` alanında gönderiyor; olayları API üretiyor (K-16).
+
+**Biçim.** `indicators: [{ "type": "...", "name": "...", "detail": "..." }]`. `type` yalnızca `VM_DETECTED`, `HYPERVISOR_INFO` veya `FORBIDDEN_APP` olabilir; `name` en fazla 64, `detail` en fazla 128 karakter. Başka bir tür ya da eksik ad gelirse sinyal bozuk sayılıyor (400). İmzalanan metindeki `indicatorsJson` bu nesnelerin JSON'u (K-21 madde 3). Sunucuda `Application/Agents/AgentIndicator`, ajanda `Agent.Core/Platform/DeviceIndicator`; alan adları `JsonPropertyName` ile sabit.
+
+| Kural | Gerekçe |
+|---|---|
+| Ajan yalnızca eşleşen göstergeleri gönderiyor; süreç adları ajanın dışına çıkmıyor, loga da yazılmıyor | KVKK, FR-19 |
+| Gösterge yalnızca ilk görüldüğünde ve kaybolup yeniden göründüğünde olay oluyor; karşılaştırma önceki geçerli sinyalle, tür + ad üzerinden | S-11. Ajan 5 sn'de bir sinyal gönderdiği için her sinyalde olay yazılsaydı skor durmadan artardı. Uygulama kapatılıp yeniden açılırsa yeni olay |
+| Olay ayrıntısı `{"name": "...", "detail": "..."}` | Değerlendirici neyin, nereden bulunduğunu görsün |
+| `HYPERVISOR_INFO` tek başına oturumu bekletmiyor: başka gösterge yoksa `AgentPairing → IdentityVerification` | UC-08 4b. `riskconfig.json`'da ağırlık 0,5 ve `MaxTotal: 1`; oturumu riskli yapamıyor |
+| VirtualBox ve VMware için yalnızca **konuk** izleri: WMI (`Win32_ComputerSystem`), BIOS (`Win32_BIOS`), konuk eklentisi kayıt anahtarı, konuk sürücüleri/servisleri | Bilgisayarda VirtualBox ya da VMware Workstation **kurulu olması** sanal makinenin içinde olunduğunu göstermez; ana bilgisayar kurulumunun anahtarları (`SOFTWARE\Oracle\VirtualBox`, `VBoxSup`, `vmx86` vb.) aranmıyor |
+| Sanal makine bulunduysa `HYPERVISOR_INFO` ayrıca gönderilmiyor | Sanal makinenin içinde hipervizör zaten var; aynı şeyin iki kez bildirilmesi olur |
+| Genel hipervizör `Win32_ComputerSystem.HypervisorPresent` ile; ayrıntıda bulunan bileşenler (`vmcompute` → Hyper-V, `WslService`/`LxssManager` → WSL, `com.docker.service` → Docker Desktop), hiçbiri yoksa "VBS ya da başka bir Windows bileşeni" | Kart: Hyper-V, WSL2, VBS, Docker |
+| Uzak Masaüstü iki ayrı gösterge: `mstsc.exe` listede ("Uzak Masaüstü bağlantısı", aday başka bilgisayara bağlanıyor); dışarıdan bağlanılması `GetSystemMetrics(SM_REMOTESESSION)` ile ("Uzak Masaüstü oturumu") | Kart: mstsc adayın bilgisayarına bağlanılmasını göstermez. Ortak olay listesinde ayrı tür olmadığı için ikisi de `FORBIDDEN_APP` |
+| Yasaklı yazılım listesi `forbidden-apps.json`, ajanın yanında (`Agent:ForbiddenAppsPath`); dosya yoksa ya da bozuksa ajan açılmıyor | Kart: liste yapılandırma dosyasında. Liste okunamadığında tespitin sessizce kapanması yerine ajanın açılmaması |
+| `forbidden-apps.json` API container'ına bağlanmıyor | API bu dosyayı kullanmıyor; E1b'de bırakılan "compose'a eklenecek" notu kaldırıldı |
+| Denetim sıklığı: sanal makine ve hipervizör bir kez, süreç listesi `Agent:ProcessScanIntervalSeconds` aralıkla (varsayılan 15 sn), uzak masaüstü oturumu her sinyalde | GAB 3.3.3: ortalama işlemci kullanımı %5'in altında. Ölçüm: tek çekirdeğe göre %1,1 (`docs/y3-windows-deneme-notlari.md`) |
+| Bütün denetimler kullanıcı modunda | Kart: yönetici izni istenmiyor |
+| Gövde sınırı 4 KB'tan 8 KB'a çıktı | Gösterge artık nesne; 32 gösterge 4 KB'a sığmıyor |
+
+**Y4'e not:** Göstergeli oturumda (`VM_DETECTED` veya `FORBIDDEN_APP`) oturum `AgentPairing`'de bekliyor. Gerekçeyle devam ve `SessionFlags.Indicated` Y4'te.
+
+**Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil. macOS göstergeleri bu kartta yok.
 
 ---
 
@@ -528,7 +557,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-8 | `agent_signals` hızlı büyüyor; kullanıcı silme talebi | Ayşe (A5) | Saklama görevine eklenmesi; kişisel alanların anonimleştirilmesi |
 | S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Ayşe | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
-| S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
+| S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | **Çözüldü (Y3):** gösterge yalnızca ilk görüldüğünde ve kaybolup yeniden göründüğünde olay oluyor (K-22) |
 | S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Yağmur | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |
 | S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | **Çözüldü (Y2):** anahtar eşleşmede üretilip yanıtta veriliyor; veritabanında özeti (K-21) |

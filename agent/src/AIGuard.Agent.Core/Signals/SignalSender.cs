@@ -35,7 +35,7 @@ internal sealed class SignalSender(
             return null;
         }
 
-        IReadOnlyList<string> indicators;
+        IReadOnlyList<DeviceIndicator> indicators;
         try
         {
             indicators = await inspector.InspectAsync(ct);
