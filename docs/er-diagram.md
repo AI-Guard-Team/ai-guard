@@ -1,6 +1,6 @@
 # ER diyagramı
 
-Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261119204838_GabUyumu`.
+Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261120153203_E4_SessionActivity`.
 
 Model değiştiğinde diyagram da aynı PR'da güncellenmeli. Tablo ve sütun adları veritabanındaki snake_case adlar; kararların gerekçeleri [MIMARI-KARARLAR.md](MIMARI-KARARLAR.md) dosyasında.
 
@@ -58,6 +58,7 @@ erDiagram
         timestamptz expires_at
         timestamptz revoked_at
         uuid replaced_by_token_id
+        xid xmin "iyimser kilit; aynı belirteç iki kez yenilenemez"
     }
 
     exams {
@@ -99,6 +100,8 @@ erDiagram
         timestamptz started_at
         timestamptz ends_at "sunucu saati"
         timestamptz ended_at
+        timestamptz last_seen_at "adaydan son istek; 30 sn yoksa Disconnected"
+        timestamptz disconnected_at "kesinti anı; dönüşte CONNECTION_LOST süresi"
         inet initial_ip_address
         float risk_score
         int verification_attempts
