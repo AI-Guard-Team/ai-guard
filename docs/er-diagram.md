@@ -191,7 +191,7 @@ erDiagram
         varchar nonce
         timestamptz received_at
         bool signature_valid
-        jsonb indicators "yalnızca eşleşenler"
+        jsonb indicators "[{type,name,detail}], yalnızca eşleşenler"
     }
 
     risk_settings {

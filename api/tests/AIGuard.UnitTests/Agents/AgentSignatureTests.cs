@@ -12,13 +12,21 @@ public class AgentSignatureTests
     private const long Ts = 1795000000;
     private const string Nonce = "AAAAAAAAAAAAAAAAAAAAAA";
 
+    private static readonly AgentIndicator[] Sample =
+    [
+        new("VM_DETECTED", "VirtualBox", "wmi:model"),
+        new("FORBIDDEN_APP", "AnyDesk"),
+    ];
+
+    private static readonly AgentIndicator[] Vm = [new("VM_DETECTED", "VirtualBox", "wmi:model")];
+
     [Fact]
     public void Known_answer_with_indicators()
     {
         Assert.Equal(
-            """11111111-2222-3333-4444-555555555555|1795000000|AAAAAAAAAAAAAAAAAAAAAA|["VM_DETECTED","ANYDESK"]""",
-            AgentSignature.CanonicalMessage(SessionId, Ts, Nonce, ["VM_DETECTED", "ANYDESK"]));
-        Assert.Equal("J1SHo9DqrRaH0vnJ79Vwnegs1h17ovczMFhMHML4ZNA=", AgentSignature.Sign(Key, SessionId, Ts, Nonce, ["VM_DETECTED", "ANYDESK"]));
+            """11111111-2222-3333-4444-555555555555|1795000000|AAAAAAAAAAAAAAAAAAAAAA|[{"type":"VM_DETECTED","name":"VirtualBox","detail":"wmi:model"},{"type":"FORBIDDEN_APP","name":"AnyDesk","detail":null}]""",
+            AgentSignature.CanonicalMessage(SessionId, Ts, Nonce, Sample));
+        Assert.Equal("Uu1Z9ZVrLmt7t5lQIIkbxZSHpfqRXmh2aJy3Igh88DU=", AgentSignature.Sign(Key, SessionId, Ts, Nonce, Sample));
     }
 
     [Fact]
@@ -44,9 +52,9 @@ public class AgentSignatureTests
     [Fact]
     public void Valid_signature_verifies()
     {
-        var sig = AgentSignature.Sign(Key, SessionId, Ts, Nonce, ["VM_DETECTED"]);
+        var sig = AgentSignature.Sign(Key, SessionId, Ts, Nonce, Vm);
 
-        Assert.True(AgentSignature.Verify(Key, SessionId, Ts, Nonce, ["VM_DETECTED"], sig));
+        Assert.True(AgentSignature.Verify(Key, SessionId, Ts, Nonce, Vm, sig));
     }
 
     public static TheoryData<string> TamperedFields => new() { "session", "ts", "nonce", "indicators", "key" };
@@ -55,7 +63,7 @@ public class AgentSignatureTests
     [MemberData(nameof(TamperedFields))]
     public void Changing_any_signed_field_breaks_the_signature(string field)
     {
-        var sig = AgentSignature.Sign(Key, SessionId, Ts, Nonce, ["VM_DETECTED"]);
+        var sig = AgentSignature.Sign(Key, SessionId, Ts, Nonce, Vm);
         var key = field == "key" ? AgentSignature.GenerateKey() : Key;
 
         var ok = AgentSignature.Verify(
@@ -63,7 +71,7 @@ public class AgentSignatureTests
             field == "session" ? Guid.NewGuid() : SessionId,
             field == "ts" ? Ts + 1 : Ts,
             field == "nonce" ? "BBBBBBBBBBBBBBBBBBBBBB" : Nonce,
-            field == "indicators" ? [] : ["VM_DETECTED"],
+            field == "indicators" ? [] : Vm,
             sig);
 
         Assert.False(ok);

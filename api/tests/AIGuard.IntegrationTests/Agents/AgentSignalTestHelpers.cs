@@ -21,13 +21,19 @@ internal sealed class PairedAgent
     public AgentSignalMonitor Monitor(AppDbContext db) => new(db, Keys, Service(db, Clock), Clock);
 
     /// <summary>Ajanın göndereceği gibi imzalı sinyal; alanlar testte bozulabilsin diye ayrı ayrı verilebiliyor.</summary>
-    public AgentSignalRequest Signal(string[]? indicators = null, long? ts = null, string? nonce = null, byte[]? key = null)
+    public AgentSignalRequest Signal(AgentIndicator[]? indicators = null, long? ts = null, string? nonce = null, byte[]? key = null)
     {
         indicators ??= [];
         var t = ts ?? Clock.GetUtcNow().ToUnixTimeSeconds();
         var n = nonce ?? NewNonce();
         return new AgentSignalRequest(SessionId, t, n, indicators, AgentSignature.Sign(key ?? Key, SessionId, t, n, indicators));
     }
+
+    public static AgentIndicator Vm(string name = "VirtualBox") => new("VM_DETECTED", name, "wmi:model");
+
+    public static AgentIndicator App(string name = "AnyDesk") => new("FORBIDDEN_APP", name, $"{name}.exe");
+
+    public static AgentIndicator Hypervisor() => new("HYPERVISOR_INFO", "Hipervizör", "WSL");
 
     public static string NewNonce() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(16)).TrimEnd('=').Replace('+', '-').Replace('/', '_');

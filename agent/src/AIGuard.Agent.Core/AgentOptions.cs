@@ -26,6 +26,19 @@ public sealed class AgentOptions
     /// birkaç ağ aksaklığını tolere edecek kadar kısa olmalı.
     /// </summary>
     public int SignalIntervalSeconds { get; set; } = 5;
+
+    /// <summary>
+    /// Çalışan süreçlerin yasaklı yazılım listesiyle karşılaştırılma aralığı, saniye (Y3). Süreç taraması
+    /// her sinyalde değil bu aralıkla yapılıyor; ajanın işlemci kullanımı düşük kalsın (GAB 3.3.3).
+    /// </summary>
+    public int ProcessScanIntervalSeconds { get; set; } = 15;
+
+    /// <summary>Yasaklı yazılım listesi (Y3). Göreli yol ajanın kurulu olduğu klasöre göre.</summary>
+    public string ForbiddenAppsPath { get; set; } = "forbidden-apps.json";
+
+    /// <summary><see cref="ForbiddenAppsPath"/>'in tam yolu.</summary>
+    public string ResolveForbiddenAppsPath() =>
+        Path.IsPathRooted(ForbiddenAppsPath) ? ForbiddenAppsPath : Path.Combine(AppContext.BaseDirectory, ForbiddenAppsPath);
 }
 
 internal sealed class AgentOptionsValidator : IValidateOptions<AgentOptions>
@@ -55,6 +68,16 @@ internal sealed class AgentOptionsValidator : IValidateOptions<AgentOptions>
         if (options.SignalIntervalSeconds is < 1 or > 15)
         {
             errors.Add("Agent:SignalIntervalSeconds 1–15 saniye olmalı (sunucu 30 sn sinyal almazsa kesildi sayıyor).");
+        }
+
+        if (options.ProcessScanIntervalSeconds is < 1 or > 300)
+        {
+            errors.Add("Agent:ProcessScanIntervalSeconds 1–300 saniye olmalı.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ForbiddenAppsPath))
+        {
+            errors.Add("Agent:ForbiddenAppsPath boş olamaz.");
         }
 
         if (options.AllowedOrigins.Count == 0)

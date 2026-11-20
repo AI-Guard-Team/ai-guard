@@ -1,0 +1,21 @@
+// Yasaklı yazılım listesi (Y3, FR-19). Ajan çalışan süreçlerin adlarını bu listeyle karşılaştırır ve
+// sunucuya yalnızca eşleşenleri FORBIDDEN_APP olarak gönderir; tam süreç listesi gönderilmez.
+//
+// - name: değerlendiricinin göreceği ad (en fazla 64 karakter)
+// - processes: süreç adları; büyük/küçük harf ve ".exe" farkı yok sayılır
+//
+// Uzak Masaüstü: mstsc.exe yalnızca adayın BAŞKA bir bilgisayara bağlandığını gösterir. Adayın
+// bilgisayarına dışarıdan bağlanılması süreç listesinde görünmez; ajan onu ayrıca denetler
+// (GetSystemMetrics(SM_REMOTESESSION)) ve "Uzak Masaüstü oturumu" olarak bildirir.
+{
+  "apps": [
+    { "name": "AnyDesk", "processes": [ "AnyDesk.exe" ] },
+    { "name": "TeamViewer", "processes": [ "TeamViewer.exe" ] },
+    { "name": "Uzak Masaüstü bağlantısı (mstsc)", "processes": [ "mstsc.exe" ] },
+    { "name": "OBS Studio (sanal kamera)", "processes": [ "obs64.exe", "obs32.exe", "obs.exe" ] },
+    { "name": "Zoom", "processes": [ "Zoom.exe" ] },
+    // Yeni Teams'in süreç adı farklı (ms-teams.exe); iki ad da listede.
+    { "name": "Microsoft Teams", "processes": [ "Teams.exe", "ms-teams.exe" ] },
+    { "name": "Discord", "processes": [ "Discord.exe" ] }
+  ]
+}

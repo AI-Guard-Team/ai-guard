@@ -9,9 +9,9 @@ namespace AIGuard.Application.Agents;
 
 /// <summary>POST /api/agent/signal gövdesi (kart Y2).</summary>
 /// <param name="Ts">Ajanın imzaladığı an, Unix saniye.</param>
-/// <param name="Indicators">Eşleşen göstergeler (Y3). Tam süreç listesi değil.</param>
+/// <param name="Indicators">Eşleşen göstergeler (Y3, <see cref="AgentIndicator"/>). Tam süreç listesi değil.</param>
 /// <param name="Sig">HMAC-SHA256 imzası, Base64 (<see cref="AgentSignature"/>).</param>
-public sealed record AgentSignalRequest(Guid SessionId, long Ts, string? Nonce, IReadOnlyList<string>? Indicators, string? Sig);
+public sealed record AgentSignalRequest(Guid SessionId, long Ts, string? Nonce, IReadOnlyList<AgentIndicator>? Indicators, string? Sig);
 
 public enum AgentSignalStatus
 {
@@ -53,7 +53,6 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
     public static readonly TimeSpan MaxClockSkew = TimeSpan.FromSeconds(30);
 
     public const int MaxIndicators = 32;
-    public const int MaxIndicatorLength = 64;
 
     private static readonly SessionState[] ClosedStates =
         [SessionState.Completed, SessionState.Cancelled, SessionState.Decided];
@@ -106,6 +105,15 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
                 ? AgentSignalRejection.Replay
                 : null);
 
+        // Karşılaştırma için önceki geçerli sinyalin göstergeleri; yeni sinyal eklenmeden önce okunuyor.
+        var previousIndicators = rejection is null
+            ? AgentIndicator.ParseStored(await db.AgentSignals
+                .Where(s => s.AgentPairingId == pairing.Id && s.SignatureValid)
+                .OrderByDescending(s => s.ReceivedAt)
+                .Select(s => s.Indicators)
+                .FirstOrDefaultAsync(ct))
+            : [];
+
         // Tekrar gönderilen sinyal ikinci kez saklanamıyor: (eşleşme, nonce) benzersiz indeksi (A1).
         // Diğer bütün sinyaller, geçersiz olanlar dahil, AgentSignal olarak kaydediliyor (kart).
         if (rejection != AgentSignalRejection.Replay)
@@ -137,12 +145,23 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
 
         // UC-08 adım 4–5: ilk geçerli sinyalde gösterge yoksa kimlik doğrulamaya geçiliyor. Gösterge
         // varsa adayın gerekçeyle devam etmesi Y4'te. Durum makinesi (E4) gelince geçiş oraya taşınmalı.
-        if (tracked.ExamSession.State == SessionState.AgentPairing && indicators.Count == 0)
+        // Genel hipervizör tek başına oturumu göstergeli yapmıyor (UC-08 4b, Y3).
+        if (tracked.ExamSession.State == SessionState.AgentPairing && indicators.All(i => i.IsInformational))
         {
             tracked.ExamSession.State = SessionState.IdentityVerification;
         }
 
         await db.SaveChangesAsync(ct);
+
+        // Gösterge yalnızca ilk görüldüğünde ve kaybolup yeniden göründüğünde olay oluyor (S-11, K-22).
+        // Ajan aynı göstergeyi her 5 sn'de bildirdiği için her sinyalde olay yazılsaydı skor durmadan artardı.
+        foreach (var indicator in NewIndicators(indicators, previousIndicators))
+        {
+            await events.RecordSystemEventAsync(request.SessionId, new SystemEvent(
+                AgentIndicator.AllowedTypes[indicator.Type!], now,
+                Payload: JsonSerializer.Serialize(new { name = indicator.Name, detail = indicator.Detail })), ct);
+        }
+
         await transaction.CommitAsync(ct);
         return new(AgentSignalStatus.Accepted);
     }
@@ -162,7 +181,15 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
         }
     }
 
-    private static AgentSignalRejection? Check(byte[] key, AgentSignalRequest r, IReadOnlyList<string> indicators, DateTimeOffset now)
+    /// <summary>Önceki geçerli sinyalde olmayan göstergeler (tür + ad); aynı sinyalde tekrar edenler bir kez.</summary>
+    public static IEnumerable<AgentIndicator> NewIndicators(
+        IReadOnlyList<AgentIndicator> current, IReadOnlyList<AgentIndicator> previous)
+    {
+        var seen = previous.Select(i => i.Key).ToHashSet();
+        return current.Where(i => seen.Add(i.Key));
+    }
+
+    private static AgentSignalRejection? Check(byte[] key, AgentSignalRequest r, IReadOnlyList<AgentIndicator> indicators, DateTimeOffset now)
     {
         // Önce imza: imzası bozuk bir istekteki zaman damgasına güvenilemez.
         if (!AgentSignature.Verify(key, r.SessionId, r.Ts, r.Nonce!, indicators, r.Sig))
@@ -174,7 +201,7 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
         return (now - signedAt).Duration() > MaxClockSkew ? AgentSignalRejection.Stale : null;
     }
 
-    private static bool IsWellFormed(AgentSignalRequest r, IReadOnlyList<string> indicators) =>
+    private static bool IsWellFormed(AgentSignalRequest r, IReadOnlyList<AgentIndicator> indicators) =>
         r.SessionId != Guid.Empty
         // Unix saniye; uç değerler DateTimeOffset'i taşırmasın.
         && r.Ts is > 0 and < 253402300799
@@ -182,5 +209,5 @@ public sealed class AgentSignalService(IAppDbContext db, IAgentKeyStore keys, Ev
         && nonce.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_')
         && !string.IsNullOrEmpty(r.Sig) && r.Sig.Length <= 64
         && indicators.Count <= MaxIndicators
-        && indicators.All(i => i is { Length: > 0 and <= MaxIndicatorLength });
+        && indicators.All(i => i is { IsWellFormed: true });
 }

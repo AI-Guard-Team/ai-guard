@@ -7,14 +7,16 @@ agent/
 ├── AIGuard.Agent.sln
 ├── Directory.Build.props          Ortak ayarlar: net8.0, Nullable, uyarılar = hata
 ├── src/
-│   ├── AIGuard.Agent.Core/        Ortak çekirdek: yerel uç, eşleştirme, (Y2) sinyal ve imza
+│   ├── AIGuard.Agent.Core/        Ortak çekirdek: yerel uç, eşleştirme, sinyal ve imza, yasaklı yazılım listesi
 │   │   ├── AgentHost.cs           Başlangıç: Kestrel yalnızca 127.0.0.1:47321
 │   │   ├── LocalRequestGuard.cs   Host + origin kontrolü, CORS ön kontrolü, Private Network Access
 │   │   ├── Pairing/               POST /pair → sunucuya TLS ile iletim
-│   │   └── Platform/IDeviceInspector.cs   İşletim sistemine özgü inceleme arayüzü
-│   ├── AIGuard.Agent.Windows/     Windows 10/11 giriş noktası + WindowsDeviceInspector (Y3)
-│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (Y3)
+│   │   └── Platform/              IDeviceInspector, DeviceIndicator, ForbiddenAppList
+│   ├── AIGuard.Agent.Windows/     Windows 10/11 (net8.0-windows): WindowsDeviceInspector, MachineDetector,
+│   │                              WindowsSystemProbe (WMI, kayıt defteri, süreçler), forbidden-apps.json (Y3)
+│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (göstergeler henüz yok)
 ├── tests/AIGuard.Agent.Core.Tests/
+├── tests/AIGuard.Agent.Windows.Tests/   Windows kuralları (sahte bilgisayarla) + gerçek WMI/kayıt defteri okuması
 └── tools/pairing-test.html        Tarayıcı denemesi için test sayfası
 ```
 
@@ -33,6 +35,23 @@ Ajan yalnızca loopback'i dinlediği için kod yalnızca aynı bilgisayardaki aj
 - Sunucu 410 dönerse oturum bitmiştir: ajan anahtarı unutur ve göndermeyi bırakır. 401 gönderimi durdurmaz.
 - İmza biçimi sunucudaki `AgentSignature` ile aynı olmalı (`docs/MIMARI-KARARLAR.md` K-21); iki taraftaki `Known_answer` testi bunu kontrol eder.
 
+## Cihaz göstergeleri (Y3, FR-18, FR-19)
+
+Sinyaldeki `indicators` alanı: `[{ "type": "...", "name": "...", "detail": "..." }]`. Yalnızca eşleşen göstergeler gönderilir; süreç listesi ajanın dışına çıkmaz ve loga yazılmaz.
+
+| Tür | Ne zaman | Nasıl |
+|---|---|---|
+| `VM_DETECTED` | Ajan VirtualBox veya VMware sanal makinesinin içinde | WMI (üretici/model), BIOS, konuk eklentisi kayıt anahtarı, konuk sürücüleri. Bilgisayarda VirtualBox/VMware'in yalnızca kurulu olması sayılmaz |
+| `HYPERVISOR_INFO` | Hyper-V, WSL2, VBS veya Docker açık (sanal makine değilse) | `Win32_ComputerSystem.HypervisorPresent`; düşük ağırlıklı bilgi, oturumu tek başına bekletmez |
+| `FORBIDDEN_APP` | `forbidden-apps.json`'daki bir yazılım çalışıyor | Süreç adları listeyle karşılaştırılır (büyük/küçük harf ve `.exe` farkı yok) |
+| `FORBIDDEN_APP` "Uzak Masaüstü oturumu" | Bilgisayara dışarıdan Uzak Masaüstü ile bağlanılmış | `GetSystemMetrics(SM_REMOTESESSION)`; `mstsc.exe` bunu göstermez |
+
+Sanal makine ve hipervizör bir kez, süreç listesi `ProcessScanIntervalSeconds` aralıkla, uzak masaüstü her sinyalde denetlenir. Hepsi kullanıcı modunda; yönetici izni gerekmez. Olayları sunucu üretir: aynı gösterge yalnızca ilk görüldüğünde olay olur (K-22).
+
+**Listeye yazılım eklemek:** `forbidden-apps.json`'a `{ "name": "...", "processes": [ "x.exe" ] }` ekleyip ajanı yeniden başlatmak yeterli; yeniden derleme gerekmez. Dosya bozuksa ajan açılmaz.
+
+Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-deneme-notlari.md)
+
 ## Ayarlar (`appsettings.json`, "Agent" bölümü)
 
 | Ayar | Varsayılan | Açıklama |
@@ -41,6 +60,8 @@ Ajan yalnızca loopback'i dinlediği için kod yalnızca aynı bilgisayardaki aj
 | `AllowedOrigins` | `["http://localhost:5173"]` | Ajana kod gönderebilecek siteler; yalnızca platformun alan adı |
 | `ApiBaseUrl` | `http://localhost:5080` | Sunucu adresi. `https` zorunlu; `http` yalnızca localhost için |
 | `SignalIntervalSeconds` | `5` | İmzalı sinyal aralığı (Y2), 1–15 sn. Sunucu 30 sn sinyal almazsa "sinyal kesildi" yazıyor |
+| `ProcessScanIntervalSeconds` | `15` | Süreç listesinin yasaklı yazılımlarla karşılaştırılma aralığı (Y3), 1–300 sn |
+| `ForbiddenAppsPath` | `forbidden-apps.json` | Yasaklı yazılım listesi (Y3); göreli yol ajanın klasörüne göre |
 
 Ayar hatalıysa ajan açılmaz. Ortam değişkeniyle de verilebilir: `Agent__ApiBaseUrl`, `Agent__AllowedOrigins__0`.
 
@@ -52,6 +73,6 @@ dotnet run --project src/AIGuard.Agent.Windows     # macOS: src/AIGuard.Agent.Ma
 dotnet test
 ```
 
-Bilgisayarda yalnızca .NET 9 SDK kurulu olsa da derlenir (hedef net8.0, .NET 8 çalışma zamanı gerekir). CI Windows üzerinde `dotnet build` ve `dotnet test` çalıştırır.
+Bilgisayarda yalnızca .NET 9 SDK kurulu olsa da derlenir (hedef net8.0, Windows projesi net8.0-windows; .NET 8 çalışma zamanı gerekir). CI Windows üzerinde `dotnet build` ve `dotnet test` çalıştırır; Windows testleri de orada koşar.
 
 Tarayıcı denemesi ve sonuçlar: [docs/tarayici-deneme-notlari.md](../docs/tarayici-deneme-notlari.md)

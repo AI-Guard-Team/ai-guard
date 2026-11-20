@@ -5,8 +5,9 @@ namespace AIGuard.Agent.Core.Platform;
 /// AIGuard.Agent.Windows ve AIGuard.Agent.MacOS projelerinde.
 /// </summary>
 /// <remarks>
-/// Y1'de yalnızca arayüz ve boş uygulamalar var. Sanal makine, uzak masaüstü, yasaklı uygulama
-/// gibi göstergeler Y3'te eklenecek; dönüş tipi o kartta netleşebilir.
+/// <see cref="Signals.SignalSender"/> her sinyalden önce çağırıyor. Uygulama pahalı denetimleri
+/// (WMI, süreç taraması) kendi aralığıyla yapmalı; ajanın ortalama işlemci kullanımı %5'in altında
+/// kalmalı (GAB 3.3.3).
 /// </remarks>
 public interface IDeviceInspector
 {
@@ -16,6 +17,6 @@ public interface IDeviceInspector
     /// </summary>
     string Platform { get; }
 
-    /// <summary>Bulunan göstergelerin adları; tam süreç listesi değil (Y3).</summary>
-    Task<IReadOnlyList<string>> InspectAsync(CancellationToken cancellationToken = default);
+    /// <summary>Yalnızca eşleşen göstergeler; tam süreç listesi değil (Y3, FR-19).</summary>
+    Task<IReadOnlyList<DeviceIndicator>> InspectAsync(CancellationToken cancellationToken = default);
 }
