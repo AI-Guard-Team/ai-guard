@@ -74,6 +74,20 @@ describe('apiRequest', () => {
     await expect(apiRequest('/api/x', { auth: false })).rejects.toThrow('Sunucuda bir hata oluştu. Lütfen daha sonra tekrar deneyin.')
   })
 
+  it('FormData gövdesinde Content-Type başlığı yazmaz', async () => {
+    tokenStore.set({ accessToken: 'erisim-1', refreshToken: 'yenileme-1' })
+    const fetchMock = mockFetch(() => jsonResponse(204))
+    const body = new FormData()
+    body.append('photo', new Blob(['a'], { type: 'image/jpeg' }), 'a.jpg')
+
+    await apiRequest('/api/me/photo', { method: 'POST', body })
+
+    const init = fetchMock.mock.calls[0][1]!
+    expect(init.body).toBeInstanceOf(FormData)
+    expect((init.headers as Record<string, string>)['Content-Type']).toBeUndefined()
+    expect(authHeader(init)).toBe('Bearer erisim-1')
+  })
+
   it('ağ hatasında 0 durum kodlu anlaşılır bir hata verir', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
 
