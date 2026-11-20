@@ -12,11 +12,14 @@ namespace AIGuard.Agent.Core.Platform;
 /// </remarks>
 public sealed class ForbiddenAppList
 {
-    public sealed record App(string Name, IReadOnlyList<string> Processes);
+    /// <param name="Type">Bulununca gönderilecek tür: <c>FORBIDDEN_APP</c> (varsayılan) ya da VPN uygulamaları için <c>VPN_PROXY</c> (Y4).</param>
+    public sealed record App(string Name, IReadOnlyList<string> Processes, string Type = DeviceIndicator.ForbiddenApp);
 
     private sealed record FileModel(List<FileApp>? Apps);
 
-    private sealed record FileApp(string? Name, List<string>? Processes);
+    private sealed record FileApp(string? Name, List<string>? Processes, string? Type);
+
+    private static readonly string[] AllowedTypes = [DeviceIndicator.ForbiddenApp, DeviceIndicator.VpnProxy];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -63,7 +66,14 @@ public sealed class ForbiddenAppList
                     $"{source}: her yazılımın adı (en fazla {DeviceIndicator.MaxNameLength} karakter) ve en az bir süreç adı olmalı.");
             }
 
-            apps.Add(new App(name, processes));
+            var type = app.Type?.Trim() ?? DeviceIndicator.ForbiddenApp;
+            if (!AllowedTypes.Contains(type))
+            {
+                throw new InvalidOperationException(
+                    $"{source}: '{name}' için type yalnızca {string.Join(" ya da ", AllowedTypes)} olabilir.");
+            }
+
+            apps.Add(new App(name, processes, type));
         }
 
         if (apps.Count == 0)
@@ -85,7 +95,7 @@ public sealed class ForbiddenAppList
         return Apps
             .Select(app => (app, matched: app.Processes.Where(p => running.Contains(Normalize(p))).ToList()))
             .Where(x => x.matched.Count > 0)
-            .Select(x => new DeviceIndicator(DeviceIndicator.ForbiddenApp, x.app.Name,
+            .Select(x => new DeviceIndicator(x.app.Type, x.app.Name,
                 DeviceIndicator.Truncate(string.Join(", ", x.matched))))
             .ToList();
     }

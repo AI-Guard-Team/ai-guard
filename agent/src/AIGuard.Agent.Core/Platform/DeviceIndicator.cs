@@ -6,7 +6,7 @@ namespace AIGuard.Agent.Core.Platform;
 /// Bulunan tek gösterge (Y3, FR-18, FR-19): sunucuya <c>{ type, name, detail }</c> olarak gidiyor.
 /// Yalnızca eşleşen göstergeler gönderiliyor; tam süreç listesi hiçbir zaman gönderilmiyor (KVKK).
 /// </summary>
-/// <param name="Type">Olay türü (ortak ad): <see cref="VmDetected"/>, <see cref="HypervisorInfo"/> veya <see cref="ForbiddenApp"/>.</param>
+/// <param name="Type">Olay türü (ortak ad): <see cref="VmDetected"/>, <see cref="HypervisorInfo"/>, <see cref="ForbiddenApp"/> veya <see cref="VpnProxy"/> (Y4).</param>
 /// <param name="Name">Ne bulunduğu (ör. "VirtualBox", "AnyDesk"); en fazla 64 karakter.</param>
 /// <param name="Detail">Nereden anlaşıldığı (ör. "wmi:model", "AnyDesk.exe"); en fazla 128 karakter.</param>
 /// <remarks>
@@ -21,6 +21,7 @@ public sealed record DeviceIndicator(
     public const string VmDetected = "VM_DETECTED";
     public const string HypervisorInfo = "HYPERVISOR_INFO";
     public const string ForbiddenApp = "FORBIDDEN_APP";
+    public const string VpnProxy = "VPN_PROXY";
 
     public const int MaxNameLength = 64;
     public const int MaxDetailLength = 128;

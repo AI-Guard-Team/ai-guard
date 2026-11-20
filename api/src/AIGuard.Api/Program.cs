@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using AIGuard.Api;
 using AIGuard.Api.Auth;
 using AIGuard.Application;
+using AIGuard.Application.Events;
 using AIGuard.Application.Risk;
 using AIGuard.Infrastructure;
 using AIGuard.Infrastructure.Persistence;
@@ -13,6 +14,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("riskconfig.json", optional: false, reloadOnChange: false);
 builder.Services.AddOptions<RiskOptions>()
     .Bind(builder.Configuration.GetSection(RiskOptions.SectionName))
+    .ValidateOnStart();
+
+// Bilinen VPN/veri merkezi IP blokları (Y4, FR-23). Bozuk CIDR varsa uygulama açılmıyor.
+builder.Configuration.AddJsonFile("vpn-ip-blocks.json", optional: false, reloadOnChange: false);
+builder.Services.AddOptions<VpnIpBlockOptions>()
+    .Bind(builder.Configuration.GetSection(VpnIpBlockOptions.SectionName))
     .ValidateOnStart();
 
 builder.Services.AddApplication();

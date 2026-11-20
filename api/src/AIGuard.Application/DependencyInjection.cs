@@ -25,9 +25,14 @@ public static class DependencyInjection
         services.AddScoped<EventService>();
         services.AddScoped<SessionIpGuard>();
 
+        // Y4 (FR-23): VPN/veri merkezi IP blokları Api'de vpn-ip-blocks.json'dan bağlanıyor.
+        services.AddSingleton<IValidateOptions<VpnIpBlockOptions>, VpnIpBlockOptionsValidator>();
+        services.AddSingleton<VpnIpBlockList>();
+
         services.AddScoped<AgentPairingService>();
         services.AddScoped<AgentSignalService>();
         services.AddScoped<AgentSignalMonitor>();
+        services.AddScoped<AgentContinueService>();
 
         // E2: kimlik doğrulama, kullanıcı yönetimi ve oturum sahipliği.
         services.AddScoped<AuthService>();

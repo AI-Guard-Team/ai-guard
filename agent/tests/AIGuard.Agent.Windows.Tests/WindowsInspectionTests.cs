@@ -33,6 +33,18 @@ internal sealed class FakeProbe : IWindowsSystemProbe
     }
 
     public bool IsRemoteSession() => RemoteSession;
+
+    public List<NetworkAdapter> Adapters { get; set; } =
+    [
+        new("Wi-Fi", "MediaTek Wi-Fi 6 802.11ax PCIe Adapter", "Wireless80211"),
+        new("vEthernet (WSL (Hyper-V firewall))", "Hyper-V Virtual Ethernet Adapter", "Ethernet"),
+    ];
+
+    public ProxySettings Proxy { get; set; } = new();
+
+    public IReadOnlyList<NetworkAdapter> ActiveNetworkAdapters() => Adapters;
+
+    public ProxySettings ReadProxySettings() => Proxy;
 }
 
 public class MachineDetectorTests
@@ -153,6 +165,9 @@ public class WindowsDeviceInspectorTests
     [InlineData("Teams", "Microsoft Teams")]
     [InlineData("ms-teams", "Microsoft Teams")]
     [InlineData("Discord", "Discord")]
+    [InlineData("openvpn", "OpenVPN")]
+    [InlineData("openvpn-gui", "OpenVPN")]
+    [InlineData("wireguard", "WireGuard")]
     public async Task Every_app_in_the_card_is_detected_with_the_shipped_list(string process, string name)
     {
         var (inspector, probe, _) = Create();
@@ -160,7 +175,8 @@ public class WindowsDeviceInspectorTests
 
         var indicator = Assert.Single(await inspector.InspectAsync());
 
-        Assert.Equal(("FORBIDDEN_APP", name), (indicator.Type, indicator.Name));
+        Assert.Equal(name, indicator.Name);
+        Assert.Equal(name is "OpenVPN" or "WireGuard" ? "VPN_PROXY" : "FORBIDDEN_APP", indicator.Type);
     }
 
     [Fact]
@@ -234,6 +250,91 @@ public class WindowsDeviceInspectorTests
     }
 }
 
+public class NetworkDetectorTests
+{
+    [Fact]
+    public void Ordinary_computer_with_hyper_v_wsl_virtualbox_and_vmware_host_adapters_has_no_vpn()
+    {
+        // Bu bilgisayardaki gerçek bağdaştırıcılar: hiçbiri VPN değil.
+        var probe = new FakeProbe
+        {
+            Adapters =
+            [
+                new("vEthernet (WSL (Hyper-V firewall))", "Hyper-V Virtual Ethernet Adapter", "Ethernet"),
+                new("Ethernet 2", "VirtualBox Host-Only Ethernet Adapter", "Ethernet"),
+                new("VMware Network Adapter VMnet1", "VMware Virtual Ethernet Adapter for VMnet1", "Ethernet"),
+                new("VMware Network Adapter VMnet8", "VMware Virtual Ethernet Adapter for VMnet8", "Ethernet"),
+                new("Wi-Fi", "MediaTek MT7921 Wi-Fi 6 802.11ax PCIe Adapter", "Wireless80211"),
+                new("Bluetooth Ağ Bağlantısı 3", "Bluetooth Device (Personal Area Network) #3", "Ethernet"),
+                new("Teredo", "Teredo Tunneling Pseudo-Interface", "Tunnel"),
+            ],
+        };
+
+        Assert.Empty(NetworkDetector.Detect(probe));
+    }
+
+    [Theory]
+    [InlineData("OpenVPN TAP-Windows6", "TAP-Windows Adapter V9", "Ethernet")]
+    [InlineData("OpenVPN Wintun", "Wintun Userspace Tunnel", "Unknown")]
+    [InlineData("wg-ev", "WireGuard Tunnel", "Unknown")]
+    [InlineData("NordLynx", "NordLynx Tunnel", "Unknown")]
+    [InlineData("CloudflareWARP", "Cloudflare WARP Interface Tunnel", "Unknown")]
+    [InlineData("Okul VPN", "WAN Miniport (IKEv2)", "Ppp")]
+    [InlineData("Ethernet 3", "Cisco AnyConnect Secure Mobility Client Virtual Miniport Adapter for Windows x64", "Ethernet")]
+    public void Active_vpn_tun_tap_adapters_are_detected(string name, string description, string kind)
+    {
+        var probe = new FakeProbe();
+        probe.Adapters.Add(new NetworkAdapter(name, description, kind));
+
+        var indicator = Assert.Single(NetworkDetector.Detect(probe));
+
+        Assert.Equal(("VPN_PROXY", "VPN bağdaştırıcısı"), (indicator.Type, indicator.Name));
+        Assert.Contains(description, indicator.Detail);
+    }
+
+    [Fact]
+    public void Several_vpn_adapters_are_one_indicator()
+    {
+        var probe = new FakeProbe();
+        probe.Adapters.Add(new("a", "TAP-Windows Adapter V9", "Ethernet"));
+        probe.Adapters.Add(new("b", "WireGuard Tunnel", "Unknown"));
+
+        Assert.Single(NetworkDetector.Detect(probe));
+    }
+
+    [Fact]
+    public void System_proxy_settings_are_detected_but_automatic_detection_is_not()
+    {
+        var none = new FakeProbe { Proxy = new ProxySettings() }; // "Ayarları otomatik algıla" açık olsa da gösterge değil
+        var all = new FakeProbe { Proxy = new ProxySettings("127.0.0.1:8080", "http://wpad.ornek/proxy.pac", "vekil.ornek:3128") };
+
+        Assert.Empty(NetworkDetector.Detect(none));
+        Assert.Equal(
+            ["Vekil sunucu (Windows ayarı)", "Vekil sunucu (otomatik yapılandırma betiği)", "Vekil sunucu (WinHTTP)"],
+            NetworkDetector.Detect(all).Select(i => i.Name));
+        Assert.All(NetworkDetector.Detect(all), i => Assert.Equal("VPN_PROXY", i.Type));
+    }
+
+    [Fact]
+    public async Task Network_is_checked_with_the_process_scan_not_every_signal()
+    {
+        var probe = new FakeProbe();
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 11, 23, 9, 0, 0, TimeSpan.Zero));
+        var apps = ForbiddenAppList.Load(Path.Combine(AppContext.BaseDirectory, "forbidden-apps.json"));
+        var inspector = new WindowsDeviceInspector(probe, apps, clock, Options.Create(new AgentOptions { ProcessScanIntervalSeconds = 15 }));
+
+        await inspector.InspectAsync();
+        probe.Adapters.Add(new("wg", "WireGuard Tunnel", "Unknown"));
+        clock.Advance(TimeSpan.FromSeconds(5));
+        var before = await inspector.InspectAsync();
+        clock.Advance(TimeSpan.FromSeconds(10));
+        var after = await inspector.InspectAsync();
+
+        Assert.Empty(before);
+        Assert.Equal("VPN_PROXY", Assert.Single(after).Type);
+    }
+}
+
 /// <summary>Gerçek Windows kaynaklarıyla: yönetici izni olmadan çalışmalı ve hata fırlatmamalı.</summary>
 public class WindowsSystemProbeTests
 {
@@ -250,6 +351,8 @@ public class WindowsSystemProbeTests
         Assert.Contains(processes, p => p.Equals("dotnet", StringComparison.OrdinalIgnoreCase)
                                         || p.StartsWith("testhost", StringComparison.OrdinalIgnoreCase));
         Assert.True(_probe.ServiceExists("EventLog"));
+        Assert.DoesNotContain(_probe.ActiveNetworkAdapters(), a => a.Kind == "Loopback");
+        _ = _probe.ReadProxySettings(); // winhttp.dll çağrıları yönetici izni olmadan hata vermemeli
         Assert.False(_probe.ServiceExists("aiguard-olmayan-servis"));
         _ = _probe.IsRemoteSession();
     }

@@ -5,13 +5,13 @@ using Microsoft.Extensions.Options;
 namespace AIGuard.Agent.Windows;
 
 /// <summary>
-/// Windows cihaz incelemesi (Y3, FR-18, FR-19). Kullanıcı modunda çalışıyor; yönetici izni istemiyor.
+/// Windows cihaz ve ağ incelemesi (Y3, Y4; FR-18, FR-19, FR-20). Kullanıcı modunda çalışıyor; yönetici izni istemiyor.
 /// </summary>
 /// <remarks>
 /// Denetimler işlemciyi yormasın diye (GAB 3.3.3, ortalama %5'in altı) farklı sıklıkta:
 /// <list type="bullet">
 /// <item>Sanal makine ve hipervizör: ilk incelemede bir kez (sınav boyunca değişmiyor).</item>
-/// <item>Süreç listesi: <c>Agent:ProcessScanIntervalSeconds</c> aralıkla (varsayılan 15 sn); arada son sonuç kullanılıyor.</item>
+/// <item>Süreç listesi, ağ bağdaştırıcıları ve vekil sunucu ayarı: <c>Agent:ProcessScanIntervalSeconds</c> aralıkla (varsayılan 15 sn); arada son sonuç kullanılıyor.</item>
 /// <item>Uzak Masaüstü oturumu: her sinyalde (tek bir sistem çağrısı).</item>
 /// </list>
 /// </remarks>
@@ -46,7 +46,7 @@ internal sealed class WindowsDeviceInspector(
             if (_lastProcessScan is not { } last || now - last >= interval)
             {
                 // Süreç adları yalnızca burada, listeyle karşılaştırmak için kullanılıyor; saklanmıyor, gönderilmiyor.
-                _apps = forbiddenApps.Match(probe.RunningProcessNames());
+                _apps = [.. forbiddenApps.Match(probe.RunningProcessNames()), .. NetworkDetector.Detect(probe)];
                 _lastProcessScan = now;
             }
 

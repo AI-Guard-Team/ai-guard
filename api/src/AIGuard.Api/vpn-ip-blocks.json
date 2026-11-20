@@ -1,0 +1,18 @@
+// Bilinen VPN ve veri merkezi IP blokları (Y4, GAB FR-23 "İstenen"). Adayın IP'si bu bloklardan
+// birindeyse API bir kez VPN_PROXY olayı yazar (kaynak: network). Ajansız oturumlarda da çalışır,
+// çünkü IP'yi sunucu görüyor.
+//
+// - cidr: IPv4 ya da IPv6 blok (ör. "203.0.113.0/24")
+// - label: değerlendiricinin göreceği ad (sağlayıcı)
+//
+// Repodaki liste yalnızca belgelendirme amaçlı örnek bloklar içeriyor (RFC 5737 / RFC 3849; internette
+// kullanılmıyor). Gerçek liste kurumun seçtiği bir kaynaktan doldurulmalı (K-25). Dosya compose'da
+// container'a salt okunur bağlı; değiştirince "docker compose restart api" yeterli.
+{
+  "VpnIpBlocks": {
+    "Blocks": [
+      { "Cidr": "198.51.100.0/24", "Label": "Örnek VPN sağlayıcısı (belgelendirme bloğu)" },
+      { "Cidr": "2001:db8::/32", "Label": "Örnek veri merkezi (belgelendirme bloğu)" }
+    ]
+  }
+}

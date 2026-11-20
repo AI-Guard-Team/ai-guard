@@ -53,6 +53,8 @@ public sealed class AgentSignalMonitor(IAppDbContext db, IAgentKeyStore keys, Ev
         var silent = await db.AgentPairings
             .AsNoTracking()
             .Where(p => p.PairedAt != null && !(p.ExamSession.State == SessionState.Completed || p.ExamSession.State == SessionState.Cancelled || p.ExamSession.State == SessionState.Decided))
+            // Ajansız devam eden oturumda cihaz denetimi yok (FR-12, Y4); susan ajan için olay yazılmıyor.
+            .Where(p => !p.ExamSession.Flags.HasFlag(SessionFlags.NoAgent))
             .Select(p => new { p.ExamSessionId, Last = p.LastSignalAt ?? p.PairedAt!.Value })
             .Where(p => p.Last <= deadline)
             .Where(p => !db.Events.Any(e => e.ExamSessionId == p.ExamSessionId
