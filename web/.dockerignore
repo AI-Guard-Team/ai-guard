@@ -1,0 +1,5 @@
+# Bilgisayardaki kurulum ve derleme çıktıları imaja girmesin; imaj içinde npm ci ile yeniden kuruluyor.
+node_modules/
+dist/
+.vite/
+coverage/

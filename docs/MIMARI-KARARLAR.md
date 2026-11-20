@@ -312,7 +312,7 @@ Kartta olay ucunun gövdesinde `type` ve `source` alması yazıyor. Bunu olduğu
 
 **E2'ye not:** Kimlik doğrulama gelene kadar uç `[DevelopmentOnly]` ile yalnızca Development'ta açık. E2 birleşince bu öznitelik kaldırılıp aday rolü ve "oturum bu adaya mı ait" kontrolü eklenmeli.
 
-**IP kontrolü (FR-22):** `SessionIpGuard.CheckAsync` oturumla ilgili her istekte çağrılmalı (E4'ün uçları dahil). İlk IP oturuma yazılıyor; farklı bir IP gelince bir kez `IP_CHANGE` üretiliyor. `::ffff:1.2.3.4` ile `1.2.3.4` aynı sayılıyor. API proxy arkasındaysa `X-Forwarded-For` yalnızca bilinen proxy'den kabul edilmeli (E1b).
+**IP kontrolü (FR-22):** `SessionIpGuard.CheckAsync` oturumla ilgili her istekte çağrılmalı (E4'ün uçları dahil). İlk IP oturuma yazılıyor; farklı bir IP gelince bir kez `IP_CHANGE` üretiliyor. `::ffff:1.2.3.4` ile `1.2.3.4` aynı sayılıyor. API proxy arkasındaysa `X-Forwarded-For` yalnızca bilinen proxy'den kabul edilmeli (E1b). **E1b'de yapıldı:** Compose'da `web` (nginx) API'nin önünde. `Api/TrustedProxySetup` başlığı yalnızca `ForwardedHeaders:KnownNetworks` ayarındaki adresten (web container'ı, 172.30.47.10) kabul ediyor. Ayar yoksa (Docker'sız çalışma) hiçbir şey değişmiyor.
 
 ---
 
@@ -398,7 +398,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-1 | A4'teki not ucu için ayrı tablo mu, `ReviewerDecision.Note` mu? | Ayşe, Şeyma | Birden fazla not gerekecekse A4'te `ReviewerNote` tablosu |
 | S-2 | Şifre özetleme yöntemi | Esma | Şimdilik PasswordHasher; değişirse yalnızca `IdentityPasswordHasher` etkilenir |
 | S-3 | HMAC anahtarının şifreli saklanması (K-08) | Yağmur | Y2'de bu alanın kullanılması |
-| S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | Compose'da ayrı migrate adımı |
+| S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | **Çözüldü (E1b):** compose'daki tek seferlik `migrate` servisi EF göç paketini (`efbundle`) çalıştırıyor; `api` bunun başarıyla bitmesini bekliyor |
 | S-5 | A6, E5b'ye bağlı ama tarihleri çakışıyor | Ayşe, Esma | Locust betiği 29 Kasım'da, ölçüm E5b'den sonra |
 | S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | Serviste kontrol ve test; gerekirse `answers.exam_id` ile bileşik yabancı anahtar |
 | S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı; göçler ayrı kullanıcıyla |

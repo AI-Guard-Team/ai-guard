@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+tests/
+# Veri, kayıt ve model dosyaları imaja da girmesin (KVKK / lisans).
+data/
+datasets/
+recordings/
+evidence/

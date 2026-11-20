@@ -135,6 +135,76 @@ jobs:
         working-directory: web
         run: npm run build
 
+  # ---------- Docker Compose (E1b) ----------
+  compose:
+    name: compose (docker compose up + health)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # README'deki tek komutla aynı: örnek değerlerle çalıştır.
+      COMPOSE: docker compose --env-file .env.example
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compose kural testleri
+        run: |
+          pip install pytest
+          python -m pytest tests/compose -q
+      - name: Servisleri başlat
+        # api, migrate tamamlanmadan ve postgres/vision sağlıklı olmadan başlamaz;
+        # biri başarısız olursa bu adım hata verir.
+        run: $COMPOSE up -d --build
+      - name: api sağlık ucu
+        run: |
+          # API'nin açılması birkaç saniye sürebilir; 60 sn boyunca dene.
+          for i in $(seq 1 30); do
+            body=$(curl -fsS http://localhost:8080/health || true)
+            if [ "$body" = "Healthy" ]; then echo "api /health: $body"; exit 0; fi
+            sleep 2
+          done
+          echo "api /health yanıt vermedi (son yanıt: '$body')"; exit 1
+      - name: vision yalnızca iç ağda
+        run: |
+          # Dışarıdan erişilememeli.
+          if curl -fsS --max-time 3 http://localhost:8000/health; then
+            echo "HATA: vision bilgisayardan erişilebilir durumda"; exit 1
+          fi
+          # api ile aynı iç ağdan erişilebilmeli.
+          $COMPOSE run --rm --no-deps vision \
+            python -c "import urllib.request; print(urllib.request.urlopen('http://vision:8000/health', timeout=3).read().decode())"
+      - name: web ayakta ve /api'yi iletiyor
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://localhost:5173/; then break; fi
+            sleep 2
+          done
+          curl -fsS -o /dev/null http://localhost:5173/ || { echo "web yanıt vermedi"; exit 1; }
+          # /api isteği nginx'ten api'ye gitmeli. GET'e kapalı bir uç seçildi: api'den 405 gelirse
+          # iletim çalışıyor demek (api'ye ulaşılamazsa nginx 502 döner).
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/api/sessions/00000000-0000-0000-0000-000000000000/events)
+          echo "web -> api: $code"
+          [ "$code" = "405" ] || { echo "HATA: /api iletimi beklenen 405 yerine $code döndü"; exit 1; }
+      - name: Sağlık kontrolü olan servisler "healthy"
+        run: |
+          # Sayfanın yanıt vermesi yetmiyor; container'ın kendi sağlık kontrolü de geçmeli.
+          for svc in web vision postgres; do
+            for i in $(seq 1 30); do
+              status=$(docker inspect --format '{{.State.Health.Status}}' "$($COMPOSE ps -q $svc)")
+              [ "$status" = "healthy" ] && break
+              sleep 2
+            done
+            echo "$svc: $status"
+            [ "$status" = "healthy" ] || { echo "HATA: $svc sağlıklı değil"; exit 1; }
+          done
+      - name: Loglar (hata olursa)
+        if: failure()
+        run: $COMPOSE logs --no-color
+      - name: Kapat
+        if: always()
+        run: $COMPOSE down -v
+
   # ---------- .NET agent ----------
   agent:
     name: agent (.NET build + test)
