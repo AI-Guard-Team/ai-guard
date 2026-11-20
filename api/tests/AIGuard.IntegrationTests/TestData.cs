@@ -13,6 +13,12 @@ internal static class TestData
         return new User { FullName = "Test Aday", Email = email, NormalizedEmail = User.NormalizeEmail(email), Role = UserRole.Candidate };
     }
 
+    public static User UserWithRole(UserRole role, string? email = null)
+    {
+        email ??= $"{Guid.NewGuid():N}@test.local";
+        return new User { FullName = $"Test {role}", Email = email, NormalizedEmail = Domain.Entities.User.NormalizeEmail(email), Role = role };
+    }
+
     public static Exam Exam() => new()
     {
         Name = "Test Sınavı",

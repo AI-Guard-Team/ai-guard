@@ -181,11 +181,12 @@ jobs:
             sleep 2
           done
           curl -fsS -o /dev/null http://localhost:5173/ || { echo "web yanıt vermedi"; exit 1; }
-          # /api isteği nginx'ten api'ye gitmeli. GET'e kapalı bir uç seçildi: api'den 405 gelirse
-          # iletim çalışıyor demek (api'ye ulaşılamazsa nginx 502 döner).
-          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/api/sessions/00000000-0000-0000-0000-000000000000/events)
+          # /api isteği nginx'ten api'ye gitmeli. Giriş isteyen bir uca girişsiz istek atılıyor: api'den
+          # 401 gelirse iletim çalışıyor demek (api'ye ulaşılamazsa nginx 502 döner). E2'den beri her uç
+          # varsayılan olarak giriş istediği için yanıt 405 değil 401 (K-20).
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/api/users)
           echo "web -> api: $code"
-          [ "$code" = "405" ] || { echo "HATA: /api iletimi beklenen 405 yerine $code döndü"; exit 1; }
+          [ "$code" = "401" ] || { echo "HATA: /api iletimi beklenen 401 yerine $code döndü"; exit 1; }
       - name: Sağlık kontrolü olan servisler "healthy"
         run: |
           # Sayfanın yanıt vermesi yetmiyor; container'ın kendi sağlık kontrolü de geçmeli.

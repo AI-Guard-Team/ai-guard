@@ -1,4 +1,5 @@
 using AIGuard.Application.Abstractions;
+using AIGuard.Infrastructure.Email;
 using AIGuard.Infrastructure.Persistence;
 using AIGuard.Infrastructure.Persistence.Interceptors;
 using AIGuard.Infrastructure.Persistence.Seed;
@@ -31,6 +32,11 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+
+        // E2: JWT anahtarı eksik ya da kısaysa uygulama açılışta duruyor (bağlantı dizesiyle aynı davranış).
+        services.AddSingleton(JwtSettings.FromConfiguration(configuration));
+        services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddSingleton<IEmailSender, LoggingEmailSender>();
         services.AddScoped<DevDataSeeder>();
 
         return services;

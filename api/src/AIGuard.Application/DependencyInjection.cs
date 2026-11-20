@@ -1,4 +1,7 @@
 using AIGuard.Application.Agents;
+using AIGuard.Application.Auth;
+using AIGuard.Application.Sessions;
+using AIGuard.Application.Users;
 using AIGuard.Application.Events;
 using AIGuard.Application.Risk;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +25,11 @@ public static class DependencyInjection
         services.AddScoped<SessionIpGuard>();
 
         services.AddScoped<AgentPairingService>();
+
+        // E2: kimlik doğrulama, kullanıcı yönetimi ve oturum sahipliği.
+        services.AddScoped<AuthService>();
+        services.AddScoped<UserService>();
+        services.AddScoped<SessionAccessService>();
 
         return services;
     }

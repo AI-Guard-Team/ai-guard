@@ -13,7 +13,11 @@ public class DependencyInjectionTests
     private static ServiceProvider BuildProvider(string? connectionString)
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:Default"] = connectionString })
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = connectionString,
+                ["JWT_SECRET"] = "unit-tests-only-jwt-secret-0123456789abcdef",
+            })
             .Build();
 
         var services = new ServiceCollection();
