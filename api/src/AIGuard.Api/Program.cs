@@ -38,7 +38,16 @@ var behindProxy = builder.Services.AddTrustedProxies(builder.Configuration);
 // Y2: 30 sn sinyal gelmeyen oturumlara AGENT_SIGNAL_LOST, biten oturumların anahtarlarını silme.
 builder.Services.AddHostedService<AIGuard.Api.Agents.AgentSignalWatchdog>();
 
+// E4: süresi dolan oturumu otomatik teslim, istek gelmeyen oturumu bağlantı kesik sayma.
+builder.Services.AddHostedService<AIGuard.Api.Sessions.SessionTimekeeperService>();
+
+// E4: tabloda olmayan durum geçişi 409 (ProblemDetails).
+builder.Services.AddExceptionHandler<AIGuard.Api.Sessions.SessionTransitionExceptionHandler>();
+
 var app = builder.Build();
+
+// Yakalanmayan istisnalar ProblemDetails olarak; durum geçişi hatası 409 (E4).
+app.UseExceptionHandler();
 
 if (behindProxy)
 {

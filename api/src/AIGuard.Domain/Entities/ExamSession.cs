@@ -34,6 +34,15 @@ public class ExamSession : Entity
 
     public DateTimeOffset? EndedAt { get; set; }
 
+    /// <summary>
+    /// Adayın tarayıcısından gelen son istek (E4). Sınav sürerken bu değer eskirse bağlantı kesik
+    /// sayılıyor ve oturum Disconnected oluyor; o sırada gelen cevaplar "izlenmeyen" işaretleniyor.
+    /// </summary>
+    public DateTimeOffset? LastSeenAt { get; set; }
+
+    /// <summary>Bağlantının kesildiği an; dönüşte kesinti süresi bundan hesaplanıp olay yazılıyor (FR-26).</summary>
+    public DateTimeOffset? DisconnectedAt { get; set; }
+
     /// <summary>Oturumun ilk IP'si; değişirse IP_CHANGE olayı üretiliyor (A2).</summary>
     public IPAddress? InitialIpAddress { get; set; }
 
