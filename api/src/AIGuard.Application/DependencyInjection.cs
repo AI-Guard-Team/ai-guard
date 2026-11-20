@@ -1,5 +1,6 @@
 using AIGuard.Application.Agents;
 using AIGuard.Application.Auth;
+using AIGuard.Application.Exams;
 using AIGuard.Application.Sessions;
 using AIGuard.Application.Users;
 using AIGuard.Application.Events;
@@ -32,6 +33,10 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
         services.AddScoped<SessionAccessService>();
+
+        // E3: sınav, soru ve atama yönetimi.
+        services.AddScoped<ExamService>();
+        services.AddScoped<AssignmentService>();
 
         return services;
     }
