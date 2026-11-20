@@ -26,6 +26,9 @@ builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
 
+// Swagger (E3): yalnızca Development'ta /swagger adresinde.
+builder.Services.AddApiDocumentation();
+
 // Docker Compose ve CI, API'nin ve veritabanı bağlantısının ayakta olduğunu bu uçla kontrol ediyor.
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
 
@@ -42,6 +45,9 @@ if (behindProxy)
     // Diğer her şeyden önce: SessionIpGuard RemoteIpAddress'i okurken gerçek istemci IP'sini görsün.
     app.UseForwardedHeaders();
 }
+
+// Kimlik doğrulamadan önce: Swagger sayfası girişsiz açılıyor, uçlar "Authorize" ile deneniyor.
+app.UseApiDocumentation();
 
 app.UseAuthentication();
 app.UseAuthorization();
