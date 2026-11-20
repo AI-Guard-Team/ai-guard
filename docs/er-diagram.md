@@ -179,7 +179,8 @@ erDiagram
         timestamptz pairing_code_expires_at
         timestamptz paired_at
         varchar platform "Windows | MacOS"
-        bytea encrypted_session_key "AES-GCM, HMAC anahtarı"
+        bytea encrypted_session_key "kullanılmıyor (S-16)"
+        varchar session_key_hash "SHA-256, HMAC anahtarının özeti (Y2)"
         timestamptz last_signal_at
     }
 

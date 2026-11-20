@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (E2)*
+*Son güncelleme: 20 Kasım 2026 (Y2)*
 
 ---
 
@@ -33,6 +33,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Tarayıcı–ajan eşleştirme | Tek kullanımlık kod yalnızca 127.0.0.1 üzerinden ajana gidiyor; ajan kodu TLS ile sunucuya iletiyor (K-19) |
 | Kimlik doğrulama | 15 dk JWT + tek kullanımlık yenileme belirteci; **her uç varsayılan olarak giriş istiyor**, açık uçlar `[AllowAnonymous]` (K-20) |
 | Oturum uçları | Aday yalnızca kendi oturumuna erişir (`SessionAccessService.IsCandidateOfAsync`); başkasının oturumuna 404 (K-20) |
+| Ajan sinyali | HMAC-SHA256 imzalı, ±30 sn, tek kullanımlık nonce; anahtar API belleğinde, veritabanında özeti (K-21) |
 
 ---
 
@@ -152,13 +153,13 @@ dotnet ef database update --project src/AIGuard.Infrastructure --startup-project
 |---|---|---|
 | Şifre | `User.PasswordHash` | Tek yönlü, tuzlu ve yavaş özet |
 | Davet belirteci, yenileme belirteci, eşleştirme kodu | SHA-256 özeti (`…Hash` alanları) | Rastgele ve uzun değerler; veritabanı ele geçse bile kullanılamaz. Arama özet üzerinden yapılır |
-| Ajan oturum anahtarı | `AgentPairing.EncryptedSessionKey`, AES-GCM | HMAC imzasını doğrulamak için anahtarın kendisi gerekir, özet yetmez |
+| Ajan oturum anahtarı | Veritabanında SHA-256 özeti (`AgentPairing.SessionKeyHash`); anahtarın kendisi API belleğinde (K-21) | Y2 kartı GAB'a göre veritabanında yalnızca özet istiyor; HMAC doğrulaması bellekteki anahtarla yapılıyor |
 | Yüz vektörü | `ReferenceFaceTemplate.EncryptedVector`, AES-GCM | KVKK kapsamında özel nitelikli veri |
 | Kanıt karesi | Dosya deposunda şifreli; tabloda yalnızca `StorageKey` | Büyük dosyaları veritabanı yedeklerinin dışında tutmak için |
 
 `KeyVersion` alanları anahtar değiştirildiğinde eski kayıtların hangi anahtarla açılacağını belirtiyor. Anahtarlar ortam değişkenlerinden okunuyor.
 
-GAB'da ajan için "oturum anahtarı özeti" yazıyor, fakat özetten HMAC imzası doğrulanamadığı için anahtarı şifreli tutuyoruz. Oturum bittiğinde (Y2) bu alan boşaltılmalı. AES-GCM yardımcı sınıfı A3'te yazılacak ve tüm şifreli alanlar için ortak kullanılacak.
+GAB'da ajan için "oturum anahtarı özeti" yazıyor. A1'de özetten HMAC imzası doğrulanamadığı için anahtarı şifreli tutmayı planlamıştık; Y2 kartının revize hâli GAB'ı esas aldı: veritabanında yalnızca özet, anahtarın kendisi API belleğinde (K-21). `EncryptedSessionKey` alanı bu yüzden kullanılmıyor (S-16). AES-GCM yardımcı sınıfı A3'te yazılacak ve diğer şifreli alanlar için ortak kullanılacak.
 
 ---
 
@@ -452,6 +453,38 @@ FR-01–FR-03. Önyüzle sözleşme `web/src/api/auth.ts` ve `client.ts` ile bir
 
 ---
 
+## K-21 · Ajan sinyalleri ve oturum anahtarı (Y2)
+
+FR-21: ajan sinyalleri sahte üretilememeli ve tekrar oynatılamamalı. Akış (UC-08 adım 3–5):
+
+1. Eşleşmede (`POST /api/agent/pair`) sunucu 32 baytlık rastgele oturum anahtarı üretiyor ve yanıtta (`sessionKey`, Base64) TLS üzerinden ajana veriyor. Yeniden eşleşmede yeni anahtar üretiliyor, eskisi geçersiz.
+2. Ajan anahtarı yalnızca bellekte tutuyor ve `Agent:SignalIntervalSeconds` (varsayılan 5 sn) aralıkla imzalı sinyal gönderiyor: `POST /api/agent/signal { sessionId, ts, nonce, indicators[], sig }`.
+3. `sig = Base64(HMAC-SHA256(anahtar, "{sessionId}|{ts}|{nonce}|{indicatorsJson}"))`. `sessionId` küçük harf tireli Guid, `ts` Unix saniye, `indicatorsJson` System.Text.Json varsayılanıyla sıkışık dizi (`[]`, `["VM_DETECTED"]`). Biçim iki projede ayrı yazıldığı için (`Application/Agents/AgentSignature`, `Agent.Core/Signals/SignalSigner`) iki taraftaki `Known_answer` testi aynı sabit örnekte aynı imzayı bekliyor.
+
+| Kural | Gerekçe |
+|---|---|
+| Veritabanında yalnızca anahtarın SHA-256 özeti (`SessionKeyHash`); anahtar `IAgentKeyStore` ile API belleğinde | GAB nesne modeli; HMAC doğrulamak için anahtarın kendisi gerekiyor. Bellekteki anahtar özetle eşleşmezse (eski anahtar, başka oturum) kullanılmıyor |
+| İmza `CryptographicOperations.FixedTimeEquals` ile karşılaştırılıyor | Erken dönen karşılaştırma yanıt süresinden imzanın doğru baytlarını sızdırır |
+| Kontrol sırası: imza → nonce tekrarı → zaman (±30 sn) | İmzası bozuk istekteki zaman ve nonce'a güvenilemez |
+| Nonce tekrarı veritabanından kontrol ediliyor | Her sinyal zaten `AgentSignal` olarak saklanıyor ve `(eşleşme, nonce)` benzersiz (A1); kart "son N nonce" diyor, veritabanı bütün nonce'ları kapsıyor ve API yeniden başlasa da kayboluyor |
+| Reddedilen sinyal `AGENT_SIGNAL_INVALID` olayı; ayrıntıda `{"reason":"signature"|"replay"|"stale"}` | Kart. Ajana yanıtta neden ayrılmıyor (401) |
+| Her sinyal `AgentSignal` olarak saklanıyor, geçersizler dahil; `SignatureValid` yalnızca kabul edilenlerde true | Gecikmiş sinyalin imzası doğru olsa da kabul edilmiyor. Tekrar gönderilen sinyal ikinci kez saklanamıyor (benzersiz indeks), yalnızca olay yazılıyor |
+| Anahtar bellekte yoksa (API yeniden başladı) sinyal 401, olay yazılmıyor | Ajan suçsuz; sinyaller doğrulanamadığı için 30 sn sonra `AGENT_SIGNAL_LOST` yine üretiliyor |
+| Geçerli sinyal `LastSignalAt`'i sunucu saatiyle güncelliyor | 30 sn kuralı ajanın saatine bağlı olmasın |
+| İlk geçerli ve göstergesiz sinyalde `AgentPairing → IdentityVerification` | UC-08 adım 5. Durum makinesi (E4) gelince bu geçiş oraya taşınmalı. Gösterge varsa geçiş yok; gerekçeyle devam Y4'te |
+| Oturum bitince (`Completed`, `Cancelled`, `Decided`) anahtar bellekten siliniyor, özet boşaltılıyor; sinyal 410 alıyor ve ajan anahtarı unutup göndermeyi bırakıyor | FR-21 |
+| 30 sn sinyal yoksa (eşleşmeden ya da son geçerli sinyalden beri) `AGENT_SIGNAL_LOST`; her kesinti için tek olay, başlangıcı son sinyalin anı | Kart. Her denetimde yeni olay yazılsaydı skor kesinti süresince durmadan artardı |
+| `/api/agent/signal` `[AllowAnonymous]`; kanıt HMAC imzası, gövde en fazla 4 KB, en fazla 32 gösterge | Ajanın JWT'si yok (K-20) |
+| Anahtar, imza ve kod loglara yazılmıyor | Kart |
+
+**Zamanlayıcı:** `Api/Agents/AgentSignalWatchdog` her 5 sn'de `AgentSignalMonitor.RunOnceAsync`'i çalıştırıyor: biten oturumların anahtarlarını siliyor, sessiz oturumlara `AGENT_SIGNAL_LOST` yazıyor. Mantık `Application`'da; testler saati ileri alarak bekleme yapmadan sınıyor.
+
+**E4'e not:** Oturumu bitiren kod `AgentSignalService.RevokeAsync(sessionId)` çağırırsa anahtar hemen geçersiz oluyor; çağrılmazsa zamanlayıcı en geç 5 sn içinde yapıyor. `AgentPairing → IdentityVerification` geçişi durum makinesi gelince oraya taşınmalı.
+
+**Sınırlılıklar:** API yeniden başlarsa bellekteki anahtarlar kaybolur, o oturumlar `AGENT_SIGNAL_LOST` alır (kart). Anahtarlar tek süreçte tutulduğu için API birden fazla örnekle çalıştırılırsa anahtar paylaşılmaz (S-17).
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -498,5 +531,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | Gösterge yalnızca ilk görüldüğünde ve değiştiğinde olay olarak bildirilmeli |
 | S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Yağmur | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-13 | GAB FR-26: 5 dakikadan uzun bağlantı kesintisi "yüksek ağırlıklı uzun kesinti olayı" üretmeli; ortak olay listesinde böyle bir tür yok | Esma (E4), Ayşe | Ya `LONG_DISCONNECT` türü eklenir (ortak ad değişikliği, ekip kararı), ya da `CONNECTION_LOST` 300 sn'yi aşınca daha yüksek ağırlıkla puanlanır |
-| S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | Y2'de eşleşme anında HMAC oturum anahtarı üretilip `EncryptedSessionKey`'e yazılması ve ajana bu yanıtta verilmesi; ajan uçları JWT değil HMAC ile korunur |
+| S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | **Çözüldü (Y2):** anahtar eşleşmede üretilip yanıtta veriliyor; veritabanında özeti (K-21) |
 | S-15 | Davet e-postası sahte gönderici ile loga yazılıyor; davet yeniden gönderme ucu yok | Esma | Gerçek gönderim gerekirse SMTP göndericisi `IEmailSender` arkasına; süresi dolan davet için `POST /api/users/{id}/invite` eklenebilir (ekip kararı) |
+| S-16 | `AgentPairing.EncryptedSessionKey` artık kullanılmıyor (K-21: veritabanında yalnızca özet) | Ayşe, Yağmur | Bir sonraki göçle kaldırılması; K-13 gereği önce ekipte konuşulacak |
+| S-17 | Ajan oturum anahtarları tek API sürecinin belleğinde; API yeniden başlarsa ya da birden fazla örnekle çalışırsa doğrulanamıyor | Yağmur, Esma | Proje tek örnekle çalışıyor; gerekirse paylaşılan önbellek (ör. Redis) ya da ajanın yeniden eşleşmesi |

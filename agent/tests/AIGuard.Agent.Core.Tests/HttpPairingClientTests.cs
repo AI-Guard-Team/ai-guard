@@ -33,14 +33,16 @@ public class HttpPairingClientTests
     {
         var pairingId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var handler = new StubHandler(_ => Json(HttpStatusCode.OK, $$"""{"pairingId":"{{pairingId}}","sessionId":"{{sessionId}}"}"""));
+        var key = Convert.ToBase64String(new byte[32]);
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK, $$"""{"pairingId":"{{pairingId}}","sessionId":"{{sessionId}}","sessionKey":"{{key}}"}"""));
 
         var outcome = await Client(handler).PairAsync("kod123", "Windows");
 
         Assert.Equal(HttpMethod.Post, handler.Request!.Method);
         Assert.Equal("https://api.ornek.edu.tr/api/agent/pair", handler.Request.RequestUri!.ToString());
         Assert.Equal("""{"code":"kod123","os":"Windows"}""", handler.Body);
-        Assert.Equal(new PairingOutcome(PairingStatus.Paired, pairingId, sessionId), outcome);
+        Assert.Equal((PairingStatus.Paired, pairingId, sessionId), (outcome.Status, outcome.PairingId, outcome.SessionId));
+        Assert.Equal(new byte[32], outcome.SessionKey);
     }
 
     [Fact]

@@ -32,6 +32,9 @@ builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
 // Compose'da web (nginx) API'nin önünde; gerçek istemci IP'si yalnızca ondan kabul ediliyor (E1b, K-16).
 var behindProxy = builder.Services.AddTrustedProxies(builder.Configuration);
 
+// Y2: 30 sn sinyal gelmeyen oturumlara AGENT_SIGNAL_LOST, biten oturumların anahtarlarını silme.
+builder.Services.AddHostedService<AIGuard.Api.Agents.AgentSignalWatchdog>();
+
 var app = builder.Build();
 
 if (behindProxy)

@@ -11,7 +11,8 @@ public enum PairingStatus
     Unavailable,
 }
 
-public sealed record PairingOutcome(PairingStatus Status, Guid? PairingId = null, Guid? SessionId = null);
+/// <param name="SessionKey">Y2: sinyalleri imzalayan oturum anahtarı. Yalnızca bellekte; diske ve loga yazılmaz.</param>
+public sealed record PairingOutcome(PairingStatus Status, Guid? PairingId = null, Guid? SessionId = null, byte[]? SessionKey = null);
 
 /// <summary>Eşleştirme kodunu sunucuya ileten istemci.</summary>
 public interface IPairingClient
