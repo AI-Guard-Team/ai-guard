@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Windows ajanının tek dosyalık kurulum paketini (aiguard-agent.exe) oluşturur (Y4).
 
