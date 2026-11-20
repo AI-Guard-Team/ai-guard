@@ -25,6 +25,8 @@ public static class DependencyInjection
         services.AddScoped<SessionIpGuard>();
 
         services.AddScoped<AgentPairingService>();
+        services.AddScoped<AgentSignalService>();
+        services.AddScoped<AgentSignalMonitor>();
 
         // E2: kimlik doğrulama, kullanıcı yönetimi ve oturum sahipliği.
         services.AddScoped<AuthService>();

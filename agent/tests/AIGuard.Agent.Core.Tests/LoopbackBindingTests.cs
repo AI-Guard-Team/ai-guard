@@ -23,6 +23,7 @@ public class LoopbackBindingTests
             // Ortamdan gelebilecek ayar: Kestrel'in bunu yok saydığını da doğruluyor.
             ["urls"] = "http://0.0.0.0:0",
         });
+        builder.Services.AddSingleton<AIGuard.Agent.Core.Platform.IDeviceInspector, FakeDeviceInspector>();
         await using var app = AgentHost.Build(builder);
         await app.StartAsync();
 

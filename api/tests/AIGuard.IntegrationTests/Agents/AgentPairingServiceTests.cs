@@ -1,3 +1,4 @@
+using AIGuard.Infrastructure.Security;
 using AIGuard.Application.Agents;
 using AIGuard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         await using var db = fx.CreateContext();
         var session = await InProgressSessionAsync(db, SessionState.AgentPairing);
         var clock = Clock();
-        var service = new AgentPairingService(db, clock);
+        var service = new AgentPairingService(db, clock, new InMemoryAgentKeyStore());
 
         var issued = await service.IssueCodeAsync(session.Id);
         clock.Advance(TimeSpan.FromSeconds(5));
@@ -41,7 +42,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         RequireDb();
         await using var db = fx.CreateContext();
         var session = await InProgressSessionAsync(db, SessionState.AgentPairing);
-        var service = new AgentPairingService(db, Clock());
+        var service = new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore());
         var issued = await service.IssueCodeAsync(session.Id);
 
         var first = await service.PairAsync(issued.Code, Windows);
@@ -60,14 +61,14 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         await using (var db = fx.CreateContext())
         {
             sessionId = (await InProgressSessionAsync(db, SessionState.AgentPairing)).Id;
-            code = (await new AgentPairingService(db, Clock()).IssueCodeAsync(sessionId)).Code!;
+            code = (await new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore()).IssueCodeAsync(sessionId)).Code!;
         }
 
         // İki ajan aynı kodu aynı anda gönderiyor; her biri kendi bağlantısıyla.
         var results = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
         {
             await using var db = fx.CreateContext();
-            return await new AgentPairingService(db, Clock()).PairAsync(code, Windows);
+            return await new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore()).PairAsync(code, Windows);
         }));
 
         Assert.Single(results, r => r.Status == PairAgentStatus.Paired);
@@ -79,7 +80,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         RequireDb();
         await using var db = fx.CreateContext();
         var clock = Clock();
-        var service = new AgentPairingService(db, clock);
+        var service = new AgentPairingService(db, clock, new InMemoryAgentKeyStore());
         var stillValid = await service.IssueCodeAsync((await InProgressSessionAsync(db, SessionState.AgentPairing)).Id);
         var expired = await service.IssueCodeAsync((await InProgressSessionAsync(db, SessionState.AgentPairing)).Id);
 
@@ -96,7 +97,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         RequireDb();
         await using var db = fx.CreateContext();
         var session = await InProgressSessionAsync(db, SessionState.AgentPairing);
-        var service = new AgentPairingService(db, Clock());
+        var service = new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore());
 
         var old = await service.IssueCodeAsync(session.Id);
         var renewed = await service.IssueCodeAsync(session.Id);
@@ -111,7 +112,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
     {
         RequireDb();
         await using var db = fx.CreateContext();
-        var service = new AgentPairingService(db, Clock());
+        var service = new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore());
 
         Assert.Equal(PairAgentStatus.Rejected, (await service.PairAsync(PairingCode.Generate(), Windows)).Status);
         Assert.Equal(PairAgentStatus.Rejected, (await service.PairAsync("x", Windows)).Status);
@@ -125,7 +126,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
     {
         RequireDb();
         await using var db = fx.CreateContext();
-        var service = new AgentPairingService(db, Clock());
+        var service = new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore());
         var issued = await service.IssueCodeAsync((await InProgressSessionAsync(db, SessionState.AgentPairing)).Id);
 
         var result = await service.PairAsync(issued.Code, (AgentPlatform?)platform);
@@ -146,7 +147,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         await using var db = fx.CreateContext();
         var session = await InProgressSessionAsync(db, state);
 
-        var result = await new AgentPairingService(db, Clock()).IssueCodeAsync(session.Id);
+        var result = await new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore()).IssueCodeAsync(session.Id);
 
         Assert.Equal(IssuePairingCodeStatus.NotInPairingState, result.Status);
         Assert.Null(result.Code);
@@ -158,7 +159,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         RequireDb();
         await using var db = fx.CreateContext();
         var session = await InProgressSessionAsync(db, SessionState.AgentPairing);
-        var service = new AgentPairingService(db, Clock());
+        var service = new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore());
         var issued = await service.IssueCodeAsync(session.Id);
 
         session.State = SessionState.Cancelled;
@@ -173,7 +174,7 @@ public class AgentPairingServiceTests(PostgresFixture fx) : IClassFixture<Postgr
         RequireDb();
         await using var db = fx.CreateContext();
 
-        var result = await new AgentPairingService(db, Clock()).IssueCodeAsync(Guid.NewGuid());
+        var result = await new AgentPairingService(db, Clock(), new InMemoryAgentKeyStore()).IssueCodeAsync(Guid.NewGuid());
 
         Assert.Equal(IssuePairingCodeStatus.SessionNotFound, result.Status);
     }

@@ -81,6 +81,7 @@ internal sealed class AgentPairingConfiguration : IEntityTypeConfiguration<Agent
     {
         b.Property(p => p.PairingCodeHash).HasMaxLength(128);
         b.HasIndex(p => p.PairingCodeHash).IsUnique();
+        b.Property(p => p.SessionKeyHash).HasMaxLength(64); // SHA-256 onaltılık
 
         b.HasOne(p => p.ExamSession)
             .WithOne(s => s.AgentPairing)

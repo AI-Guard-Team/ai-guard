@@ -16,7 +16,9 @@ internal sealed class HttpPairingClient(HttpClient http, ILogger<HttpPairingClie
     // Sunucu adresinin sonunda yol olabilir (https://ornek.edu.tr/aiguard/); göreli adres onun altına eklenir.
     private const string PairPath = "api/agent/pair";
 
-    private sealed record PairResponse(Guid PairingId, Guid SessionId);
+    private sealed record PairResponse(Guid PairingId, Guid SessionId, string? SessionKey);
+
+    private const int SessionKeyLength = 32;
 
     public async Task<PairingOutcome> PairAsync(string code, string os, CancellationToken cancellationToken = default)
     {
@@ -28,9 +30,11 @@ internal sealed class HttpPairingClient(HttpClient http, ILogger<HttpPairingClie
             if (response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadFromJsonAsync<PairResponse>(cancellationToken); // varsayılan: web (camelCase) ayarları
-                return body is null
+                // Y2: anahtar olmadan sinyal imzalanamaz; eksik ya da bozuk anahtar eşleşme sayılmıyor.
+                var key = DecodeKey(body?.SessionKey);
+                return body is null || key is null
                     ? new(PairingStatus.Unavailable)
-                    : new(PairingStatus.Paired, body.PairingId, body.SessionId);
+                    : new(PairingStatus.Paired, body.PairingId, body.SessionId, key);
             }
 
             // 4xx: sunucu kodu reddetti. Kodun kendisi loglanmıyor; loglar bir kimlik bilgisi taşımamalı.
@@ -51,5 +55,13 @@ internal sealed class HttpPairingClient(HttpClient http, ILogger<HttpPairingClie
             logger.LogWarning(ex, "Sunucuya ulaşılamadı.");
             return new(PairingStatus.Unavailable);
         }
+    }
+
+    private static byte[]? DecodeKey(string? base64)
+    {
+        var buffer = new byte[SessionKeyLength];
+        return base64 is not null && Convert.TryFromBase64String(base64, buffer, out var n) && n == SessionKeyLength
+            ? buffer
+            : null;
     }
 }

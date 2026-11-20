@@ -24,7 +24,8 @@ public enum PairAgentStatus
     Rejected,
 }
 
-public sealed record PairAgentResult(PairAgentStatus Status, Guid? PairingId = null, Guid? SessionId = null);
+/// <param name="SessionKey">Y2: ajanın sinyalleri imzalayacağı anahtar; yalnızca bu yanıtta ajana gidiyor.</param>
+public sealed record PairAgentResult(PairAgentStatus Status, Guid? PairingId = null, Guid? SessionId = null, byte[]? SessionKey = null);
 
 /// <summary>
 /// Tarayıcı ile ajanın aynı bilgisayarda çalıştığının doğrulanması (Y1, FR-11).
@@ -36,7 +37,7 @@ public sealed record PairAgentResult(PairAgentStatus Status, Guid? PairingId = n
 /// Kod yalnızca loopback üzerinden taşındığı için onu sunucuya getirebilen ajan, tarayıcıyla
 /// aynı bilgisayardadır.
 /// </remarks>
-public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock)
+public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock, IAgentKeyStore keys)
 {
     /// <summary>
     /// Kartta önerilen süre (5 dk). Tarayıcı kodu hemen ajana gönderiyor; ajan yeni açılıyorsa
@@ -134,13 +135,22 @@ public sealed class AgentPairingService(IAppDbContext db, TimeProvider clock)
             return rejected;
         }
 
+        // Y2: sinyalleri imzalayacak oturum anahtarı. Veritabanına yalnızca özeti yazılıyor (GAB);
+        // anahtar API belleğinde ve yanıtla (TLS) ajana gidiyor. Yeniden eşleşmede eski anahtar geçersiz.
+        var sessionKey = AgentSignature.GenerateKey();
+
         // Süreyi "şimdi"ye çekmek kodu geçersiz kılıyor; şemada ayrı bir "kullanıldı" alanı gerekmiyor.
         pairing.PairedAt = now;
         pairing.Platform = os;
         pairing.PairingCodeExpiresAt = now;
+        pairing.SessionKeyHash = AgentSignature.HashKey(sessionKey);
+        pairing.LastSignalAt = null; // 30 sn sayacı eşleşme anından başlıyor (AgentSignalMonitor)
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
 
-        return new(PairAgentStatus.Paired, pairing.Id, pairing.ExamSessionId);
+        // Belleğe ancak kayıt kalıcı olunca: işlem geri alınırsa bellekte geçersiz anahtar kalmasın.
+        keys.Set(pairing.ExamSessionId, sessionKey);
+
+        return new(PairAgentStatus.Paired, pairing.Id, pairing.ExamSessionId, sessionKey);
     }
 }

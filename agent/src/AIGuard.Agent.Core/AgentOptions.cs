@@ -20,6 +20,12 @@ public sealed class AgentOptions
 
     /// <summary>Sunucunun kök adresi; eşleştirme kodu {ApiBaseUrl}/api/agent/pair adresine gidiyor.</summary>
     public Uri? ApiBaseUrl { get; set; }
+
+    /// <summary>
+    /// İmzalı sinyal aralığı, saniye (Y2). Sunucu 30 sn sinyal almazsa AGENT_SIGNAL_LOST yazdığı için
+    /// birkaç ağ aksaklığını tolere edecek kadar kısa olmalı.
+    /// </summary>
+    public int SignalIntervalSeconds { get; set; } = 5;
 }
 
 internal sealed class AgentOptionsValidator : IValidateOptions<AgentOptions>
@@ -43,6 +49,12 @@ internal sealed class AgentOptionsValidator : IValidateOptions<AgentOptions>
             // Kod ağ üzerinden açık metin giderse yolda okunup başka bir ajan tarafından kullanılabilir.
             // Yalnızca aynı bilgisayardaki geliştirme API'sine (localhost) http izni var; o trafik ağa çıkmıyor.
             errors.Add("Agent:ApiBaseUrl https olmalı (http yalnızca localhost için).");
+        }
+
+        // Üst sınır: sunucunun 30 sn'lik sinyal kesildi süresinin altında kalmalı, araya en az bir deneme daha sığmalı.
+        if (options.SignalIntervalSeconds is < 1 or > 15)
+        {
+            errors.Add("Agent:SignalIntervalSeconds 1–15 saniye olmalı (sunucu 30 sn sinyal almazsa kesildi sayıyor).");
         }
 
         if (options.AllowedOrigins.Count == 0)

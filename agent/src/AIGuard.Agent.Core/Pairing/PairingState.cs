@@ -12,4 +12,14 @@ public sealed class PairingState
 
     // Tarayıcı yeni kod gönderirse (ör. sayfa yenilendi) son başarılı eşleşme geçerli olur.
     internal void Set(PairingOutcome outcome) => Volatile.Write(ref _current, outcome);
+
+    /// <summary>Oturum bitti (sunucu 410): anahtar unutulur, sinyal gönderimi durur.</summary>
+    internal void Clear(PairingOutcome expected)
+    {
+        // Bu arada tarayıcı yeni bir eşleşme kurduysa onu silmiyoruz.
+        if (Interlocked.CompareExchange(ref _current, null, expected) == expected && expected.SessionKey is { } key)
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+        }
+    }
 }

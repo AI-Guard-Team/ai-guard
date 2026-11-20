@@ -1,5 +1,7 @@
 using System.Net;
 using AIGuard.Agent.Core.Pairing;
+using AIGuard.Agent.Core.Signals;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -29,13 +31,12 @@ public static class AgentHost
         builder.Services.AddSingleton<IValidateOptions<AgentOptions>, AgentOptionsValidator>();
 
         builder.Services.AddSingleton<PairingState>();
-        builder.Services.AddHttpClient<IPairingClient, HttpPairingClient>((sp, http) =>
-        {
-            var api = sp.GetRequiredService<IOptions<AgentOptions>>().Value.ApiBaseUrl!;
-            // Sondaki "/" olmazsa göreli adres son yol parçasının yerine geçer (…/aiguard → …/api).
-            http.BaseAddress = new Uri(api.AbsoluteUri.TrimEnd('/') + "/");
-            http.Timeout = ServerTimeout;
-        });
+        builder.Services.TryAddSingleton(TimeProvider.System);
+
+        // Y2: eşleşme kurulunca belirli aralıkla imzalı sinyal.
+        builder.Services.AddHttpClient<ISignalClient, HttpSignalClient>(ConfigureApiClient);
+        builder.Services.AddHostedService<SignalSender>();
+        builder.Services.AddHttpClient<IPairingClient, HttpPairingClient>(ConfigureApiClient);
 
         builder.WebHost.ConfigureKestrel((context, kestrel) =>
         {
@@ -50,6 +51,15 @@ public static class AgentHost
         });
 
         return builder;
+    }
+
+    // Eşleştirme ve sinyal aynı sunucuya, aynı TLS kuralıyla gidiyor (https zorunluluğu AgentOptionsValidator'da).
+    private static void ConfigureApiClient(IServiceProvider sp, HttpClient http)
+    {
+        var api = sp.GetRequiredService<IOptions<AgentOptions>>().Value.ApiBaseUrl!;
+        // Sondaki "/" olmazsa göreli adres son yol parçasının yerine geçer (…/aiguard → …/api).
+        http.BaseAddress = new Uri(api.AbsoluteUri.TrimEnd('/') + "/");
+        http.Timeout = ServerTimeout;
     }
 
     public static WebApplication Build(WebApplicationBuilder builder)

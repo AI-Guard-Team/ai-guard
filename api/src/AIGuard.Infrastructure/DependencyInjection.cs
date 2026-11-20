@@ -33,6 +33,9 @@ public static class DependencyInjection
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 
+        // Y2: oturum anahtarları süreç boyunca tek depoda (K-21).
+        services.AddSingleton<IAgentKeyStore, InMemoryAgentKeyStore>();
+
         // E2: JWT anahtarı eksik ya da kısaysa uygulama açılışta duruyor (bağlantı dizesiyle aynı davranış).
         services.AddSingleton(JwtSettings.FromConfiguration(configuration));
         services.AddSingleton<ITokenService, JwtTokenService>();

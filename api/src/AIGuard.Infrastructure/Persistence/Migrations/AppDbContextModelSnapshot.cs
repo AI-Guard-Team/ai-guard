@@ -62,6 +62,11 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("platform");
 
+                    b.Property<string>("SessionKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("session_key_hash");
+
                     b.HasKey("Id")
                         .HasName("pk_agent_pairings");
 

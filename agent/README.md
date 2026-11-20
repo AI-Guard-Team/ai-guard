@@ -26,6 +26,13 @@ agent/
 
 Ajan yalnızca loopback'i dinlediği için kod yalnızca aynı bilgisayardaki ajana ulaşır. Kod 256 bit rastgele, 5 dakika geçerli ve tek kullanımlık; başka bilgisayardaki bir ajan onu tahmin edemez. İşletim sistemi adını (`Windows` / `MacOS`) platform projesindeki `IDeviceInspector.Platform` veriyor.
 
+## İmzalı sinyal (Y2, FR-21)
+
+- Eşleşme yanıtıyla gelen 32 baytlık oturum anahtarı yalnızca bellekte tutulur; diske ve loga yazılmaz.
+- `Signals/SignalSender` her `SignalIntervalSeconds` saniyede `IDeviceInspector` göstergelerini alır, `Signals/SignalSigner` ile imzalar ve `POST {ApiBaseUrl}/api/agent/signal` adresine gönderir.
+- Sunucu 410 dönerse oturum bitmiştir: ajan anahtarı unutur ve göndermeyi bırakır. 401 gönderimi durdurmaz.
+- İmza biçimi sunucudaki `AgentSignature` ile aynı olmalı (`docs/MIMARI-KARARLAR.md` K-21); iki taraftaki `Known_answer` testi bunu kontrol eder.
+
 ## Ayarlar (`appsettings.json`, "Agent" bölümü)
 
 | Ayar | Varsayılan | Açıklama |
@@ -33,6 +40,7 @@ Ajan yalnızca loopback'i dinlediği için kod yalnızca aynı bilgisayardaki aj
 | `Port` | `47321` | Web önyüzü bu portu sabit biliyor |
 | `AllowedOrigins` | `["http://localhost:5173"]` | Ajana kod gönderebilecek siteler; yalnızca platformun alan adı |
 | `ApiBaseUrl` | `http://localhost:5080` | Sunucu adresi. `https` zorunlu; `http` yalnızca localhost için |
+| `SignalIntervalSeconds` | `5` | İmzalı sinyal aralığı (Y2), 1–15 sn. Sunucu 30 sn sinyal almazsa "sinyal kesildi" yazıyor |
 
 Ayar hatalıysa ajan açılmaz. Ortam değişkeniyle de verilebilir: `Agent__ApiBaseUrl`, `Agent__AllowedOrigins__0`.
 
