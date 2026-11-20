@@ -4,6 +4,8 @@ using AIGuard.Infrastructure.Persistence;
 using AIGuard.Infrastructure.Persistence.Interceptors;
 using AIGuard.Infrastructure.Persistence.Seed;
 using AIGuard.Infrastructure.Security;
+using AIGuard.Infrastructure.Storage;
+using AIGuard.Infrastructure.Vision;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +42,15 @@ public static class DependencyInjection
         services.AddSingleton(JwtSettings.FromConfiguration(configuration));
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
+
+        // Şifreleme anahtarı ve görüntü servisi ayarları ilk kullanımda okunuyor; eksikse ilgili uç
+        // hata veriyor ama uygulamanın geri kalanı açılıyor. Docker Compose ve CI bu değişkenleri
+        // zaten zorunlu tutuyor.
+        services.AddSingleton<IFieldEncryptor>(_ => AesGcmFieldEncryptor.FromConfiguration(configuration));
+        services.AddSingleton<IEvidenceStore>(sp =>
+            FileEvidenceStore.FromConfiguration(configuration, sp.GetRequiredService<IFieldEncryptor>()));
+        services.AddHttpClient<IFaceService, VisionFaceService>(client => VisionFaceService.Configure(client, configuration));
+
         services.AddScoped<DevDataSeeder>();
 
         return services;

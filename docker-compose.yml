@@ -101,6 +101,8 @@ services:
       - ./api/src/AIGuard.Api/riskconfig.json:/app/riskconfig.json:ro
       # Bilinen VPN/veri merkezi IP blokları (Y4, FR-23); aynı şekilde yeniden derlemeden değiştirilebiliyor.
       - ./api/src/AIGuard.Api/vpn-ip-blocks.json:/app/vpn-ip-blocks.json:ro
+      # Şifreli kanıt kareleri (A3). Volume olmasa container yeniden oluşturulunca kareler kaybolur.
+      - evidence:/app/data/evidence
     ports:
       - "8080:8080"
     depends_on:
@@ -149,3 +151,4 @@ networks:
 
 volumes:
   pgdata: {}
+  evidence: {}

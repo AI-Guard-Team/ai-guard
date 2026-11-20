@@ -62,7 +62,7 @@ public class Verification : Entity
 
     public double Similarity { get; set; }
 
-    /// <summary>Sonuç sunucuda eşiklere göre belirleniyor.</summary>
+    /// <summary>Görüntü servisinin kararı; eşikler servisin config.yaml dosyasında (S-19).</summary>
     public bool Passed { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
