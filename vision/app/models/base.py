@@ -9,6 +9,7 @@ Renk dönüşümü ve ölçekleme her modelin kendi ön işlemesinde yapılır.
 
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar
@@ -47,9 +48,36 @@ class VisionModel(ABC):
         """Tek bir girdiyi işler ve modelin sonuç nesnesini döner."""
 
 
+ORT_THREADS_ENV = "VISION_ORT_THREADS"
+
+
+def ort_threads() -> int:
+    """VISION_ORT_THREADS: bir onnxruntime oturumunun kullanacağı iş parçacığı sayısı.
+
+    Tanımsız ya da 0: onnxruntime'ın kendi varsayılanı (fiziksel çekirdek sayısı kadar). Birden fazla uvicorn işçisi
+    aynı makinede çalışırken işçi × iş parçacığı çekirdek sayısını aşmasın diye ayarlanır (docs/benchmark-D1.md).
+    MediaPipe'ın Python API'sinde bu ayar yok; Face Landmarker'ı etkilemez.
+    """
+    raw = os.getenv(ORT_THREADS_ENV, "").strip()
+    if not raw:
+        return 0
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError(f"{ORT_THREADS_ENV} tam sayı olmalı, gelen {raw!r}") from None
+    if value < 0:
+        raise ValueError(f"{ORT_THREADS_ENV} negatif olamaz, gelen {value}")
+    return value
+
+
 def onnx_session(path: Path) -> ort.InferenceSession:
-    """Yalnızca işlemci (hedef donanımda GPU yok)."""
-    return ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+    """Yalnızca işlemci (hedef donanımda GPU yok); iş parçacığı sayısı VISION_ORT_THREADS'ten."""
+    options = ort.SessionOptions()
+    threads = ort_threads()
+    if threads:
+        options.intra_op_num_threads = threads
+        options.inter_op_num_threads = 1  # modeller sıralı çalışıyor (varsayılan yürütme kipi)
+    return ort.InferenceSession(str(path), sess_options=options, providers=["CPUExecutionProvider"])
 
 
 def check_input_shape(session: ort.InferenceSession, expected: tuple[int, ...], model: str) -> str:

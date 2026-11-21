@@ -25,6 +25,15 @@ uvicorn main:app --port 8000 --reload
 - `VISION_SERVICE_KEY` tanımlı değilse servis açılmaz.
 - Swagger yalnızca `VISION_DEBUG=true` iken açılır: http://localhost:8000/docs
 - Model dosyaları yoksa servis yine açılır, `/internal/*` uçları `503 MODELS_NOT_READY` döner.
+- `VISION_ORT_THREADS`: onnxruntime modellerinin iş parçacığı sayısı (tanımsız ya da 0: onnxruntime varsayılanı). MediaPipe'ı etkilemez.
+
+## Benchmark (D1)
+
+```powershell
+python scripts/benchmark.py --threads 1,2,0   # kamera açılır: kameraya bakın; kareler diske yazılmaz
+```
+
+Sonuçlar ve önerilen işçi/iş parçacığı sayısı: [`docs/benchmark-D1.md`](../docs/benchmark-D1.md).
 
 ## Model dosyaları
 

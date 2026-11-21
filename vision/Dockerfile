@@ -23,11 +23,13 @@ RUN python scripts/export_models.py --out /models \
 FROM python:3.11-slim
 
 # .pyc yazma ve çıktı tamponlama kapalı: container loglarında çıktı gecikmesin.
-# VISION_WORKERS: uvicorn işçi sayısı; her işçi modelleri ayrı yükler. Değer D1 benchmark'ında belirlenecek.
+# VISION_WORKERS: uvicorn işçi sayısı; her işçi modelleri ayrı yükler (~600 MB). VISION_ORT_THREADS: onnxruntime
+# iş parçacığı sayısı. Değerler compose ile aynı (docs/benchmark-D1.md); compose'suz çalıştırıldığında da geçerli.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     VISION_MODEL_DIR=/app/models \
-    VISION_WORKERS=1
+    VISION_WORKERS=2 \
+    VISION_ORT_THREADS=1
 
 # Debian slim'de eksik olan paylaşımlı kütüphaneler:
 # - libgl1, libglib2.0-0: opencv-contrib-python (mediapipe bu adı istiyor); cv2'nin ana .so dosyası.
