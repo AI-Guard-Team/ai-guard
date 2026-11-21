@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 20 Kasım 2026 (A3)*
+*Son güncelleme: 21 Kasım 2026 (D1)*
 
 ---
 
@@ -40,6 +40,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Oturum durumu | Yalnızca `session.TransitionTo(...)`; tablo dışı geçiş 409. Süre ve hak `InProgress`'e geçişte başlar (K-24) |
 | Şifreleme | Tek sınıf (`IFieldEncryptor`), AES-256-GCM, kayda bağlı bağlam; kanıt kareleri şifreli dosyada (K-26) |
 | Biyometrik akış | Fotoğraf saklanmıyor; geçti/kaldı kararı görüntü servisinde, durum geçişleri E4'ten; başarısız deneme olay ve kanıt karesiyle (K-27) |
+| Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
 
 ---
 
@@ -713,6 +714,56 @@ A3'ün akışı (FR-04, FR-05, FR-10, UC-12):
 **Kayıt fotoğrafı kontrolü (FR-04)** oturum rızası adımında yapılıyor: fotoğraf yoksa rıza 409 alıyor ve oturum `ConsentPending`'de kalıyor. Bu yüzden E4'teki `StartAsync`'e ayrıca kontrol eklenmedi.
 
 **Yetki:** Uçlar yalnızca `Candidate` rolüne açık (K-20). Oturum uçlarında aday yalnızca kendi oturumunu görüyor; başkasının oturumuna 404. Diğer oturum uçları gibi her istekte IP kontrolü var (`SessionIpGuard`, FR-22). Fotoğraf ve rıza uçları kimliği JWT'den alıyor, istekte kullanıcı kimliği yok.
+
+---
+
+## K-28 · Görüntü servisinin model ve paket seçimi (D1)
+
+GAB 3.3.5'teki model listesi aynen korunuyor: OpenCV, MediaPipe, YOLO nano, Silent-Face-Anti-Spoofing, ArcFace, Silero VAD. Değişen yalnızca modellerin nasıl çalıştırıldığı. Kod: `vision/app/models/` (her model ortak bir arayüzün arkasında, GAB 3.3.4).
+
+| Model | Dosya | Kaynak | Çalıştırma | Lisans |
+|---|---|---|---|---|
+| MediaPipe Face Landmarker | `face_landmarker.task` (float16) | Google, `storage.googleapis.com/mediapipe-models` | mediapipe | Apache-2.0 |
+| ArcFace, MobileFaceNet @ WebFace600K | `w600k_mbf.onnx` | InsightFace `buffalo_s` (v0.7); indirilen kopyanın sha256'sı resmî zip'tekiyle aynı | onnxruntime | Yalnızca ticari olmayan araştırma (InsightFace) |
+| Silent-Face-Anti-Spoofing: MiniFASNetV2 (ölçek 2.7) ve MiniFASNetV1SE (ölçek 4.0) | `MiniFASNetV2.onnx`, `MiniFASNetV1SE.onnx` | Orijinal `.pth` dosyalarından dönüştürüldü (`2.7_80x80_MiniFASNetV2.pth`, `4_0_0_80x80_MiniFASNetV1SE.pth`, commit `b6d5f04`) | onnxruntime | Apache-2.0 (depo); ağırlıklar için ayrı lisans belirtilmemiş |
+| YOLO11n (COCO) | `yolo11n.onnx` | Ultralytics `yolo11n.pt` (v8.4.0), 640, opset 17 | onnxruntime | AGPL-3.0 (ağırlıklar dahil) |
+| Silero VAD | `silero_vad.onnx` (v6.2.3) | snakers4/silero-vad | onnxruntime | MIT |
+
+Çalışma zamanı paketleri: `numpy`, `onnxruntime`, `mediapipe`, `opencv-contrib-python` (tek opencv paketi; mediapipe bu adı istiyor). `torch`, `torchvision`, `ultralytics`, `uniface` ve `silero-vad` servise girmiyor.
+
+**D1 kartından sapmalar**
+
+| Kartta | Uygulamada | Neden |
+|---|---|---|
+| insightface | ArcFace ONNX + onnxruntime | insightface PyPI'da yalnızca kaynak dağıtımı; Windows'ta C++ derleyicisi istiyor. Aynı ağırlık ve aynı ön işleme (uniface ile kosinüs ≥ 0,999999) |
+| ultralytics | YOLO11n ONNX + onnxruntime | torch ve polars yaklaşık 1 GB ekliyordu; ultralytics `opencv-python`, mediapipe `opencv-contrib-python` istediği için iki opencv aynı `cv2`'yi yazıyordu; AGPL'li kütüphane kodu servise girmiyor. Ağırlıklar yine AGPL-3.0 |
+| Yüz bulucu | Yüz kutusu ve 5 nokta MediaPipe'tan; RetinaFace yok | MediaPipe zaten çalışıyor; ikinci bir bulucu boş karede bile ~150 ms ekliyordu |
+| Silent-Face | İki model (MiniFASNetV2 + MiniFASNetV1SE), orijinal ağırlıklardan bizim ürettiğimiz ONNX; skor orijinal `test.py`'deki gibi | Başkasının dönüştürdüğü dosyanın kaynağı belirsizdi. Her modelde PyTorch ile ONNX çıktısı 7 girdide aynı (atol 1e-4, rtol 0); skor 24 kutuda `test.py` hesabıyla aynı (fark < 1e-6) |
+| ArcFace | MobileFaceNet (`w600k_mbf`, 13 MB) | Hız. D2'deki LFW ölçümü yetersiz çıkarsa ResNet50'ye (`w600k_r50`, 166 MB) geçilir |
+
+**Ön işleme (orijinallerle karşılaştırıldı)**
+
+- Görüntüler BGR uint8 olarak geliyor; her model kendi dönüşümünü yapıyor.
+- ArcFace: 5 noktayla Umeyama benzerlik dönüşümü, 112×112, RGB, (x − 127,5) / 127,5, L2 normalize.
+- Silent-Face: her model yüz kutusunu kendi ölçeğiyle (V2 2.7, V1SE 4.0) büyütüp görüntünün içine kaydırıyor (`CropImage`), 80×80, BGR, 0–255, normalizasyon yok. İki modelin softmax'ı toplanıyor; skor gerçek yüz sınıfının (1. sınıf) toplamdaki payı (`test.py`: `prediction[0][1] / 2`).
+- YOLO11n: 640 letterbox (dolgu 114), RGB, /255; yalnızca 67. sınıf (cell phone); güven 0,25, NMS IoU 0,7 (Ultralytics varsayılanları).
+- Silero: 512 örneklik pencereler, önüne önceki pencerenin son 64 örneği ekleniyor, durum her istekte sıfırlanıyor (S-20: servis durumsuz).
+
+**Model dosyaları**
+
+- Repoya girmiyor (`/vision/models/`, `.gitignore`).
+- `scripts/download_models.py` üç dosyayı indirip sha256'larını doğruluyor.
+- `scripts/export_models.py` üç ONNX'i ayrı bir ortamda (`requirements-export.txt`) üretiyor; aynı sürümlerle her seferinde aynı dosya çıkıyor.
+- Docker imajında iki betik derleme aşamasında çalışıyor (`vision/Dockerfile`, `models` aşaması); torch son imaja girmiyor. Container iç ağda olduğu için çalışırken model indirilemez.
+- Dosyalar yoksa servis açılıyor ve uçlar 503 `MODELS_NOT_READY` dönüyor (CI'da durum bu). Modeller açılışta, işçi başına bir kez yükleniyor.
+
+**Sınırlılıklar ve sonraki kartlara notlar**
+
+- Silent-Face modelleri orijinalde başka bir yüz bulucunun kutusuyla eğitildi; biz MediaPipe noktalarının kutusunu kullanıyoruz (alından daha dar). Etkisi D6'daki canlılık ölçümünde görülmeli.
+- Yaw ve pitch MediaPipe dönüşüm matrisinden hesaplanıyor; işaret yönü D4'te gerçek kareyle doğrulanmalı (kural mutlak değerle çalıştığı için sonucu değiştirmiyor).
+- InsightFace ağırlıkları ticari kullanıma kapalı; proje araştırma amaçlı olduğu için uygun, raporda belirtilmeli.
+- `VISION_WORKERS` ve onnxruntime iş parçacığı sayısı D1 benchmark'ında belirlenecek. Şimdilik bir işçi; onnxruntime her işçide varsayılan olarak bütün çekirdekleri kullanıyor.
+- Docker imajı Debian slim'de dört sistem paketi istiyor: `libgl1` ve `libglib2.0-0` (opencv-contrib-python), `libegl1` ve `libgles2` (mediapipe'ın `libmediapipe.so` dosyası; GPU kullanılmasa da yüklenirken bağlanıyor). İmaj derlenirken modeller bir kez yükleniyor (duman testi); kütüphane eksikse derleme orada duruyor.
 
 ---
 

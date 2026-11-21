@@ -1,4 +1,5 @@
 .venv/
+.venv-export/
 venv/
 __pycache__/
 *.py[cod]
@@ -10,3 +11,5 @@ data/
 datasets/
 recordings/
 evidence/
+# Yerelde indirilen model dosyaları; imaja derleme sırasında ayrıca konacak (Dockerfile, E1b ile).
+models/

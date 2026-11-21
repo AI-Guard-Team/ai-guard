@@ -5,4 +5,10 @@ pydantic==2.10.4
 PyYAML==6.0.2
 # FastAPI TestClient için; CI yalnızca bu dosyayı ve ruff/pytest'i kuruyor.
 httpx==0.28.1
-# Model paketleri D1'in ikinci adımında (benchmark) eklenecek.
+# Model katmanı (D1, MIMARI-KARARLAR K-28). torch, ultralytics, uniface ve silero-vad bilerek yok:
+# ArcFace, MiniFASNetV2, YOLO11n ve Silero VAD ONNX olarak onnxruntime ile çalışıyor.
+numpy==2.4.6
+onnxruntime==1.32.0
+mediapipe==1.2.3
+# mediapipe bu adı istiyor; tek opencv paketi bu olsun (başka bir opencv paketi eklemeyin, aynı cv2'yi yazarlar).
+opencv-contrib-python==5.1.0.95
