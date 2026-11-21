@@ -1,0 +1,12 @@
+# Yalnızca scripts/export_models.py için: MiniFASNetV2, MiniFASNetV1SE ve YOLO11n'i ONNX'e çevirmek.
+# Servis, Docker imajı ve CI bu dosyayı KURMAZ (MIMARI-KARARLAR K-28). Ayrı bir sanal ortamda kurun:
+#   uv venv --python 3.11 --seed .venv-export
+#   .venv-export\Scripts\python -m pip install -r requirements-export.txt
+# Bu sürümlerle üretilen dosyaların sha256'sı export_models.py'de; başka sürüm farklı dosya üretebilir.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0+cpu
+torchvision==0.29.2+cpu
+ultralytics==8.4.216
+onnx==1.23.2
+onnxruntime==1.32.0
+numpy==2.4.6
