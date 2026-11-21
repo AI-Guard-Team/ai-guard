@@ -60,8 +60,11 @@ services:
     restart: unless-stopped
     environment:
       VISION_SERVICE_KEY: ${VISION_SERVICE_KEY:?VISION_SERVICE_KEY tanımlı değil}
-      # uvicorn işçi sayısı; her işçi modelleri ayrı yükler. Değer D1 benchmark'ında belirlenecek (K-28).
-      VISION_WORKERS: ${VISION_WORKERS:-1}
+      # uvicorn işçi sayısı; her işçi modelleri ayrı yükler (~600 MB). 2 işçi 25 adaya kadar yetiyor;
+      # H3'ün 50 adaylık senaryosunda .env'de 4 (docs/benchmark-D1.md, K-28).
+      VISION_WORKERS: ${VISION_WORKERS:-2}
+      # onnxruntime iş parçacığı sayısı; 1 ile oturumlar birbiriyle çekişmiyor (docs/benchmark-D1.md).
+      VISION_ORT_THREADS: ${VISION_ORT_THREADS:-1}
     # Bilerek "ports" YOK: vision bilgisayara/dış ağa açılmaz. "expose" yalnızca
     # aynı ağdaki container'lara (api) bilgi amaçlı port bildirir.
     expose:
