@@ -1,6 +1,7 @@
 # Görüntü/Ses Servisi (vision) – JSON Sözleşmesi
 
-> **Durum:** TASLAK v0.2 · 20 Kasım 2026 · Hazırlayan: Dilan Özmen
+> **Durum:** TASLAK v0.3 · 21 Kasım 2026 · Hazırlayan: Dilan Özmen
+> v0.3 (D2): boyut sınırları, `qualityScore` tanımı, `verify` karar kuralları, `referenceVector` doğrulaması
 > Onaylayacaklar: Ayşe Nur Kendirci (A3, D4/D5 entegrasyonu), Esma İrem Öztürk
 > Kaynaklar: D1, D2, D4, D5, A2, A3, E1b, S2 kartları; MIMARI-KARARLAR K-13, K-16, K-17
 
@@ -15,7 +16,8 @@ Bu belge, ana arka uç (`api`, .NET) ile görüntü/ses servisi (`vision`, FastA
 | Adres | `http://vision:8000` (Docker Compose iç ağı). Dışarıya port açılmaz; yalnızca `api` çağırır. |
 | Kimlik doğrulama | `/internal/*` isteklerinde `X-Service-Key: <VISION_SERVICE_KEY>` başlığı (CLAUDE.md, `.env.example`). Eksik veya yanlışsa `401`. Anahtar tanımlı değilse servis açılmaz. |
 | Gövde | `Content-Type: application/json`, UTF-8. |
-| Görüntü | **Base64 kodlu** görüntü (`data:` öneki olmadan). Kamera kareleri JPEG; kayıt fotoğrafı JPEG, PNG veya WebP olabilir (S2, en fazla 5 MB). |
+| Görüntü | **Base64 kodlu** görüntü (`data:` öneki olmadan). Kamera kareleri JPEG; kayıt fotoğrafı JPEG, PNG veya WebP olabilir (S2). Biçim dosyanın ilk baytlarından anlaşılır; her iki uçta da üç biçim kabul edilir. EXIF yönü uygulanır (yan kaydedilmiş telefon fotoğrafı dik okunur). |
+| Boyut sınırları | api'deki sınırlarla aynı (`ImageFile`): fotoğraf 5 MiB, kare 1 MiB. Base64 karşılıkları şemada üst sınırdır: `image` en fazla 6 990 508, her `frames` öğesi en fazla 1 398 104 karakter; aşan istek `VALIDATION_ERROR`. Çözülmüş görüntünün uzun kenarı en fazla **6000 piksel**; kenar başlıktan, çözmeden önce okunur, aşan görüntü `INVALID_IMAGE`. |
 | Ses | **Base64 kodlu** WAV veya WebM/Opus parçası. Servis 16 kHz mono'ya kendisi dönüştürür. |
 | Zaman | `ts`: ISO 8601, UTC, milisaniyeli (ör. `2026-11-24T10:15:30.250Z`). Servis değeri aynen geri döner. |
 | Yüz vektörü | 512 adet `float`, L2 ile normalize (birim uzunlukta). Servis vektörü **saklamaz**; şifreleme ve saklama arka ucun işidir (A3). |
@@ -34,7 +36,7 @@ Tanımsız yol veya yanlış HTTP yöntemi FastAPI'nin varsayılan yanıtını d
 |---|---|---|
 | 401 | `UNAUTHORIZED` | `X-Service-Key` eksik veya yanlış |
 | 422 | `VALIDATION_ERROR` | Gövde sözleşmeye uymuyor (eksik alan, yanlış tür) |
-| 422 | `INVALID_IMAGE` / `INVALID_AUDIO` | Base64 veya dosya çözülemedi |
+| 422 | `INVALID_IMAGE` / `INVALID_AUDIO` | Base64 veya dosya çözülemedi; görüntü JPEG/PNG/WebP değil ya da kenarı 6000 pikseli aşıyor |
 | 422 | `NO_FACE` / `MULTIPLE_FACES` / `FACE_TOO_SMALL` / `IMAGE_TOO_BLURRY` | Yalnızca `enroll` ucunda (Bölüm 3) |
 | 500 | `INTERNAL_ERROR` | Beklenmeyen hata |
 | 503 | `MODELS_NOT_READY` | Modeller henüz yüklenmedi |
@@ -68,7 +70,21 @@ Arka uç, `POST /api/me/photo` ile gelen fotoğrafı (multipart, S2) base64'e ç
 }
 ```
 
-**Hatalar (422):** `NO_FACE`, `MULTIPLE_FACES` (yüz sayısı tam 1 olmalı), `FACE_TOO_SMALL`, `IMAGE_TOO_BLURRY`. En küçük yüz boyutu ve netlik eşiği `config.yaml`'dadır.
+- `vector`: 512 değer, L2 ile normalize (birim uzunlukta).
+- `faceBox`: yüzün piksel kutusu (MediaPipe yüz ağının sınır kutusu, görüntünün içine kırpılmış; EXIF yönü uygulanmış görüntüde).
+- `qualityScore` (0,5–1): iki kabul ölçütünün zayıf olanı. Yüzün kısa kenarı `min_face_px`'e, yüz netliği `min_sharpness`'a bölünür, her oran 2'de kesilir; skor küçük oranın yarısıdır. Tam eşikteki fotoğraf 0,5, iki ölçütte de eşiğin en az iki katı olan fotoğraf 1 alır. Karar için kullanılmaz, yalnızca bilgi (kod: `app/face_service.py` `quality_score`).
+
+**Hatalar (422)**, bu sırayla kontrol edilir:
+
+| Sıra | `code` | Ne zaman |
+|---|---|---|
+| 1 | `INVALID_IMAGE` | Görüntü çözülemedi (Bölüm 1) |
+| 2 | `NO_FACE` | Yüz yok |
+| 3 | `MULTIPLE_FACES` | 2 ya da daha fazla yüz (yüz sayısı tam 1 olmalı) |
+| 4 | `FACE_TOO_SMALL` | Yüz kutusunun kısa kenarı < `enroll.min_face_px` |
+| 5 | `IMAGE_TOO_BLURRY` | Yüz bölgesinin Laplacian varyansı < `enroll.min_sharpness`. Kesit önce kısa kenarı 112 px olacak şekilde ölçeklenir; böylece değer fotoğrafın çözünürlüğünden bağımsızdır |
+
+Eşikler ve gerekçeleri `vision/config.yaml`'dadır.
 
 ---
 
@@ -82,7 +98,8 @@ Arka uç, `POST /api/me/photo` ile gelen fotoğrafı (multipart, S2) base64'e ç
 }
 ```
 - `frames`: **3–5 kare**. S2'deki önyüz şu an 3 kareyi ~150 ms arayla, JPEG (kalite 0,92) olarak gönderiyor.
-- `referenceVector`: arka ucun şifresini çözdüğü kayıtlı vektör.
+- `referenceVector`: arka ucun şifresini çözdüğü kayıtlı vektör. 512 değer olmalı, sonlu olmayan değer ya da sıfır vektör `VALIDATION_ERROR`; birim uzunlukta değilse servis yeniden normalize eder.
+- Karelerden biri çözülemezse tüm istek **422 `INVALID_IMAGE`** (hiçbir model çalışmaz). Diğer bütün durumlarda 200.
 
 **Yanıt 200** (doğrulama başarısız olsa da HTTP 200 döner; sonucu `passed` belirler)
 ```json
@@ -94,10 +111,22 @@ Arka uç, `POST /api/me/photo` ile gelen fotoğrafı (multipart, S2) base64'e ç
   "framesUsed": 3
 }
 ```
-- `livenessScore`: kullanılabilir karelerin canlılık skorlarının ortalaması (0–1).
-- `similarity`: kosinüs benzerliği (−1…1).
-- `passed` = `livenessScore ≥ liveness_threshold` **ve** `similarity ≥ match_threshold` (eşikler `config.yaml`'da). Arka uç skorları `Verification.LivenessScore` / `Similarity`'ye yazar (bkz. Bölüm 7, S-19).
-- `reason` (başarısızsa): `LIVENESS_FAILED` | `IDENTITY_MISMATCH` | `NO_FACE` | `MULTIPLE_FACES`.
+- `livenessScore` (0–1): kullanılabilir karelerin Silent-Face skorlarının ortalaması.
+- `similarity` (−1…1): kullanılabilir karelerin vektörleriyle `referenceVector` arasındaki kosinüs benzerliklerinin ortalaması.
+- Skorlar her zaman aralıkta bir **sayıdır**, `null` olmaz; yüz bulunmayan durumda 0.
+- `framesUsed`: kullanılabilir kare sayısı.
+- `reason`: `passed=true` ise `null`; değilse `LIVENESS_FAILED` | `IDENTITY_MISMATCH` | `NO_FACE` | `MULTIPLE_FACES`.
+- Arka uç skorları `Verification.LivenessScore` / `Similarity`'ye yazar (S-19).
+
+**Karar kuralları** (sırayla; kod: `vision/app/face_service.py` `verify`):
+
+1. Herhangi bir karede 2 ya da daha fazla yüz varsa → `MULTIPLE_FACES`, diğer kareler temiz olsa bile (kameraya ikinci kişi girmesi uyarı işaretidir). Skorlar 0.
+2. Tam bir yüz bulunan kareler **kullanılabilir** karelerdir. Kullanılabilir kare sayısı kare sayısının yarısından azsa → `NO_FACE` (3 karede en az 2, 4 karede en az 2, 5 karede en az 3 gerekir). Skorlar 0.
+3. Aksi hâlde iki skor da yalnızca kullanılabilir karelerden, ortalama alınarak hesaplanır. Canlılık kalsa bile benzerlik hesaplanır ve döner.
+4. `passed` = `livenessScore ≥ verify.liveness_threshold` **ve** `similarity ≥ verify.match_threshold` (eşikler `config.yaml`'da, sınır değer geçer).
+5. Neden önceliği: canlılık kaldıysa (benzerlik ne olursa olsun) `LIVENESS_FAILED`, sahte yüz önce gelir; yalnızca benzerlik kaldıysa `IDENTITY_MISMATCH`.
+
+Eşikler: canlılık 0,5 (Silent-Face `test.py` kararının tek sayı karşılığı, gerekçe `config.yaml`'da); benzerlik LFW'de FAR ≈ %1 için ölçüldü (`docs/threshold-D2.md`).
 - Başarısız denemede `VERIFICATION_FAILED` olayını ve kanıt karesini **arka uç** kaydeder; kareler zaten arka uçtadır.
 
 ---
