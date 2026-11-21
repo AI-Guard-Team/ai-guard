@@ -103,11 +103,22 @@ def euler_angles(matrix: np.ndarray) -> tuple[float, float, float]:
     return math.degrees(yaw), math.degrees(pitch), math.degrees(roll)
 
 
+SHARPNESS_SIDE_PX = 112  # netlik bu ölçekte ölçülür (ArcFace giriş kenarı)
+
+
 def sharpness(image: np.ndarray, box: FaceBox) -> float:
-    """Yüz bölgesinde Laplacian varyansı; kayıtta `IMAGE_TOO_BLURRY` eşiğiyle karşılaştırılır (D2)."""
+    """Yüz bölgesinde Laplacian varyansı; kayıtta `IMAGE_TOO_BLURRY` eşiğiyle karşılaştırılır (D2).
+
+    Kesit önce kısa kenarı SHARPNESS_SIDE_PX olacak şekilde ölçeklenir. Ham Laplacian varyansı çözünürlüğe
+    çok bağlı: LFW'de aynı net yüz 4 kat büyütülünce medyan 191'den 3,8'e düşüyor; yüksek çözünürlüklü
+    telefon fotoğrafları "bulanık" sayılırdı. Sabit ölçekte değer çözünürlükten bağımsız (D2 ölçümü).
+    """
     crop = as_bgr(image)[box.y:box.y + box.height, box.x:box.x + box.width]
     if crop.size == 0:
         return 0.0
+    scale = SHARPNESS_SIDE_PX / min(crop.shape[:2])
+    interpolation = cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
+    crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=interpolation)
     gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
     return float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
