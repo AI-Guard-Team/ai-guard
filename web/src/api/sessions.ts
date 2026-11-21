@@ -49,3 +49,54 @@ export function continueAgent(sessionId: string, mode: AgentContinueMode, reason
     body: { mode, reason },
   })
 }
+
+/** Sınav sürerken oturum bu sıklıkla yenilenir. 30 sn istek gelmezse oturum Disconnected sayılıyor (K-24). */
+export const SESSION_POLL_MS = 10_000
+
+export interface SessionQuestion {
+  id: string
+  text: string
+  options: string[]
+  order: number
+}
+
+export interface SessionAnswer {
+  questionId: string
+  selectedOption: number | null
+  seq: number
+}
+
+/** `GET /api/sessions/{id}` (K-24). Sorular yalnızca InProgress'te dolu; doğru seçenek yok. */
+export interface SessionView {
+  id: string
+  examId: string
+  examName: string
+  state: string
+  durationMinutes: number
+  startedAt?: string | null
+  endsAt?: string | null
+  serverTime: string
+  questions: SessionQuestion[]
+  answers: SessionAnswer[]
+  lastSeq: number
+}
+
+export interface AnswerPayload {
+  questionId: string
+  selectedOption: number | null
+  seq: number
+  clientTime: string
+}
+
+export function getSession(sessionId: string): Promise<SessionView | undefined> {
+  return apiRequest<SessionView>(`/api/sessions/${sessionId}`)
+}
+
+/** 201 yeni kayıt, 200 aynı seq'in tekrarı. İkisi de kuyruktan düşürülebilir. */
+export function saveAnswer(sessionId: string, answer: AnswerPayload): Promise<void> {
+  return apiRequest(`/api/sessions/${sessionId}/answers`, { method: 'POST', body: answer })
+}
+
+export function submitExam(sessionId: string): Promise<void> {
+  return apiRequest(`/api/sessions/${sessionId}/submit`, { method: 'POST' })
+}
