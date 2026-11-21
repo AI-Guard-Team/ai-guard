@@ -127,7 +127,7 @@ describe('sınav ekranı', () => {
   })
 
   it('bağlantı varken bekleyen cevap yazısını göstermez', async () => {
-    let release = () => undefined
+    let release: (value?: void | PromiseLike<void>) => void = () => undefined
     const gate = new Promise<void>((resolve) => {
       release = resolve
     })
