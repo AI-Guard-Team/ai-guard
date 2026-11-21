@@ -24,14 +24,54 @@ uvicorn main:app --port 8000 --reload
 
 - `VISION_SERVICE_KEY` tanımlı değilse servis açılmaz.
 - Swagger yalnızca `VISION_DEBUG=true` iken açılır: http://localhost:8000/docs
+- Model dosyaları yoksa servis yine açılır, `/internal/*` uçları `503 MODELS_NOT_READY` döner.
+
+## Model dosyaları
+
+Repoda değiller; `VISION_MODEL_DIR` klasörüne (varsayılan `vision/models/`, `.gitignore`'da) konur. Docker imajında
+bu adımlar derleme sırasında kendiliğinden çalışır (`Dockerfile`, `models` aşaması); aşağıdakiler Docker'sız çalışma için.
+
+**1. ONNX üretme ortamı (bir kez).** Üç model orijinal PyTorch ağırlıklarından ONNX'e çevrilir. Bunun için torch ve
+ultralytics gerekir; servis ortamına (`.venv`) kurulmazlar, ayrı bir sanal ortam kullanılır (`.venv-export`, `.gitignore`'da):
+
+```powershell
+cd vision
+uv venv --python 3.11 --seed .venv-export
+.venv-export\Scripts\python -m pip install -r requirements-export.txt   # ~1,5 GB, torch dahil
+```
+
+**2. Üret ve indir.**
+
+```powershell
+.venv-export\Scripts\python scripts/export_models.py   # MiniFASNetV2, MiniFASNetV1SE, yolo11n (.onnx)
+.venv\Scripts\python scripts/download_models.py        # face_landmarker.task, w600k_mbf.onnx, silero_vad.onnx
+```
+
+- `export_models.py` orijinal ağırlıkları sabit adreslerden indirir, sha256'larını kontrol eder, ONNX'e çevirir ve
+  PyTorch ile ONNX çıktısını karşılaştırır; fark varsa dosyayı yazmaz.
+- `download_models.py` üç dosyayı indirip sha256'larını doğrular, sonra altı dosyanın hepsini kontrol eder.
+  Hepsi hazırsa çıkış kodu 0; eksik olanı ve nasıl üretileceğini yazar.
+
+| Dosya | Model | Lisans |
+|---|---|---|
+| `face_landmarker.task` | MediaPipe Face Landmarker | Apache-2.0 |
+| `w600k_mbf.onnx` | ArcFace (InsightFace, MobileFaceNet) | Yalnızca ticari olmayan araştırma |
+| `MiniFASNetV2.onnx`, `MiniFASNetV1SE.onnx` | Silent-Face-Anti-Spoofing | Apache-2.0 |
+| `yolo11n.onnx` | Ultralytics YOLO11n | AGPL-3.0 |
+| `silero_vad.onnx` | Silero VAD | MIT |
+
+Kaynaklar, sürümler ve lisans ayrıntıları: [MIMARI-KARARLAR K-28](../docs/MIMARI-KARARLAR.md#k-28--görüntü-servisinin-model-ve-paket-seçimi-d1).
 
 ## Test ve lint (CI ile aynı)
 
 ```powershell
 pip install ruff pytest
 ruff check .
-pytest -q
+pytest -q            # model dosyaları yoksa "models" işaretli testler atlanır
+pytest -q -m models  # yalnızca gerçek modelli testler
 ```
+
+Yüzlü test isteğe bağlı: `AIGUARD_TEST_FACE` = tek yüzlü bir fotoğrafın yolu (repoya eklenmez).
 
 Eşikler `config.yaml`'da; `null` olanlar ilgili kartta (D2, D4, D5) ayarlanacak.
 
