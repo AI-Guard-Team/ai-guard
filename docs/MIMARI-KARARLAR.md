@@ -763,7 +763,7 @@ GAB 3.3.5'teki model listesi aynen korunuyor: OpenCV, MediaPipe, YOLO nano, Sile
 - Yaw ve pitch MediaPipe dönüşüm matrisinden hesaplanıyor; işaret yönü D4'te gerçek kareyle doğrulanmalı (kural mutlak değerle çalıştığı için sonucu değiştirmiyor).
 - InsightFace ağırlıkları ticari kullanıma kapalı; proje araştırma amaçlı olduğu için uygun, raporda belirtilmeli.
 - `VISION_WORKERS` ve onnxruntime iş parçacığı sayısı D1 benchmark'ında belirlenecek. Şimdilik bir işçi; onnxruntime her işçide varsayılan olarak bütün çekirdekleri kullanıyor.
-- Docker imajı Debian slim'de `libgl1` ve `libglib2.0-0` istiyor (opencv-contrib-python).
+- Docker imajı Debian slim'de dört sistem paketi istiyor: `libgl1` ve `libglib2.0-0` (opencv-contrib-python), `libegl1` ve `libgles2` (mediapipe'ın `libmediapipe.so` dosyası; GPU kullanılmasa da yüklenirken bağlanıyor). İmaj derlenirken modeller bir kez yükleniyor (duman testi); kütüphane eksikse derleme orada duruyor.
 
 ---
 

@@ -29,9 +29,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     VISION_MODEL_DIR=/app/models \
     VISION_WORKERS=1
 
-# opencv-contrib-python (mediapipe bu adı istiyor) cv2 için libGL ve glib istiyor.
+# Debian slim'de eksik olan paylaşımlı kütüphaneler:
+# - libgl1, libglib2.0-0: opencv-contrib-python (mediapipe bu adı istiyor); cv2'nin ana .so dosyası.
+# - libegl1, libgles2: mediapipe/tasks/c/libmediapipe.so (libEGL.so.1, libGLESv2.so.2); GPU kullanılmasa da
+#   kütüphane yüklenirken bağlanıyor, yoksa FaceLandmarker açılışta OSError veriyor.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libgles2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -42,6 +45,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 COPY --from=models /models /app/models
+
+# Duman testi: modelleri gerçekten yükle. Eksik bir sistem kütüphanesi ya da bozuk model dosyası, container
+# açılışta çökmeden önce derlemeyi burada açık bir hatayla durdursun.
+RUN python -c "from pathlib import Path; from app.models import load_models; load_models(Path('/app/models')); print('Modeller yüklendi')"
 
 # Root olmayan kullanıcı.
 RUN useradd --create-home --uid 10001 vision

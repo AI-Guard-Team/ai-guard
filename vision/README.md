@@ -31,6 +31,9 @@ uvicorn main:app --port 8000 --reload
 Repoda değiller; `VISION_MODEL_DIR` klasörüne (varsayılan `vision/models/`, `.gitignore`'da) konur. Docker imajında
 bu adımlar derleme sırasında kendiliğinden çalışır (`Dockerfile`, `models` aşaması); aşağıdakiler Docker'sız çalışma için.
 
+Docker imajı (Debian slim) dört sistem paketi kurar: `libgl1` ve `libglib2.0-0` (opencv), `libegl1` ve `libgles2`
+(mediapipe). Derlemenin sonunda modeller bir kez yüklenir; bir kütüphane eksikse derleme orada hatayla durur.
+
 **1. ONNX üretme ortamı (bir kez).** Üç model orijinal PyTorch ağırlıklarından ONNX'e çevrilir. Bunun için torch ve
 ultralytics gerekir; servis ortamına (`.venv`) kurulmazlar, ayrı bir sanal ortam kullanılır (`.venv-export`, `.gitignore`'da):
 
