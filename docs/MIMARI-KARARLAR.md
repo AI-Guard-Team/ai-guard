@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 21 Kasım 2026 (D1)*
+*Son güncelleme: 21 Kasım 2026 (D2)*
 
 ---
 
@@ -41,6 +41,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Şifreleme | Tek sınıf (`IFieldEncryptor`), AES-256-GCM, kayda bağlı bağlam; kanıt kareleri şifreli dosyada (K-26) |
 | Biyometrik akış | Fotoğraf saklanmıyor; geçti/kaldı kararı görüntü servisinde, durum geçişleri E4'ten; başarısız deneme olay ve kanıt karesiyle (K-27) |
 | Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
+| Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 
 ---
 
@@ -764,6 +765,54 @@ GAB 3.3.5'teki model listesi aynen korunuyor: OpenCV, MediaPipe, YOLO nano, Sile
 - InsightFace ağırlıkları ticari kullanıma kapalı; proje araştırma amaçlı olduğu için uygun, raporda belirtilmeli.
 - `VISION_WORKERS` ve onnxruntime iş parçacığı sayısı D1 benchmark'ında belirlenecek. Şimdilik bir işçi; onnxruntime her işçide varsayılan olarak bütün çekirdekleri kullanıyor. **Sonuç (`docs/benchmark-D1.md`):** üç kart hedefi de tek iş parçacığıyla geniş payla karşılanıyor (p95: yüz/kafa yönü 10 ms, eşleştirme 22 ms, telefon 82 ms); varsayılan iş parçacığı ayarı oturumlar arası çekişme yüzünden doğrulama zincirinde p95'i 26 ms'den 114 ms'ye çıkardığı için `VISION_ORT_THREADS=1` ve teorik hesaba göre 25 adaya kadar 2, 50 adaya kadar 4 işçi öneriliyor (H3'te doğrulanacak). Varsayılan `VISION_WORKERS=2`, `VISION_ORT_THREADS=1` (her işçi ~600 MB). H3'ün 50 adaylık senaryosunda .env'de VISION_WORKERS=4 yapılmalı (A6).
 - Docker imajı Debian slim'de dört sistem paketi istiyor: `libgl1` ve `libglib2.0-0` (opencv-contrib-python), `libegl1` ve `libgles2` (mediapipe'ın `libmediapipe.so` dosyası; GPU kullanılmasa da yüklenirken bağlanıyor). İmaj derlenirken modeller bir kez yükleniyor (duman testi); kütüphane eksikse derleme orada duruyor.
+
+---
+
+## K-29 · Yüz doğrulama kuralları ve eşikleri (D2)
+
+Görüntü servisinin `/internal/face/enroll` ve `/internal/face/verify` uçlarının kararları. Kod: `vision/app/face_service.py`, `vision/app/images.py`; istek ve yanıtlar `docs/contracts.md` (v0.3) 3. ve 4. bölüm. Geçti/kaldı kararının vision'da, eşiklerin yalnızca `vision/config.yaml`'da olması K-27 ve S-19'dan geliyor.
+
+**Doğrulama (verify) karar kuralları**, sırayla:
+
+| # | Kural | Gerekçe |
+|---|---|---|
+| 1 | Karelerden biri çözülemezse tüm istek 422 `INVALID_IMAGE`; hiçbir model çalışmıyor | Bozuk kamera görüntüsü; api bunu adayın denemesi sayıyor (K-27) |
+| 2 | Herhangi bir karede 2 ya da daha fazla yüz varsa `MULTIPLE_FACES`, diğer kareler temiz olsa bile | Kameraya ikinci kişinin girmesi bir uyarı işareti; ortalamada kaybolmamalı |
+| 3 | Tam bir yüz bulunan kareler "kullanılabilir". Sayısı kare sayısının yarısından azsa `NO_FACE` (3 karede en az 2, 4'te 2, 5'te 3) | Tek bir iyi kareye dayanarak karar verilmesin |
+| 4 | 2. ve 3. durumda skorlar 0, `framesUsed` kullanılabilir kare sayısı | A3 istemcisi skorların her zaman aralıkta bir sayı olmasını istiyor; `null` "servis bozuk" sayılıyor |
+| 5 | Aksi hâlde `livenessScore` ve `similarity`, kullanılabilir karelerin skorlarının ortalaması. Canlılık kalsa bile benzerlik hesaplanıp dönüyor | Olay kaydında iki skor da görünsün; D6 ve H1 ölçümünde iki skor ayrı ayrı lazım |
+| 6 | `passed` = `livenessScore ≥ liveness_threshold` **ve** `similarity ≥ match_threshold` (sınır değer geçer) | — |
+| 7 | İkisi de kalırsa `LIVENESS_FAILED`, yalnızca benzerlik kalırsa `IDENTITY_MISMATCH`; `passed=true` ise `reason` `null` | Sahte yüz önce gelir: sahte bir yüzün benzerliği anlamlı değil |
+| 8 | `referenceVector` 512 değer olmalı; sonlu olmayan değer veya sıfır vektör 422 `VALIDATION_ERROR`; birim uzunlukta değilse servis yeniden normalize ediyor | Bu bizim isteğimizin hatası, adayın değil; kosinüs benzerliği yalnızca yöne bakıyor |
+
+**Kayıt (enroll)** sırasıyla `INVALID_IMAGE`, `NO_FACE`, `MULTIPLE_FACES`, `FACE_TOO_SMALL`, `IMAGE_TOO_BLURRY` kontrol ediyor. `qualityScore` (0,5–1) karar için kullanılmıyor, yalnızca bilgi: yüz boyu / `min_face_px` ve netlik / `min_sharpness` oranlarının küçüğü, 2'de kesilip 2'ye bölünüyor.
+
+**Eşikler ve nasıl belirlendi**
+
+| Eşik | Değer | Nasıl belirlendi | Ne zaman yeniden bakılacak |
+|---|---|---|---|
+| `verify.match_threshold` | 0,164 | LFW'de (resmî `pairs.txt`, 6000 çift) bizim hattımızla (MediaPipe hizalama + `w600k_mbf`) FAR ≈ %1 eşiği: FAR %0,97, FRR %0,93, doğruluk %99,05 (`docs/threshold-D2.md`, `scripts/calibrate_threshold.py`). Literatürden alınan başlangıç değeri 0,32'ydi; bu hat için fazla katı çıktı | **D6**, gerçek kayıt fotoğrafı + kamera kareleriyle |
+| `verify.liveness_threshold` | 0,5 | Silent-Face `test.py` kararının tek sayıya indirgenmiş karşılığı (aşağıda) | H1 / D6 |
+| `enroll.min_face_px` | 84 | Yüz ağı kutusu ArcFace'in 112×112 hizalı kesitinde medyan 84 px (LFW, p5–p95 78–91); daha küçük yüz büyütülerek hizalanıyor | Kayıt reddi şikâyetine göre |
+| `enroll.min_sharpness` | 20 | LFW'de net yüzlerin p5'i 28,9; σ = 1,5 px bulanıklığın medyanı 14,8, p95'i 26,8 | Kayıt reddi şikâyetine göre |
+
+- **LFW eşiğinin anlamı ve sınırı.** LFW'nin farklı kişi çiftleri rastgele eşleştirilmiş yabancılar. %1 FAR, rastgele 100 yabancıdan birinin eşleşmesi demek; adaya benzeyen birinin yerine girmesini ölçmüyor. %1 yalnızca 29 çifte dayanıyor ve LFW web fotoğrafı. Bu yüzden 0,164 bir başlangıç değeri: eşik **D6'da gerçek kayıt fotoğrafı ve kamera kareleriyle yeniden ölçülecek**, değişirse yalnızca `config.yaml` değişecek.
+- **Canlılık eşiği ve `test.py`.** Skor, iki modelin softmax toplamında gerçek yüz sınıfının payı (toplam / 2). `test.py` bir görüntüyü toplam tahminin argmax'ı 1. sınıfsa "Real Face" sayıyor. Skor 0,5'in üstündeyse argmax kesin 1; 1/3'ün altındaysa kesin değil; 1/3–0,5 arasında sonuç diğer iki sınıfın (baskı ve ekran) dağılımına bağlı. Servis tek sayıyla karar verdiği için bu ara bölge "sahte" sayılıyor, yani 0,5 tutucu taraf. **H1'de ikisi de raporlanacak:** varsayılan eşikte (0,5) sonuç ve `test.py`'nin argmax kararı (`LivenessResult.probabilities` ile hesaplanıyor). İki sonuç arasındaki fark ara bölgedeki kare sayısını gösterecek.
+
+**Boyut sınırları**
+
+| Sınır | Değer | Gerekçe |
+|---|---|---|
+| Kayıt fotoğrafı | 5 MiB (base64 en fazla 6 990 508 karakter) | api'deki `ImageFile.MaxPhotoBytes` ile aynı; aşan istek `VALIDATION_ERROR` |
+| Kare | 1 MiB (base64 en fazla 1 398 104 karakter), 3–5 kare | api'deki `ImageFile.MaxFrameBytes` ile aynı |
+| Uzun kenar | 6000 px; aşan görüntü `INVALID_IMAGE` | Kenar, çözmeden önce dosya başlığından (JPEG SOF, PNG IHDR, WebP VP8/VP8L/VP8X) okunuyor: 5 MiB'lık sıkıştırılmış bir PNG çözülünce gigabaytlarca bellek isteyebilir. 4096, bazı telefonların varsayılan 24 MP fotoğraflarını (5712×4284) reddederdi; 6000 px'te en kötü durum ≈108 MB bellek |
+| Biçim | JPEG, PNG, WebP; ilk baytlara bakılıyor; EXIF yönü uygulanıyor | api ile aynı kural (K-27); yan kaydedilmiş telefon fotoğrafında yüz bulunabilsin |
+
+**Netlik ölçeklemesi.** Laplacian varyansı, yüz kesitinin kısa kenarı 112 px'e (ArcFace giriş kenarı) ölçeklendikten sonra hesaplanıyor (`face_landmarks.sharpness`). Ham değer çözünürlüğe çok bağlı: LFW'de aynı net yüz 4 kat büyütülünce medyan 191'den 3,8'e düşüyordu, yani yüksek çözünürlüklü telefon fotoğrafları "bulanık" sayılırdı. Ölçeklemeden sonra büyütülmüş net yüz (medyan 101,7) orijinaliyle (89,8) aynı aralıkta.
+
+**Günlük.** Uç başına yalnızca uç, sonuç kodu (`OK`, `PASSED` ya da hata/neden kodu) ve süre; görüntü, vektör ve skor yazılmıyor (K-27, KVKK).
+
+**Sözleşme testi.** `VisionContractTests`'in 4 testi bu kuralla gerçek vision'a karşı geçiyor. `AIGUARD_TEST_FACE` en fazla 1 MB olmalı: test, kayıt fotoğrafını doğrulamaya kare olarak da gönderiyor.
 
 ---
 
