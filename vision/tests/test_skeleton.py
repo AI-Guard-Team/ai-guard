@@ -62,3 +62,11 @@ def test_unknown_task_rejected(client):
 
 def test_docs_hidden_without_debug(client):
     assert client.get("/docs", headers=KEY).status_code == 404
+
+
+def test_service_starts_without_model_files(client):
+    # CI'da ve model indirilmemiş imajda: servis açılır, /health aynı, uçlar 503 (yukarıdaki test).
+    from main import app
+
+    assert app.state.models is None
+    assert client.get("/health").json() == {"status": "Healthy"}
