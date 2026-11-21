@@ -1,12 +1,31 @@
 # AI-Guard vision eşikleri. Değerler kartlardan alınmıştır; null olanlar ilgili kartta ayarlanacak.
 
 enroll:
-  min_face_px: null        # D2: en küçük yüz kenarı (piksel)
-  min_sharpness: null      # D2: Laplacian varyansı alt sınırı
+  # D2: yüz kutusunun (MediaPipe yüz ağının sınır kutusu) kısa kenarı, piksel. Altındaysa FACE_TOO_SMALL.
+  # 84: bu kutu ArcFace'in 112x112 hizalı kesitinde medyan 84 px tutuyor (LFW'den 150 yüz, p5–p95: 78–91).
+  # Daha küçük yüz ArcFace'e büyütülerek veriliyor, yani vektör kameranın verdiğinden fazla ayrıntı göremiyor.
+  min_face_px: 84
+  # D2: yüz bölgesinin Laplacian varyansı, kesit kısa kenarı 112 px'e ölçeklenerek (app/models/face_landmarks.py
+  # sharpness). Altındaysa IMAGE_TOO_BLURRY. 20: LFW'den 300 yüzde orijinallerin p5'i 28,9, medyanı 89,8;
+  # Gauss bulanıklığı (σ = 1,5 px) uygulanmış hâllerinin medyanı 14,8, p95'i 26,8. Ölçek normalize olduğu için
+  # 4 kat büyütülmüş net yüz de (medyan 101,7) aynı aralıkta kalıyor.
+  min_sharpness: 20
 
 verify:
-  match_threshold: null    # D2: kosinüs benzerliği, LFW ile FAR ~%1 hedefi
-  liveness_threshold: null # D2: Silent-Face-Anti-Spoofing ortalama skoru
+  # D2: kosinüs benzerliği; similarity >= match_threshold ise aynı kişi.
+  # 0,164: LFW (resmî pairs.txt, 6000 çift) bizim hattımızla (MediaPipe hizalama + w600k_mbf) FAR ≈ %1 eşiği;
+  # FAR %0,97, FRR %0,93, doğruluk %99,05 (docs/threshold-D2.md, scripts/calibrate_threshold.py).
+  # Ölçümden önceki başlangıç değeri 0,32'ydi (deepface'in ArcFace kosinüs uzaklığı eşiği 0,68 → 1 − 0,68).
+  # LFW web fotoğrafı; kayıt fotoğrafı ile web kamerası karşılaştırmasında D6'da yeniden ölçülmeli.
+  match_threshold: 0.164
+  # D2: Silent-Face-Anti-Spoofing skoru = iki modelin softmax toplamında gerçek yüz sınıfının payı (toplam / 2),
+  # kullanılabilir karelerin ortalaması. livenessScore >= liveness_threshold ise canlı.
+  # 0,5, orijinal test.py'deki kararın ("toplam tahminin argmax'ı 1. sınıf ise Real Face") tek sayıya indirgenmiş
+  # karşılığı: skor 0,5'in üstündeyse gerçek sınıfın toplamı 1'den büyük, diğer iki sınıfın toplamı 1'den küçük
+  # olduğu için test.py kesin "Real Face" der. 1/3 ile 0,5 arasında test.py'nin kararı diğer iki sınıfın (baskı ve
+  # ekran) nasıl paylaştığına bağlı; skor tek sayı olduğu için bu aralık "sahte" sayılıyor (0,5 tutucu taraf).
+  # H1 deneyi bu varsayılan eşikte ölçülecek; D6 sonucuna göre değişebilir.
+  liveness_threshold: 0.5
 
 frame:
   gaze_yaw_deg: 30         # D4: sağ-sol sapma eşiği
