@@ -18,6 +18,9 @@ secrets.json
 /vision/datasets/
 /vision/recordings/
 /vision/evidence/
+# Model dosyaları (scripts/download_models.py ve export_models.py üretir) ve ONNX üretme ortamı
+/vision/models/
+/vision/.venv-export/
 **/enroll_photos/
 *.mp4
 *.avi
@@ -29,6 +32,7 @@ secrets.json
 *.onnx
 *.pt
 *.pth
+*.task
 *.h5
 *.tflite
 *.caffemodel
