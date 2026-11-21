@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { AGENT_DOWNLOAD_URL, PairingError, pairAgent } from '../api/agentPairing'
 import { ApiError } from '../api/client'
 import {
@@ -237,6 +237,7 @@ function AgentPairingStep({ sessionId, onAdvance }: { sessionId: string; onAdvan
 
 export function ExamStartPage() {
   const { sessionId } = useParams()
+  const navigate = useNavigate()
   const videoRef = useRef<HTMLVideoElement>(null)
   const camera = useCamera(videoRef)
   const [step, setStep] = useState(0)
@@ -245,7 +246,6 @@ export function ExamStartPage() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cancelled, setCancelled] = useState(false)
-  const [verified, setVerified] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const goToIdentity = useCallback(() => setStep(2), [])
 
@@ -311,7 +311,7 @@ export function ExamStartPage() {
         return
       }
       camera.stop()
-      setVerified(true)
+      navigate(`/exams/${sessionId}`, { replace: true })
     } catch (caught) {
       setError(messageOf(caught, 'Kimlik doğrulanamadı. Yüzünüzün net göründüğünden emin olup yeniden deneyin.'))
     } finally {
@@ -329,12 +329,12 @@ export function ExamStartPage() {
           <p className="field-hint">Adım {Math.min(step + 1, STEPS.length)} / {STEPS.length}</p>
           <ol className="wizard-steps" aria-label="Sınav öncesi adımlar">
             {STEPS.map((label, index) => (
-              <li key={label} aria-current={index === step && !verified ? 'step' : undefined} className={index < step || verified ? 'is-done' : undefined}>
+              <li key={label} aria-current={index === step ? 'step' : undefined} className={index < step ? 'is-done' : undefined}>
                 {label}
               </li>
             ))}
           </ol>
-          <progress value={verified ? STEPS.length : step} max={STEPS.length} />
+          <progress value={step} max={STEPS.length} />
         </>
       )}
 
@@ -364,7 +364,7 @@ export function ExamStartPage() {
 
       {!initializing && !cancelled && step === 1 ? <AgentPairingStep sessionId={sessionId} onAdvance={goToIdentity} /> : null}
 
-      {!initializing && !cancelled && step === 2 && !verified ? (
+      {!initializing && !cancelled && step === 2 ? (
         <div>
           <p>Yüzünüz çerçevenin ortasında ve iyi aydınlatılmış olsun. Birkaç kare alınacak. Kamera yalnızca rıza verildikten sonra açılır.</p>
           <video ref={videoRef} className={camera.live ? 'camera-preview' : 'visually-hidden'} muted playsInline />
@@ -384,8 +384,6 @@ export function ExamStartPage() {
           </div>
         </div>
       ) : null}
-
-      {!initializing && verified ? <p>Kimlik doğrulandı. Sınav öncesi adımlar tamamlandı.</p> : null}
 
       <Modal open={supportOpen} title="Destek talep et" onClose={() => setSupportOpen(false)}>
         <p>Doğrulama tamamlanamadı. Gözetmene bu oturum numarasını iletin:</p>

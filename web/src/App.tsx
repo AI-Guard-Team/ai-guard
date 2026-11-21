@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { HomeRedirect, RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
+import { ExamPage } from './pages/ExamPage'
 import { ExamStartPage } from './pages/ExamStartPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -29,6 +30,7 @@ export default function App() {
           <Route element={<RequireAuth roles={['Candidate']} />}>
             <Route path="/profile/photo" element={<ProfilePhotoPage />} />
             <Route path="/exams/:sessionId/start" element={<ExamStartPage />} />
+            <Route path="/exams/:sessionId" element={<ExamPage />} />
             <Route path="/exams/*" element={<RoleHomePage title="Sınavlarım" />} />
           </Route>
         </Route>
