@@ -18,7 +18,7 @@ REAL_MODEL_DIR = Path(os.environ.get("VISION_MODEL_DIR", VISION_DIR / "models"))
 os.environ["VISION_MODEL_DIR"] = str(VISION_DIR / "tests" / "_no_models")
 
 KEY = {"X-Service-Key": "test-key"}
-VEC = [0.0] * 512
+VEC = [1.0] + [0.0] * 511  # birim vektör; sıfır vektör verify'da VALIDATION_ERROR alır
 
 
 def pytest_configure(config):

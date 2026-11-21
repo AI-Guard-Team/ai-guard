@@ -1,7 +1,10 @@
 """contracts.md'deki istek/yanıt şemaları. Sözleşme değişirse önce burası değişir."""
-from typing import Literal
+import math
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.images import MAX_FRAME_B64, MAX_PHOTO_B64
 
 VECTOR_DIM = 512  # ArcFace çıktı boyutu
 Vector = list[float]
@@ -9,7 +12,8 @@ Vector = list[float]
 
 # ---------- /internal/face/enroll ----------
 class EnrollRequest(BaseModel):
-    image: str = Field(min_length=1, description="Base64 JPEG, PNG veya WebP")
+    # Üst sınır api'deki 5 MB'ın base64 karşılığı; aşan istek VALIDATION_ERROR (contracts.md 1. bölüm).
+    image: str = Field(min_length=1, max_length=MAX_PHOTO_B64, description="Base64 JPEG, PNG veya WebP")
 
 
 class FaceBox(BaseModel):
@@ -26,9 +30,24 @@ class EnrollResponse(BaseModel):
 
 
 # ---------- /internal/face/verify ----------
+Frame = Annotated[str, Field(min_length=1, max_length=MAX_FRAME_B64)]  # api'deki 1 MB'ın base64 karşılığı
+
+
 class VerifyRequest(BaseModel):
-    frames: list[str] = Field(min_length=3, max_length=5)
+    frames: list[Frame] = Field(min_length=3, max_length=5)
     referenceVector: Vector = Field(min_length=VECTOR_DIM, max_length=VECTOR_DIM)
+
+    @field_validator("referenceVector")
+    @classmethod
+    def unit_reference(cls, v: Vector) -> Vector:
+        # Sıfır ya da sonlu olmayan vektörle benzerlik tanımsız; bu bizim isteğimizin hatası (VALIDATION_ERROR).
+        # Birim uzunlukta değilse yeniden normalize edilir: kosinüs benzerliği yalnızca yöne bakar.
+        if not all(math.isfinite(x) for x in v):
+            raise ValueError("referenceVector sonlu olmayan değer içeriyor")
+        norm = math.sqrt(math.fsum(x * x for x in v))
+        if norm < 1e-6:
+            raise ValueError("referenceVector sıfır vektör")
+        return [x / norm for x in v]
 
 
 class VerifyResponse(BaseModel):
