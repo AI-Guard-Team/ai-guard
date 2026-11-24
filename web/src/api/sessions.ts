@@ -100,3 +100,33 @@ export function saveAnswer(sessionId: string, answer: AnswerPayload): Promise<vo
 export function submitExam(sessionId: string): Promise<void> {
   return apiRequest(`/api/sessions/${sessionId}/submit`, { method: 'POST' })
 }
+
+/** Tarayıcının bildirebildiği olaylar (K-16). PERMISSION_REVOKED'i sunucu kendisi yazıyor (K-30). */
+export type BrowserEventType = 'TAB_BLUR' | 'FULLSCREEN_EXIT' | 'COPY_PASTE' | 'RIGHT_CLICK'
+
+/** `POST /api/sessions/{id}/events`: gövde yalnızca tür ve süre; kaynak ve zaman sunucuda (K-16). */
+export function sendBrowserEvent(sessionId: string, type: BrowserEventType, durationSec: number): Promise<void> {
+  return apiRequest(`/api/sessions/${sessionId}/events`, { method: 'POST', body: { type, durationSec } })
+}
+
+/** `POST /api/sessions/{id}/frames` (S4): saniyede bir JPEG kare. Yanıt boş; analiz sonucu adaya dönmez. */
+export function sendFrame(sessionId: string, frame: Blob): Promise<void> {
+  const body = new FormData()
+  body.append('frame', frame, 'kare.jpg')
+  return apiRequest(`/api/sessions/${sessionId}/frames`, { method: 'POST', body })
+}
+
+/** `POST /api/sessions/{id}/audio` (S4): ~1 sn'lik WebM/Opus parça (S-22). */
+export function sendAudio(sessionId: string, chunk: Blob): Promise<void> {
+  const body = new FormData()
+  body.append('audio', chunk, 'ses.webm')
+  return apiRequest(`/api/sessions/${sessionId}/audio`, { method: 'POST', body })
+}
+
+/**
+ * `POST /api/sessions/{id}/permission` (S4, FR-17). `false`: sınav izin beklemeye geçer, sorular gizlenir.
+ * `true`: sınava dönülür; izinsiz süreyi sunucu ölçer (K-30), istemci süre göndermez.
+ */
+export function reportPermission(sessionId: string, granted: boolean): Promise<{ state?: string } | undefined> {
+  return apiRequest(`/api/sessions/${sessionId}/permission`, { method: 'POST', body: { granted } })
+}

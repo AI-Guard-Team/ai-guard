@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_POLL_MS } from '../api/sessions'
@@ -25,6 +25,52 @@ vi.mock('../exam/answerQueue', async () => {
     }),
   }
 })
+
+// Kare jsdom'da canvas olmadığı için sahte; ses kaydı (MediaRecorder) jsdom'da yok, ayrı birim testinde.
+vi.mock('../exam/mediaCapture', async () => {
+  const actual = await vi.importActual<typeof import('../exam/mediaCapture')>('../exam/mediaCapture')
+  return {
+    ...actual,
+    createBrowserCapture: () => ({
+      captureFrame: async () => new Blob(['jpeg'], { type: 'image/jpeg' }),
+      createRecorder: () => null,
+      dispose: () => undefined,
+    }),
+  }
+})
+
+class FakeTrack extends EventTarget {
+  readyState: 'live' | 'ended' = 'live'
+  readonly kind: string
+  constructor(kind: string) {
+    super()
+    this.kind = kind
+  }
+  stop() {
+    this.readyState = 'ended'
+  }
+  /** Tarayıcıda izin kaldırılınca olduğu gibi. */
+  revoke() {
+    this.readyState = 'ended'
+    this.dispatchEvent(new Event('ended'))
+  }
+}
+
+const media = { tracks: [] as FakeTrack[], getUserMedia: vi.fn() }
+
+function fakeStream() {
+  const tracks = [new FakeTrack('video'), new FakeTrack('audio')]
+  media.tracks.push(...tracks)
+  return {
+    getTracks: () => tracks,
+    getAudioTracks: () => tracks.filter((track) => track.kind === 'audio'),
+  } as unknown as MediaStream
+}
+
+function setGetUserMedia(impl: () => Promise<MediaStream>) {
+  media.getUserMedia = vi.fn(impl)
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: media.getUserMedia } })
+}
 
 function session(overrides: Record<string, unknown> = {}) {
   return {
@@ -53,6 +99,8 @@ function renderExam(handler: FetchHandler) {
 describe('sınav ekranı', () => {
   beforeEach(() => {
     queue.items = []
+    media.tracks = []
+    setGetUserMedia(async () => fakeStream())
   })
 
   it('kalan süreyi sunucunun bitiş ve saatinden gösterir', async () => {
@@ -60,7 +108,7 @@ describe('sınav ekranı', () => {
 
     expect(await screen.findByRole('heading', { name: 'Genel Yetenek' })).toBeInTheDocument()
     expect(screen.getByText('Kalan süre 12:30')).toBeInTheDocument()
-    expect(screen.getByText('Kamera Kapalı')).toBeInTheDocument()
+    expect(await screen.findByText('Kamera Açık')).toBeInTheDocument()
     expect(screen.getByText('Bağlantı Bağlı')).toBeInTheDocument()
     expect(screen.getByText(/2 \+ 2 kaçtır/)).toBeInTheDocument()
   })
@@ -289,5 +337,112 @@ describe('sınav ekranı', () => {
     const submitAt = order.findIndex((entry) => entry.endsWith('/submit'))
     expect(answerAt).toBeGreaterThanOrEqual(0)
     expect(answerAt).toBeLessThan(submitAt)
+  })
+
+  describe('sınav sırası izleme (S4)', () => {
+    const calls = (fetchMock: ReturnType<typeof mockFetch>, suffix: string) =>
+      fetchMock.mock.calls.filter(([url, init]) => String(url).endsWith(suffix) && init?.method === 'POST')
+
+    const bodyOf = (call: unknown[] | undefined) => JSON.parse((call?.[1] as RequestInit).body as string)
+
+    const allStopped = () => media.tracks.every((track) => track.readyState === 'ended')
+
+    it('sınav sürerken kamera ve mikrofonu açar ve saniyede bir kare gönderir', async () => {
+      const fetchMock = renderExam((url) => (url.endsWith('/frames') ? jsonResponse(202) : jsonResponse(200, session())))
+
+      await waitFor(() => expect(calls(fetchMock, '/frames').length).toBeGreaterThanOrEqual(1), { timeout: 2_500 })
+      expect(media.getUserMedia).toHaveBeenCalledWith({ video: { facingMode: 'user' }, audio: true })
+      const body = calls(fetchMock, '/frames')[0][1]?.body
+      expect(body).toBeInstanceOf(FormData)
+      expect((body as FormData).get('frame')).toBeInstanceOf(Blob)
+      // Kare ve ses tarayıcıda saklanmaz.
+      expect(localStorage.length).toBe(0)
+      expect(sessionStorage.length).toBe(0)
+      expect(queue.items).toHaveLength(0)
+    })
+
+    it('izin kalkınca sunucuya bildirir, soruları gizler, süreyi gösterir ve izin verilince döner', async () => {
+      let state = 'InProgress'
+      const fetchMock = renderExam((url, init) => {
+        if (url.endsWith('/permission')) {
+          state = JSON.parse(init.body as string).granted ? 'InProgress' : 'PermissionPending'
+          return jsonResponse(200, { state })
+        }
+        if (url.endsWith('/frames')) return jsonResponse(202)
+        return jsonResponse(200, session(state === 'InProgress' ? {} : { state, questions: [] }))
+      })
+      await screen.findByText('Kamera Açık')
+
+      media.tracks[0].revoke()
+
+      expect(await screen.findByRole('button', { name: 'Kamera ve mikrofona izin ver' })).toBeInTheDocument()
+      expect(bodyOf(calls(fetchMock, '/permission')[0])).toEqual({ granted: false })
+      expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
+      expect(screen.getByText(/Süre işlemeye devam ediyor/)).toBeInTheDocument()
+      expect(screen.getByText(/Kalan süre 12:/)).toBeInTheDocument()
+      // İzin kalkınca kamera ışığı söner.
+      expect(allStopped()).toBe(true)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Kamera ve mikrofona izin ver' }))
+
+      expect(await screen.findByText(/2 \+ 2 kaçtır/)).toBeInTheDocument()
+      // İzinsiz süreyi sunucu ölçer; istemci süre göndermez (K-30).
+      expect(bodyOf(calls(fetchMock, '/permission')[1])).toEqual({ granted: true })
+    })
+
+    it('sınav başında izin verilmezse sınavı izin beklemeye alır', async () => {
+      setGetUserMedia(() => Promise.reject(new DOMException('izin yok', 'NotAllowedError')))
+      const fetchMock = renderExam((url) =>
+        url.endsWith('/permission') ? jsonResponse(200, { state: 'PermissionPending' }) : jsonResponse(200, session()),
+      )
+
+      await waitFor(() => expect(calls(fetchMock, '/permission').length).toBeGreaterThanOrEqual(1))
+      expect(bodyOf(calls(fetchMock, '/permission')[0])).toEqual({ granted: false })
+    })
+
+    it('tarayıcı olaylarını türü ve süresiyle gönderir', async () => {
+      const fetchMock = renderExam((url) => (url.endsWith('/events') ? jsonResponse(201) : jsonResponse(200, session())))
+      await screen.findByText(/2 \+ 2 kaçtır/)
+
+      fireEvent.contextMenu(document.body)
+      fireEvent.copy(document.body)
+
+      await waitFor(() => expect(calls(fetchMock, '/events')).toHaveLength(2))
+      expect(calls(fetchMock, '/events').map(bodyOf)).toEqual([
+        { type: 'RIGHT_CLICK', durationSec: 0 },
+        { type: 'COPY_PASTE', durationSec: 0 },
+      ])
+    })
+
+    it('bağlantı kesikken izleme ve olay gönderimi yapmaz', async () => {
+      const fetchMock = renderExam(() => jsonResponse(200, session({ state: 'Disconnected', questions: [] })))
+      await screen.findByRole('button', { name: 'Kimliği yeniden doğrula' })
+
+      fireEvent.contextMenu(document.body)
+      await new Promise((resolve) => setTimeout(resolve, 1_200))
+
+      expect(media.getUserMedia).not.toHaveBeenCalled()
+      expect(calls(fetchMock, '/frames')).toHaveLength(0)
+      expect(calls(fetchMock, '/events')).toHaveLength(0)
+    })
+
+    it('teslimden sonra kamerayı kapatır', async () => {
+      let submitted = false
+      renderExam((url) => {
+        if (url.endsWith('/submit')) {
+          submitted = true
+          return jsonResponse(204)
+        }
+        if (url.endsWith('/frames')) return jsonResponse(202)
+        return jsonResponse(200, submitted ? session({ state: 'Completed', questions: [] }) : session())
+      })
+      await screen.findByText('Kamera Açık')
+
+      await userEvent.click(screen.getByRole('button', { name: 'Sınavı teslim et' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'Teslim et' }))
+
+      await screen.findByText('Sınav teslim edildi.')
+      await waitFor(() => expect(allStopped()).toBe(true))
+    })
   })
 })
