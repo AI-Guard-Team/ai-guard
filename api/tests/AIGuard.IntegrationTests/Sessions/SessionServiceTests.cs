@@ -180,7 +180,7 @@ public class SessionServiceTests(PostgresFixture fx) : IClassFixture<PostgresFix
         _clock.Advance(TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(1));
         // Otomatik teslim görevi henüz çalışmadı; yine de sunucu saatine göre reddediliyor.
         var late = await Service(db).SaveAnswerAsync(id, new AnswerRequest(q[0].Id, 0, 1, null));
-        var (completed, _) = await new SessionTimekeeper(db, _clock).RunOnceAsync();
+        var (completed, _) = await new SessionTimekeeper(db, Events.EventTestHelpers.Service(db, _clock), _clock).RunOnceAsync();
         var session = await ReloadAsync(id);
 
         Assert.Equal(SessionOperationStatus.Conflict, late.Status);
@@ -216,7 +216,7 @@ public class SessionServiceTests(PostgresFixture fx) : IClassFixture<PostgresFix
         await using var db = fx.CreateContext();
 
         _clock.Advance(SessionTimekeeper.DisconnectAfter + TimeSpan.FromSeconds(5));
-        var (_, disconnected) = await new SessionTimekeeper(db, _clock).RunOnceAsync();
+        var (_, disconnected) = await new SessionTimekeeper(db, Events.EventTestHelpers.Service(db, _clock), _clock).RunOnceAsync();
         // Dönüşte kuyruktaki cevap, yeniden doğrulamadan önce gönderiliyor.
         await Service(db).SaveAnswerAsync(id, new AnswerRequest(q[0].Id, 1, 1, null));
         _clock.Advance(TimeSpan.FromSeconds(20));

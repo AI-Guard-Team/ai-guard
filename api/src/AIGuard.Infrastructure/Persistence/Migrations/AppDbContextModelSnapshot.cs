@@ -555,6 +555,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
 
+                    b.Property<DateTimeOffset?>("PermissionRevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("permission_revoked_at");
+
                     b.Property<double>("RiskScore")
                         .HasColumnType("double precision")
                         .HasColumnName("risk_score");

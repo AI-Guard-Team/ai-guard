@@ -43,6 +43,12 @@ public class ExamSession : Entity
     /// <summary>Bağlantının kesildiği an; dönüşte kesinti süresi bundan hesaplanıp olay yazılıyor (FR-26).</summary>
     public DateTimeOffset? DisconnectedAt { get; set; }
 
+    /// <summary>
+    /// Kamera/mikrofon izninin kaldırıldığı an (S4, FR-17). İzin geri gelince ya da sınav bitince izinsiz süre
+    /// bundan hesaplanıp PERMISSION_REVOKED olarak yazılıyor; süreyi istemci bildirmiyor (K-30).
+    /// </summary>
+    public DateTimeOffset? PermissionRevokedAt { get; set; }
+
     /// <summary>Oturumun ilk IP'si; değişirse IP_CHANGE olayı üretiliyor (A2).</summary>
     public IPAddress? InitialIpAddress { get; set; }
 
