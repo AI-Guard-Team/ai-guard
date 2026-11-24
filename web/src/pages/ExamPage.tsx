@@ -26,6 +26,7 @@ import {
   type PendingAnswer,
 } from '../exam/answerQueue'
 import { formatRemaining, remainingMs } from '../exam/remainingTime'
+import { useExamMonitoring } from '../exam/useExamMonitoring'
 import { captureFrames, useCamera } from './useCamera'
 
 const ANSWERABLE = new Set(['InProgress', 'Disconnected'])
@@ -86,6 +87,7 @@ export function ExamPage() {
   const [connected, setConnected] = useState(true)
   const [agent, setAgent] = useState<AgentStatus | null>(null)
   const [cameraPermission, setCameraPermission] = useState<PermissionState | null>(null)
+  const [fullscreen, setFullscreen] = useState(() => typeof document !== 'undefined' && document.fullscreenElement != null)
 
   const exclusive = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
     const run = chain.current.then(task, task)
@@ -214,6 +216,19 @@ export function ExamPage() {
     }
   }, [])
 
+  // S4: kamera/mikrofon akışı, izin ve tarayıcı olayları.
+  const monitoring = useExamMonitoring({ sessionId, state: view?.state, onStateChange: () => void pull() })
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement != null)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const enterFullscreen = () => {
+    void document.documentElement.requestFullscreen?.().catch(() => undefined)
+  }
+
   useEffect(() => {
     if (!sessionId) return
     const timer = window.setInterval(() => void pull(), SESSION_POLL_MS)
@@ -317,7 +332,7 @@ export function ExamPage() {
         <div>
           <h1>{view?.examName ?? 'Sınav'}</h1>
           <ul className="exam-status" aria-label="Sınav durumu">
-            <li>Kamera {cameraText(view?.state, camera.live, cameraPermission)}</li>
+            <li>Kamera {cameraText(view?.state, camera.live || monitoring.live, cameraPermission)}</li>
             <li>Ajan {agentText(agent)}</li>
             <li>Bağlantı {!connected || view?.state === 'Disconnected' ? 'Kesik' : 'Bağlı'}</li>
           </ul>
@@ -326,13 +341,37 @@ export function ExamPage() {
       </div>
       <FormAlert message={error} />
       {notice ? <p className="field-hint is-danger">{notice}</p> : null}
+      {/* S4: kamera/mikrofon açılamadıysa ya da tarayıcı desteklemiyorsa. */}
+      {view?.state === 'InProgress' ? <FormAlert message={monitoring.error} /> : null}
+
+      {/* S4: FULLSCREEN_EXIT ancak tam ekrana girilmişse oluşur; tarayıcı tam ekranı yalnızca tıklamayla açıyor. */}
+
+      {!loading && view?.state === 'InProgress' && !fullscreen && document.fullscreenEnabled ? (
+        <div className="action-row">
+          <Button variant="secondary" onClick={enterFullscreen}>
+            Tam ekrana geç
+          </Button>
+        </div>
+      ) : null}
 
       {loading ? <p>Yükleniyor…</p> : null}
 
       {!loading && view && FINISHED.has(view.state) ? <p>Sınav teslim edildi.</p> : null}
 
+      {/* S4, FR-17: izin beklerken sorular sunucudan gelmiyor; süre işliyor, aday izni buradan yeniden verir. */}
       {!loading && view?.state === 'PermissionPending' ? (
-        <p>Kamera ve mikrofon izni geri alındığı için sınav durdu. İzin verilince sorular yeniden açılır.</p>
+        <div>
+          <p>
+            Kamera ve mikrofon izni geri alındığı için sorular gizlendi. Süre işlemeye devam ediyor. İzin verince sorular
+            yeniden açılır.
+          </p>
+          <FormAlert message={monitoring.error} />
+          <div className="action-row">
+            <Button disabled={monitoring.requesting} onClick={() => void monitoring.requestPermission()}>
+              {monitoring.requesting ? 'İzin bekleniyor…' : 'Kamera ve mikrofona izin ver'}
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {!loading && view?.state === 'Disconnected' ? (

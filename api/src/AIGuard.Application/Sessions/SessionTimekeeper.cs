@@ -1,4 +1,5 @@
 using AIGuard.Application.Abstractions;
+using AIGuard.Application.Events;
 using AIGuard.Domain.Enums;
 using AIGuard.Domain.Sessions;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ namespace AIGuard.Application.Sessions;
 /// Sunucu saatine bağlı geçişler (E4): süresi dolan oturumu otomatik teslim eder (FR-09) ve bir süredir
 /// istek gelmeyen oturumu bağlantı kesik sayar (FR-26). Api'deki arka plan görevi birkaç saniyede bir çağırır.
 /// </summary>
-public sealed class SessionTimekeeper(IAppDbContext db, TimeProvider clock)
+public sealed class SessionTimekeeper(IAppDbContext db, EventService events, TimeProvider clock)
 {
     /// <summary>
     /// Bu süre boyunca adaydan istek gelmezse bağlantı kesik sayılıyor. Önyüz sınav sırasında en geç
@@ -33,15 +34,16 @@ public sealed class SessionTimekeeper(IAppDbContext db, TimeProvider clock)
         foreach (var id in due)
         {
             // Teslim isteği aynı anda gelirse kilit sırayla işletiyor; ikinci gelen durumu değişmiş görüyor.
-            completed += await WithLockAsync(id, session =>
+            completed += await WithLockAsync(id, async session =>
             {
                 if (!SessionStateMachine.Running.Contains(session.State) || session.EndsAt > now)
                 {
                     return false;
                 }
 
-                // Sunucuda kayıtlı cevaplarla teslim; bitiş anı süre sonu (FR-26).
-                SessionService.Complete(session, now);
+                // Sunucuda kayıtlı cevaplarla teslim; bitiş anı süre sonu (FR-26). İzin beklerken bittiyse
+                // izinsiz süre de yazılıyor (FR-17, S4).
+                await SessionService.CompleteAsync(events, session, now, ct);
                 return true;
             }, ct) ? 1 : 0;
         }
@@ -57,25 +59,25 @@ public sealed class SessionTimekeeper(IAppDbContext db, TimeProvider clock)
             {
                 if (session.State != SessionState.InProgress || !(session.LastSeenAt < threshold))
                 {
-                    return false;
+                    return Task.FromResult(false);
                 }
 
                 // Süre işlemeye devam ediyor; kesinti son istekten itibaren sayılıyor.
                 session.TransitionTo(SessionState.Disconnected);
                 session.DisconnectedAt = session.LastSeenAt;
-                return true;
+                return Task.FromResult(true);
             }, ct) ? 1 : 0;
         }
 
         return (completed, disconnected);
     }
 
-    private async Task<bool> WithLockAsync(Guid sessionId, Func<Domain.Entities.ExamSession, bool> change, CancellationToken ct)
+    private async Task<bool> WithLockAsync(Guid sessionId, Func<Domain.Entities.ExamSession, Task<bool>> change, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await db.LockExamSessionAsync(sessionId, ct);
         var session = await db.ExamSessions.FirstAsync(s => s.Id == sessionId, ct);
-        if (!change(session))
+        if (!await change(session))
         {
             return false;
         }

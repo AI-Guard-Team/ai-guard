@@ -234,6 +234,17 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         working-directory: agent
         run: dotnet test -c Release --no-build --verbosity normal
+      # macOS ajanı (Y7a) Intel ve Apple Silicon için derlenebiliyor mu. Çalıştırma ve eşleştirme denemesi Mac'te yapılıyor;
+      # burada çekirdeğe Windows'a özgü bir şey girip macOS derlemesini bozmasın diye kontrol ediliyor.
+      - name: macOS derlemesi
+        if: steps.check.outputs.exists == 'true'
+        working-directory: agent
+        shell: bash
+        run: |
+          for rid in osx-arm64 osx-x64; do
+            dotnet publish src/AIGuard.Agent.MacOS -c Release -r "$rid" --self-contained true -o "dist/macos-$rid"
+            test -f "dist/macos-$rid/aiguard-agent"
+          done
       # Y4: tek dosyalık kurulum paketi üretilebiliyor mu (örnek adreslerle; gerçek paket kurum adresleriyle üretilir).
       - name: Kurulum paketi
         if: steps.check.outputs.exists == 'true'

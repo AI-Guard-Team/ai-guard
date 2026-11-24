@@ -51,6 +51,9 @@ public static class DependencyInjection
             FileEvidenceStore.FromConfiguration(configuration, sp.GetRequiredService<IFieldEncryptor>()));
         services.AddHttpClient<IFaceService, VisionFaceService>(client => VisionFaceService.Configure(client, configuration));
 
+        // S4: sınav sırası kare ve ses buraya geliyor. Görüntü servisine bağlayan uygulama D4/D5'te bunun yerine geçecek.
+        services.AddSingleton<IMediaAnalyzer, PendingMediaAnalyzer>();
+
         services.AddScoped<DevDataSeeder>();
 
         return services;

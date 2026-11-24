@@ -180,17 +180,69 @@ public sealed class SessionService(IAppDbContext db, EventService events, TimePr
 
     /// <summary>Adayın teslimi. Süre dolmuşsa da teslim kabul ediliyor; bitiş anı süre sonu oluyor.</summary>
     public Task<SessionOperationResult> SubmitAsync(Guid sessionId, CancellationToken ct = default) =>
-        LockedAsync(sessionId, (session, now) =>
+        LockedAsync(sessionId, async (session, now) =>
         {
             if (!SessionStateMachine.Running.Contains(session.State))
             {
-                return Task.FromResult(SessionOperationResult.Conflict(SessionStateMachine.Closed.Contains(session.State)
+                return SessionOperationResult.Conflict(SessionStateMachine.Closed.Contains(session.State)
                     ? "Sınav zaten teslim edildi."
-                    : "Sınav henüz başlamadı."));
+                    : "Sınav henüz başlamadı.");
             }
 
-            Complete(session, now);
+            await CompleteAsync(events, session, now, ct);
+            return SessionOperationResult.Ok;
+        }, ct);
+
+    /// <summary>
+    /// Kamera/mikrofon izni kaldırıldı (S4, FR-17): InProgress → PermissionPending. Sorular gizleniyor, süre işliyor.
+    /// İzinsiz süre bu andan sayılıyor; aynı bildirim tekrar gelirse ilk an korunuyor.
+    /// </summary>
+    public Task<SessionOperationResult> RevokePermissionAsync(Guid sessionId, CancellationToken ct = default) =>
+        LockedAsync(sessionId, (session, now) =>
+        {
+            if (session.State == SessionState.PermissionPending)
+            {
+                return Task.FromResult(new SessionOperationResult(SessionOperationStatus.Duplicate));
+            }
+
+            if (session.State != SessionState.InProgress || (session.EndsAt is { } endsAt && now > endsAt))
+            {
+                return Task.FromResult(SessionOperationResult.Conflict("Sınav sürmüyor."));
+            }
+
+            session.TransitionTo(SessionState.PermissionPending);
+            session.PermissionRevokedAt = now;
+            session.LastSeenAt = now;
             return Task.FromResult(SessionOperationResult.Ok);
+        }, ct);
+
+    /// <summary>
+    /// İzin yeniden verildi (S4, FR-17): PermissionPending → InProgress. İzinsiz süre sunucu saatiyle hesaplanıp
+    /// PERMISSION_REVOKED olarak yazılıyor; olay oturumu incelemeye işaretliyor (PermissionGap, K-17).
+    /// </summary>
+    public Task<SessionOperationResult> RestorePermissionAsync(Guid sessionId, CancellationToken ct = default) =>
+        LockedAsync(sessionId, async (session, now) =>
+        {
+            if (session.State == SessionState.InProgress)
+            {
+                return new SessionOperationResult(SessionOperationStatus.Duplicate);
+            }
+
+            if (session.State != SessionState.PermissionPending)
+            {
+                return SessionOperationResult.Conflict("Oturum izin beklemiyor.");
+            }
+
+            // Süre dolduysa sınava dönülmüyor; otomatik teslim izinsiz süreyi süre sonuna kadar yazıyor.
+            if (session.EndsAt is { } endsAt && now > endsAt)
+            {
+                return SessionOperationResult.Conflict("Sınav süresi doldu.");
+            }
+
+            await ClosePermissionGapAsync(events, session, now, ct);
+            session.TransitionTo(SessionState.InProgress);
+            session.LastSeenAt = now;
+            return SessionOperationResult.Ok;
         }, ct);
 
     /// <summary>
@@ -244,12 +296,40 @@ public sealed class SessionService(IAppDbContext db, EventService events, TimePr
         return SessionOperationResult.Ok;
     }
 
-    /// <summary>Teslim ya da süre dolması: bitiş anı süre sonunu geçmiyor.</summary>
-    internal static void Complete(ExamSession session, DateTimeOffset now)
+    /// <summary>
+    /// Teslim ya da süre dolması: bitiş anı süre sonunu geçmiyor. Oturum izin beklerken bitiyorsa izinsiz süre
+    /// bitiş anına kadar yazılıyor (FR-17). Oturum satırı kilitli ve bir işlem içinde çağrılmalı.
+    /// </summary>
+    internal static async Task CompleteAsync(EventService events, ExamSession session, DateTimeOffset now, CancellationToken ct)
     {
+        var endedAt = session.EndsAt is { } endsAt && endsAt < now ? endsAt : now;
+        await ClosePermissionGapAsync(events, session, endedAt, ct);
         session.TransitionTo(SessionState.Completed);
-        session.EndedAt = session.EndsAt is { } endsAt && endsAt < now ? endsAt : now;
+        session.EndedAt = endedAt;
         session.DisconnectedAt = null;
+    }
+
+    /// <summary>
+    /// İzinsiz süreyi PERMISSION_REVOKED olarak yazar ve başlangıç anını temizler; izin kaldırılmamışsa bir şey yapmaz.
+    /// Olay oturum hâlâ sürerken yazılmalı (kapalı oturuma olay eklenmiyor).
+    /// </summary>
+    private static async Task ClosePermissionGapAsync(EventService events, ExamSession session, DateTimeOffset until, CancellationToken ct)
+    {
+        if (session.PermissionRevokedAt is not { } since)
+        {
+            return;
+        }
+
+        // Olay süresinin üst sınırı 1 sa (EventService); daha uzun izinsiz süre sınırda yazılıyor, işaret yine konuyor.
+        var seconds = Math.Clamp((until - since).TotalSeconds, 0, EventService.MaxDurationSec);
+        var result = await events.RecordSystemEventAsync(
+            session.Id, new SystemEvent(EventType.PERMISSION_REVOKED, since, seconds), ct);
+        if (result.Status != EventRecordStatus.Recorded)
+        {
+            throw new InvalidOperationException($"İzinsiz süre kaydedilemedi: {result.Status}.");
+        }
+
+        session.PermissionRevokedAt = null;
     }
 
     private async Task<SessionOperationResult> LockedAsync(

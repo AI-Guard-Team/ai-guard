@@ -17,7 +17,7 @@ internal sealed class TestApi
     // Yalnızca testler için; gerçek ortamda JWT_SECRET ortam değişkeninden geliyor.
     public const string JwtSecret = "integration-tests-only-jwt-secret-0123456789";
 
-    public TestApi(PostgresFixture fx, string environment = "Development")
+    public TestApi(PostgresFixture fx, string environment = "Development", Action<IServiceCollection>? services = null)
     {
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
@@ -29,6 +29,11 @@ internal sealed class TestApi
             b.UseSetting("Sessions:TimekeeperEnabled", "false");
             // Sonra eklenen kayıt geçerli: sahte gönderici yerine davetleri biriktiren gönderici.
             b.ConfigureServices(s => s.AddSingleton<IEmailSender>(Emails));
+            // Testin kendi sahte servisleri (ör. S4'te analizci); sonra eklendiği için geçerli olan bunlar.
+            if (services is not null)
+            {
+                b.ConfigureServices(services);
+            }
         });
     }
 

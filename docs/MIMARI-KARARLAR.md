@@ -519,6 +519,8 @@ FR-18, FR-19, UC-08 4a/4b. Ajan sanal makine, genel hipervizör ve yasaklı yaz�
 
 **Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil. macOS göstergeleri bu kartta yok.
 
+**macOS (Y7a).** Çekirdek macOS'ta değişmeden çalışıyor; macOS modülü yalnızca `IDeviceInspector`'ı uyguluyor. `Platform`, gösterge biçimi ve yukarıdaki "kurulum izi değil konuk izi" kuralı aynı kalıyor. Ayrıntılar ve doğrulananlar `agent/README.md` "macOS modülü için sözleşme" bölümünde.
+
 ---
 
 ## K-23 · Sınav, soru ve atama yönetimi (E3)
@@ -602,7 +604,7 @@ Hepsi yalnızca `Candidate` ve yalnızca kendi oturumu (K-20); her istekte IP ko
 | A3 | Kesinti sonrası doğrulama başarılı | `SessionService.ResumeAfterReconnectAsync(sessionId)`: `Disconnected → InProgress` ve kesinti süresiyle `CONNECTION_LOST` olayı |
 | A3 | Kayıt fotoğrafı yoksa sınav başlamaz (FR-04) | A3'te oturum rızası adımında yapıldı (K-27); `StartAsync` değişmedi. E5a'da aday önce fotoğraf yüklemeli |
 | A3/A5 | Biyometrik rıza sınav sırasında geri alındı | `TransitionTo(Cancelled)` + denetim kaydı (FR-05) |
-| S4 | Kamera/mikrofon izni kaldırıldı / verildi | `PermissionPending` geçişleri; ucu S4 (ya da A2) ekleyecek |
+| S4 | Kamera/mikrofon izni kaldırıldı / verildi | `SessionService.RevokePermissionAsync` / `RestorePermissionAsync`; uç `POST /api/sessions/{id}/permission` (K-30) |
 | Y4 | Ajansız / göstergeli devam | `TransitionTo(IdentityVerification)` + `Flags` |
 | A4 | Değerlendirici kararı | `TransitionTo(Decided)` |
 
@@ -816,6 +818,40 @@ Görüntü servisinin `/internal/face/enroll` ve `/internal/face/verify` uçlar�
 
 ---
 
+## K-30 · Sınav sırası kamera, ses, izin ve tarayıcı olayları (S4)
+
+S4 kartı tarayıcının `frames`, `audio` ve `events` uçlarına göndermesini istiyor. `frames` ve `audio` API'de yoktu; Dilan'la (D4/D5) konuşulup S4'te eklendi. İzin geçişlerinin ucu da K-24 tablosu gereği S4'te.
+
+**Uçlar** (`SessionMonitoringController`; yalnızca aday ve yalnızca kendi oturumu, başkasının oturumu 404, her istekte IP kontrolü):
+
+| Uç | Gövde | Yanıt |
+|---|---|---|
+| `POST /api/sessions/{id}/frames` | multipart, alan `frame`; JPEG/PNG/WebP, en fazla 1 MiB | 202 boş; 400 biçim/boyut; 409 sınav sürmüyor; 429 hız sınırı |
+| `POST /api/sessions/{id}/audio` | multipart, alan `audio`; WebM ya da WAV, en fazla 256 KiB | 202 boş; 400; 409; 429 |
+| `POST /api/sessions/{id}/permission` | `{ "granted": false \| true }` | 200 `{ state }`; tekrar bildirim de 200; 409 sınav sürmüyor ya da süre doldu |
+
+**Kararlar**
+
+- **İzinsiz süreyi sunucu ölçüyor, tarayıcı göndermiyor.** Kart "izin geri gelince izinsiz süre (`durationSec`) ile olay kapatılır" diyor. Süreyi tarayıcı bildirseydi aday `durationSec: 0` gönderip boşluğu gizleyebilirdi. İzin kalkınca oturuma `PermissionRevokedAt` yazılıyor (yeni göç `S4_PermissionRevokedAt`). İzin gelince süre sunucu saatiyle hesaplanıp `PERMISSION_REVOKED` olarak `RecordSystemEventAsync` ile yazılıyor. `CONNECTION_LOST`'taki `DisconnectedAt` ile aynı yöntem (K-24).
+- **Sınav izin beklerken biterse süre yine yazılıyor.** Teslimde ya da otomatik teslimde (`SessionTimekeeper`) izinsiz süre bitiş anına kadar, süre sonunu geçmeden yazılıyor ve `PermissionGap` işareti konuyor. Aday hiç dönmese de oturum incelemeye düşüyor (FR-17).
+- **Tekrarlanan bildirim süreyi kısaltmıyor.** Kamera ve mikrofon ayrı ayrı "ended" verebilir; ikinci `granted: false` ilk anı değiştirmiyor.
+- **Kare ve ses yalnızca `InProgress`'te kabul ediliyor.** İzin beklerken, bağlantı kesikken, sınav başlamadan ya da bittikten sonra 409.
+- **Biçim dosyanın ilk baytlarından.** Content-Type'a güvenilmiyor: görüntüde K-27'deki `ImageFile` kuralı, seste WebM (EBML `1A 45 DF A3`) ya da WAV (`RIFF….WAVE`).
+- **Sunucu tarafı hız sınırı.** Oturum ve tür başına 500 ms'den sık gelen parça 429 alıyor (`SessionMediaRateLimiter`). Saniyede bir gönderimin ağda sıkışmasına pay bırakılıyor. Sınır API belleğinde; API tek örnekle çalışıyor (S-17 ile aynı varsayım).
+- **Kare bağlantıyı canlı tutuyor.** Kare ya da ses geldiğinde `LastSeenAt` en geç 5 sn'de bir yazılıyor. Her saniye veritabanına yazılmıyor; kesinti eşiği (30 sn) bunun çok üstünde.
+- **Analiz D4/D5'te.** Uçlar veriyi `IMediaAnalyzer`'a veriyor. Şimdiki uygulama (`PendingMediaAnalyzer`) hiçbir şey yapmıyor, çünkü vision'ın analiz uçları henüz 503 dönüyor ve her saniye `MONITORING_GAP` üretirdi. D4/D5 bu arayüzü vision istemcisiyle uygulayıp kaydı değiştirecek. Olay kuralları (S-20) ve `MONITORING_GAP` orada.
+- **Hiçbir şey saklanmıyor.** Kare ve ses istek bitince bellekten çıkıyor. Tarayıcıda da kuyruğa ya da depolamaya yazılmıyor (kart).
+
+**Önyüz** (`web/src/exam/`):
+
+- `useExamMonitoring`: `InProgress`'te `getUserMedia({ video, audio })`. İzin verilmezse ya da bir iz "ended" olursa `granted: false` bildirilip oturum yeniden okunuyor. `PermissionPending`'de "Kamera ve mikrofona izin ver" düğmesi izni yeniden alıp `granted: true` gönderiyor. Sınav dışında kamera ve mikrofon kapatılıyor.
+- `mediaMonitor`: saniyede bir kare (en fazla 640 px genişlik, JPEG 0,8). Önceki kare gitmeden yenisi gönderilmiyor, yavaş bağlantıda istek birikmiyor. Ses `MediaRecorder` ile ~1 sn parçalar. **Kayıt her parçada yeniden başlatılıyor:** `timeslice` ile yalnızca ilk parçada WebM başlığı olur, vision ise her parçayı ayrı çözüyor.
+- `browserEvents`: `visibilitychange` ve `blur`/`focus` → `TAB_BLUR`, süresiyle dönüşte. Aday hiç dönmese de ayrılma 60 sn'de bir o ana kadarki süresiyle bildiriliyor. `fullscreenchange` → `FULLSCREEN_EXIT`, `copy`/`cut`/`paste` → `COPY_PASTE`, `contextmenu` → `RIGHT_CLICK`. Aynı tür saniyede en fazla bir kez. Olaylar engellenmiyor, yalnızca bildiriliyor.
+- **Tam ekran düğmesi.** Hiçbir ekran tam ekrana geçmediği için `FULLSCREEN_EXIT` hiç oluşmazdı. Sınav ekranına "Tam ekrana geç" düğmesi eklendi; tarayıcılar tam ekranı yalnızca kullanıcı tıklamasıyla açıyor.
+- `PERMISSION_REVOKED` tarayıcıdan `events` ucuna gönderilmiyor; A2'deki katalog bunu hâlâ kabul ediyor (K-16), ama süreyi bu uç taşıdığı için kullanılmıyor.
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -827,7 +863,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 - **Rıza reddi oturum hakkını tüketmez (FR-10).** Rıza Bekliyor durumunda aday rızayı reddederse oturum `Cancelled` olur ve aday alternatif yönteme yönlendirilir. Hak kullanılmış sayılmaz; aynı aday sonra yeni oturum açabilir. Veritabanı buna hazır: tek oturum indeksi iptal edilen oturumları saymıyor (K-11). `ExamAssignment.AttemptUsedAt` yalnızca oturum gerçekten başladığında doldurulmalı; doluysa yeni oturum açılmamalı.
 - **Sınav sırasında biyometrik rıza geri alınırsa oturum iptal olur (FR-05).** `InProgress`, `PermissionPending` veya `Disconnected` durumundaki oturum `Cancelled`'a geçer, izleme durur, işlem denetim kaydına yazılır.
 - **Uzun kesinti (FR-26).** 5 dakikadan uzun bağlantı kesintisi yüksek ağırlıklı bir olay üretmeli. Ortak olay listesinde bunun için ayrı bir tür yok (S-13); karar verilene kadar kesinti `CONNECTION_LOST` olarak, süresiyle birlikte yazılmalı.
-- **İzin Bekliyor süresi (FR-17).** İzin yeniden verilince izinsiz geçen süre `PERMISSION_REVOKED` olayı olarak, `DurationSec` ile kaydedilmeli. Olay oturuma `PermissionGap` işaretini kendiliğinden koyuyor (K-17).
+- **İzin Bekliyor süresi (FR-17).** İzin yeniden verilince izinsiz geçen süre `PERMISSION_REVOKED` olayı olarak, `DurationSec` ile kaydedilmeli. Olay oturuma `PermissionGap` işaretini kendiliğinden koyuyor (K-17). *S4'te uygulandı (K-30): süreyi sunucu ölçüyor.*
 - **Kesinti sonrası doğrulama (FR-26).** Aday döndüğünde canlılık testi ve yüz eşleştirmesi tekrar yapılmalı; oturum hakkı yenilenmez. Doğrulama `VerificationKind.Reconnect` ile kaydedilir.
 
 ### A3 · Kayıt fotoğrafı ve doğrulama
@@ -873,5 +909,6 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-19 | Yüz doğrulamada `passed` kararını kim veriyor: vision mı, API mi? `Verification.Passed` yorumu "sonuç sunucuda eşiklere göre belirleniyor" diyor | Ayşe (A3), Dilan (D2) | **Çözüldü (A3):** kararı vision veriyor (`config.yaml`), API skorları, sonucu ve `reason`'ı kaydediyor; API'de eşik yok (K-27) |
 | S-20 | Kamera olay kuralları ("art arda 3 ölçümde yüz yok", "art arda 5 ölçümde bakış sapması") nerede çalışacak? | Ayşe, Dilan (D4) | API'de (K-16). Vision çok işçili ve durumsuz çalışacağı için oturum sayacı tutamaz; her kare için yalnızca ölçüm döner (`docs/contracts.md` 5. bölüm) |
 | S-21 | `POST /internal/analyze/frame` isteğinde `referenceVector` D4 kartında yok, ama vision vektör saklamadığı için 60 sn'lik kimlik kontrolünde gerekli | Ayşe, Dilan (D4) | Yalnızca `tasks` içinde `identity` varken gönderilsin; vision bu durumda alanı zorunlu tutuyor |
-| S-22 | Ses parçasının uzunluğu ve biçimi belirlenmedi | Yağmur (S4), Dilan (D5) | ~1 sn WebM/Opus (WAV da kabul ediliyor); vision 16 kHz mono'ya kendisi dönüştürüyor |
+| S-22 | Ses parçasının uzunluğu ve biçimi belirlenmedi | Yağmur (S4), Dilan (D5) | **Çözüldü (S4):** ~1 sn WebM/Opus, her parça kendi başına tam dosya; API WebM ve WAV kabul ediyor, en fazla 256 KiB (K-30). Vision 16 kHz mono'ya kendisi dönüştürüyor |
 | S-23 | Biyometrik rıza geri alınınca `AgentPairing` ve `IdentityVerification` adımındaki oturumlar iptal edilemiyor: durum makinesinde bu adımlardan `Cancelled` geçişi yok (GAB 3.4.4) | Ayşe (A3), Esma (E4) | Şimdilik oturum olduğu adımda kalıyor, vektör silindiği için doğrulamayı geçemiyor ve son başlangıç zamanını kaçıran takılı oturumlarla (K-24'teki S-16) aynı şekilde ele alınıyor. Tabloya bu iki geçişin eklenmesi önerilir |
+| S-24 | Tarayıcı ses parçasını WebM/Opus olarak kaydedemiyorsa (`MediaRecorder` yok ya da `audio/webm` desteklenmiyor) ses gönderilmiyor; kareler gidiyor | Yağmur (S4), Dilan (D5) | D5'te kare gelirken ses gelmeyen oturum için `MONITORING_GAP` üretilmesi; gerekirse tarayıcıda WAV'a dönüştürme. Desteklenen tarayıcılar `docs/tarayici-deneme-notlari.md`'deki S4 denemesiyle belirlenecek |

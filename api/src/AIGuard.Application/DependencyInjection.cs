@@ -48,6 +48,10 @@ public static class DependencyInjection
         services.AddScoped<SessionService>();
         services.AddScoped<SessionTimekeeper>();
 
+        // S4: sınav sırası kamera karesi ve ses parçası; hız sınırı bellekte, uygulama boyunca tek.
+        services.AddSingleton<SessionMediaRateLimiter>();
+        services.AddScoped<SessionMediaService>();
+
         // A3: kayıt fotoğrafı, oturum rızası ve sınav başı doğrulama.
         // Eşikler appsettings.json'daki "Biometrics" bölümünden; Api'de bağlanıyor.
         services.AddSingleton<IValidateOptions<BiometricOptions>, BiometricOptionsValidator>();

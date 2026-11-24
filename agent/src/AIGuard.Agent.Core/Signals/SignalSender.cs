@@ -18,6 +18,7 @@ internal sealed class SignalSender(
     IOptions<AgentOptions> options,
     ILogger<SignalSender> logger) : BackgroundService
 {
+    // Ajan açık kaldığı sürece çalışan döngü: her aralıkta bir sinyal. Eşleşme yoksa tur boş geçiyor.
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(options.Value.SignalIntervalSeconds), clock);
@@ -27,6 +28,10 @@ internal sealed class SignalSender(
         }
     }
 
+    /// <summary>
+    /// Tek sinyal: (1) eşleşme ve oturum anahtarı var mı, (2) cihazı incele, (3) göstergelerle birlikte imzala,
+    /// (4) gönder, (5) oturum bittiyse anahtarı unut.
+    /// </summary>
     /// <returns>Gönderilmediyse (eşleşme yok) null.</returns>
     internal async Task<SignalSendResult?> SendOnceAsync(CancellationToken ct = default)
     {
@@ -47,6 +52,7 @@ internal sealed class SignalSender(
             indicators = [];
         }
 
+        // İmza oturum anahtarıyla HMAC-SHA256; anahtar yalnızca bellekte, sinyalde ve logda yok (Y2, K-21).
         var result = await client.SendAsync(SignalSigner.Create(key, sessionId, clock.GetUtcNow(), indicators), ct);
 
         if (result == SignalSendResult.SessionEnded)

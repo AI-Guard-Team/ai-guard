@@ -102,6 +102,7 @@ erDiagram
         timestamptz ended_at
         timestamptz last_seen_at "adaydan son istek; 30 sn yoksa Disconnected"
         timestamptz disconnected_at "kesinti anı; dönüşte CONNECTION_LOST süresi"
+        timestamptz permission_revoked_at "izin kalkış anı; izinsiz süre PERMISSION_REVOKED (S4)"
         inet initial_ip_address
         float risk_score
         int verification_attempts
