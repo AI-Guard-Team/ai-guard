@@ -99,7 +99,7 @@ public class SessionMonitoringApiTests(PostgresFixture fx) : IClassFixture<Postg
     }
 
     [SkippableFact]
-    public async Task Second_frame_within_half_a_second_is_429()
+    public async Task Back_to_back_frame_is_429()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
         var session = await SessionAsync();
