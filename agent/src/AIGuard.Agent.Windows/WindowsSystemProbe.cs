@@ -7,14 +7,25 @@ using Microsoft.Win32;
 
 namespace AIGuard.Agent.Windows;
 
-/// <summary>Gerçek Windows kaynakları: WMI, kayıt defteri, süreç listesi, user32.</summary>
+/// <summary>Gerçek Windows kaynakları: WMI, kayıt defteri, süreç listesi, user32, winhttp.</summary>
+/// <remarks>
+/// Bu sınıf yalnızca veriyi okuyor; "bu bir sanal makine mi, bu bir VPN mi" kararı <see cref="MachineDetector"/>,
+/// <see cref="NetworkDetector"/> ve <see cref="WindowsDeviceInspector"/>'da. Böylece karar kuralları
+/// <see cref="IWindowsSystemProbe"/>'un sahtesiyle, gerçek Windows olmadan test edilebiliyor (WindowsInspectionTests).
+/// Hiçbir çağrı yönetici izni istemiyor; okunamayan kaynak hata fırlatmak yerine "yok" sayılıyor ki ajan çökmesin.
+/// </remarks>
 internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : IWindowsSystemProbe
 {
+    // GetSystemMetrics(SM_REMOTESESSION) uzak masaüstü (RDP) oturumunda sıfırdan farklı dönüyor.
     private const int SM_REMOTESESSION = 0x1000;
 
     [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int index);
 
+    /// <summary>
+    /// Üretici, model ve BIOS bilgisi (WMI: Win32_ComputerSystem, Win32_BIOS). Sanal makinelerde bu alanlarda
+    /// "VMware", "VirtualBox", "innotek" gibi izler oluyor. HypervisorPresent Windows'un kendi hipervizörünü de gösteriyor.
+    /// </summary>
     public MachineInfo ReadMachineInfo()
     {
         var info = new MachineInfo();
@@ -60,6 +71,7 @@ internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : I
         return info;
     }
 
+    /// <summary>HKLM altında anahtar var mı (64 bit görünüm); konuk eklentilerinin kurulum izleri burada.</summary>
     public bool LocalMachineKeyExists(string path)
     {
         try
@@ -74,8 +86,12 @@ internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : I
         }
     }
 
+    /// <summary>Servis kayıtlı mı; servis listesini sorgulamak yerine kayıt defterindeki servis anahtarına bakılıyor.</summary>
     public bool ServiceExists(string name) => LocalMachineKeyExists(@"SYSTEM\CurrentControlSet\Services\" + name);
 
+    /// <summary>
+    /// Çalışan süreçlerin yalnızca adları. Liste ajandan dışarı çıkmıyor; yasaklı listeyle eşleşenler gösterge oluyor (KVKK).
+    /// </summary>
     public IReadOnlyList<string> RunningProcessNames()
     {
         var processes = Process.GetProcesses();
@@ -99,8 +115,10 @@ internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : I
         return names;
     }
 
+    /// <summary>Ajan bir uzak masaüstü oturumunda mı çalışıyor (Y3, FORBIDDEN_APP "Uzak masaüstü").</summary>
     public bool IsRemoteSession() => GetSystemMetrics(SM_REMOTESESSION) != 0;
 
+    /// <summary>Açık ağ bağdaştırıcıları (Y4): VPN/tünel bağdaştırıcısı adı ve açıklamasından anlaşılıyor.</summary>
     public IReadOnlyList<NetworkAdapter> ActiveNetworkAdapters()
     {
         try
@@ -117,6 +135,9 @@ internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : I
         }
     }
 
+    /// <summary>
+    /// Vekil sunucu ayarı (Y4): kullanıcının tarayıcı/Windows ayarı (elle vekil ya da PAC adresi) ve makine geneli WinHTTP ayarı.
+    /// </summary>
     public ProxySettings ReadProxySettings()
     {
         string? userProxy = null, pac = null, machine = null;
@@ -172,6 +193,7 @@ internal sealed class WindowsSystemProbe(ILogger<WindowsSystemProbe> logger) : I
     [DllImport("kernel32.dll")]
     private static extern IntPtr GlobalFree(IntPtr handle);
 
+    /// <summary>winhttp'nin ayırdığı metni okuyup belleği serbest bırakır; boş metin null.</summary>
     private static string? TakeString(IntPtr ptr)
     {
         if (ptr == IntPtr.Zero)
