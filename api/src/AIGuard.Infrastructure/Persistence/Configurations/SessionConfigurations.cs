@@ -1,4 +1,5 @@
 using AIGuard.Domain.Entities;
+using AIGuard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -128,5 +129,42 @@ internal sealed class VerificationConfiguration : IEntityTypeConfiguration<Verif
             .OnDelete(DeleteBehavior.Cascade);
 
         b.HasIndex(v => new { v.ExamSessionId, v.CreatedAt });
+    }
+}
+
+internal sealed class ConsentTextConfiguration : IEntityTypeConfiguration<ConsentText>
+{
+    // İlk sürümlerin yayım anı: A3'te rıza akışının devreye girdiği gün.
+    private static readonly DateTimeOffset InitialPublishedAt = new(2026, 11, 23, 0, 0, 0, TimeSpan.Zero);
+
+    public void Configure(EntityTypeBuilder<ConsentText> b)
+    {
+        b.Property(t => t.Version).HasMaxLength(50);
+        b.Property(t => t.Title).HasMaxLength(200);
+
+        // Aynı sürüm adı iki kez kullanılamaz; rıza kaydındaki sürüm tek bir metni gösteriyor.
+        b.HasIndex(t => t.Version).IsUnique();
+        b.HasIndex(t => new { t.Type, t.PublishedAt });
+
+        // İlk metinler göçle geliyor; sonraki sürümler yeni göçle eklenmeli (K-32).
+        b.HasData(
+            new ConsentText
+            {
+                Id = new Guid("6f1e2d0a-5b7c-4c39-9a51-0c2f6d8e1a01"),
+                Type = ConsentType.Biometric,
+                Version = ConsentText.InitialBiometricVersion,
+                Title = "Biyometrik veri aydınlatma metni ve açık rıza",
+                Body = ConsentTextBodies.BiometricV1,
+                PublishedAt = InitialPublishedAt,
+            },
+            new ConsentText
+            {
+                Id = new Guid("6f1e2d0a-5b7c-4c39-9a51-0c2f6d8e1a02"),
+                Type = ConsentType.Session,
+                Version = ConsentText.InitialSessionVersion,
+                Title = "Sınav izleme aydınlatma metni ve açık rıza",
+                Body = ConsentTextBodies.SessionV1,
+                PublishedAt = InitialPublishedAt,
+            });
     }
 }

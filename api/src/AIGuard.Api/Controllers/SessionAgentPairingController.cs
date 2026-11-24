@@ -1,7 +1,6 @@
 using AIGuard.Api.Auth;
 using AIGuard.Application.Agents;
 using AIGuard.Application.Sessions;
-using AIGuard.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +15,7 @@ public sealed record PairingCodeResponse(string Code, DateTimeOffset ExpiresAt);
 [ApiController]
 [Route("api/sessions/{sessionId:guid}/agent-code")]
 // Kart: yalnızca Candidate ve yalnızca kendi oturumu (E2, S-12).
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class SessionAgentPairingController(AgentPairingService pairing, SessionAccessService access) : ControllerBase
 {
     [HttpPost]

@@ -1,5 +1,6 @@
 using AIGuard.Application.Abstractions;
 using AIGuard.Application.Biometrics;
+using AIGuard.Domain.Entities;
 using AIGuard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using static AIGuard.IntegrationTests.Biometrics.BiometricTestHelpers;
@@ -19,7 +20,7 @@ public class SessionVerificationServiceTests(PostgresFixture fx) : IClassFixture
         var session = await PendingSessionAsync(db, SessionState.ConsentPending, enrolled: false);
         var service = Verification(db, new FakeFaceService(), new MemoryEvidenceStore(), Clock());
 
-        var status = await service.RecordConsentAsync(session.Id, session.CandidateId, true, Settings.SessionConsentTextVersion);
+        var status = await service.RecordConsentAsync(session.Id, session.CandidateId, true, ConsentText.InitialSessionVersion);
         await db.Entry(session).ReloadAsync();
 
         Assert.Equal(SessionConsentStatus.NoReferencePhoto, status);
@@ -35,7 +36,7 @@ public class SessionVerificationServiceTests(PostgresFixture fx) : IClassFixture
         var refused = await PendingSessionAsync(db, SessionState.ConsentPending);
         var service = Verification(db, new FakeFaceService(), new MemoryEvidenceStore(), Clock());
 
-        await service.RecordConsentAsync(accepted.Id, accepted.CandidateId, true, Settings.SessionConsentTextVersion);
+        await service.RecordConsentAsync(accepted.Id, accepted.CandidateId, true, ConsentText.InitialSessionVersion);
         await service.RecordConsentAsync(refused.Id, refused.CandidateId, false, null);
         await db.Entry(accepted).ReloadAsync();
         await db.Entry(refused).ReloadAsync();

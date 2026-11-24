@@ -14,7 +14,12 @@ public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvide
     // Rapordaki "en önemli gerekçeler" listesinin uzunluğu.
     private const int TopReasonCount = 3;
 
-    public async Task<CandidateReport?> GetAsync(Guid examId, Guid sessionId, ReviewActor actor, CancellationToken ct = default)
+    /// <param name="exportFormat">
+    /// Dosya olarak indiriliyorsa biçimi (FR-34). Denetim kaydına <c>report.view</c> yerine <c>report.export</c>
+    /// yazılıyor: kişisel veri sistemin dışına çıkıyor.
+    /// </param>
+    public async Task<CandidateReport?> GetAsync(
+        Guid examId, Guid sessionId, ReviewActor actor, ReportFormat? exportFormat = null, CancellationToken ct = default)
     {
         var session = await db.ExamSessions.AsNoTracking()
             .Include(s => s.Exam)
@@ -54,6 +59,9 @@ public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvide
             .Select(e => e.Reason!)
             .ToList();
 
+        await ReviewRules.AuditViewAsync(db, exportFormat is null ? "report.view" : "report.export", session.Id, actor, now,
+            exportFormat is { } format ? new { format = format.ToString() } : null, ct);
+
         return new CandidateReport(
             session.Id, session.ExamId, session.Exam.Name, session.Exam.Type, session.Exam.DurationMinutes,
             session.CandidateId, session.Candidate.FullName, session.Candidate.Email,
@@ -61,7 +69,9 @@ public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvide
             // Sınav hiç başlamadıysa sonuç yok; "0 doğru" yanıltıcı olurdu.
             status == ReviewStatus.NotStarted ? null : Result(session),
             session.RiskScore, SessionFlagList.Of(session.Flags), topReasons, byType,
-            session.VerificationAttempts, ReviewRules.Decision(session.ReviewerDecision), ReviewRules.Notes(session.ReviewerNotes));
+            session.VerificationAttempts, ReviewRules.Decision(session.ReviewerDecision), ReviewRules.Notes(session.ReviewerNotes),
+            // Doluysa olay özeti ve gerekçeler saklama süresi dolduğu için boş; skor ve karar kayıtlı hâliyle duruyor.
+            session.MonitoringDataDeletedAt);
     }
 
     /// <summary>Her soru için en yüksek seq'li cevap geçerli (E4); seçeneği boş olan cevap "boş" sayılıyor.</summary>

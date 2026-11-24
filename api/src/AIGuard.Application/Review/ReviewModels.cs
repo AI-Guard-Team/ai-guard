@@ -90,7 +90,8 @@ public sealed record ReviewSessionDetail(
     ReviewDecisionView? Decision,
     IReadOnlyList<ReviewNoteView> Notes,
     IReadOnlyList<ReviewEventView> Events,
-    IReadOnlyList<ScorePoint> ScoreHistory);
+    IReadOnlyList<ScorePoint> ScoreHistory,
+    DateTimeOffset? MonitoringDataDeletedAt);
 
 public sealed record DecisionRequest(ReviewDecisionType? Decision, string? Note);
 
@@ -142,4 +143,5 @@ public sealed record CandidateReport(
     IReadOnlyList<EventTypeSummary> Events,
     int VerificationAttempts,
     ReviewDecisionView? Decision,
-    IReadOnlyList<ReviewNoteView> Notes);
+    IReadOnlyList<ReviewNoteView> Notes,
+    DateTimeOffset? MonitoringDataDeletedAt);

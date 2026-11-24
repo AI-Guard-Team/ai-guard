@@ -1,7 +1,6 @@
 using AIGuard.Api.Auth;
 using AIGuard.Application.Abstractions;
 using AIGuard.Application.Biometrics;
-using AIGuard.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,7 +23,7 @@ public sealed class PhotoUploadForm
 [ApiController]
 [Route("api/me")]
 // Kart: yalnızca Candidate ve yalnızca kendi kaydı; kimlik JWT'den geliyor, istekte kullanıcı kimliği yok.
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class BiometricsController(BiometricEnrollmentService enrollment) : ControllerBase
 {
     // Fotoğraf + iki kısa alan. Çok parçalı gövdenin diske tamponlanmaması için eşik dosya

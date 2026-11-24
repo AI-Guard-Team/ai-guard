@@ -18,7 +18,7 @@ namespace AIGuard.Api.Review;
 /// Tarayıcı WebSocket'te başlık gönderemediği için belirteç <c>access_token</c> sorgu parametresinden
 /// okunuyor (yalnızca /hubs yolunda, AuthenticationSetup).
 /// </remarks>
-[Authorize(Roles = $"{nameof(UserRole.Reviewer)},{nameof(UserRole.Admin)}")]
+[Authorize(Policy = AccessPolicies.ReviewRead)]
 public sealed class ReviewHub(IAppDbContext db) : Hub
 {
     public const string Path = "/hubs/review";

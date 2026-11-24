@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using AIGuard.Application.Abstractions;
+using AIGuard.Application.ConsentTexts;
 using AIGuard.Application.Events;
 using AIGuard.Application.Sessions;
 using AIGuard.Domain.Entities;
@@ -81,7 +82,7 @@ public sealed class SessionVerificationService(
             return SessionConsentStatus.SessionNotFound;
         }
 
-        if (accepted && textVersion != options.Value.SessionConsentTextVersion)
+        if (accepted && !await db.IsCurrentVersionAsync(ConsentType.Session, textVersion, ct))
         {
             return SessionConsentStatus.ConsentVersionMismatch;
         }

@@ -44,7 +44,7 @@ public class BiometricsApiTests(PostgresFixture fx) : IClassFixture<PostgresFixt
         {
             { file, "photo", "foto.jpg" },
             { new StringContent(consent ? "true" : "false"), "consent" },
-            { new StringContent(Settings.BiometricConsentTextVersion), "consentTextVersion" },
+            { new StringContent(ConsentText.InitialBiometricVersion), "consentTextVersion" },
         };
     }
 
@@ -75,7 +75,7 @@ public class BiometricsApiTests(PostgresFixture fx) : IClassFixture<PostgresFixt
 
         var upload = await client.PostAsync("/api/me/photo", PhotoForm(Jpeg()));
         var consent = await client.PostAsJsonAsync($"/api/sessions/{sessionId}/consent",
-            new { accepted = true, textVersion = Settings.SessionConsentTextVersion });
+            new { accepted = true, textVersion = ConsentText.InitialSessionVersion });
 
         // Ajan adımı Y1'in uçlarıyla; burada doğrudan doğrulama adımına geçiriliyor.
         await using (var db = fx.CreateContext())

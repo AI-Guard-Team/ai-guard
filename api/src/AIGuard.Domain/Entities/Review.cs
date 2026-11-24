@@ -45,11 +45,11 @@ public class ReviewerNote : Entity
 }
 
 /// <summary>
-/// Denetim kaydı. Yalnızca ekleniyor: özellikler init, güncelleme ve silme
-/// AppendOnlyAuditLogInterceptor tarafından reddediliyor (K-10).
-/// Eski/yeni değer alanlarına şifre, belirteç veya anahtar yazılmamalı.
+/// Denetim kaydı. Yalnızca ekleniyor: özellikler init, güncelleme ve silme AppendOnlyInterceptor ve
+/// veritabanındaki tetikleyici tarafından reddediliyor (K-10). Tek istisna, 1 yılı dolan kayıtların
+/// saklama görevince silinmesi (K-32). Eski/yeni değer alanlarına şifre, belirteç veya anahtar yazılmamalı.
 /// </summary>
-public class AuditLog : Entity
+public class AuditLog : Entity, IAppendOnly
 {
     /// <summary>Sistem görevlerinde boş.</summary>
     public Guid? ActorUserId { get; init; }

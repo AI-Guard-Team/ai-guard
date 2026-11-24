@@ -14,7 +14,7 @@ public sealed record CreatedUserResponse(Guid Id);
 /// </summary>
 [ApiController]
 [Route("api/users")]
-[Authorize(Roles = nameof(UserRole.Admin))]
+[Authorize(Policy = AccessPolicies.Manage)]
 public sealed class UsersController(UserService users) : ControllerBase
 {
     /// <summary>Kullanıcıyı oluşturur ve e-postasına tek kullanımlık davet bağlantısı gönderir.</summary>

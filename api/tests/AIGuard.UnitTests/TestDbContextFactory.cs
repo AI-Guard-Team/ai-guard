@@ -18,7 +18,7 @@ internal static class TestDbContextFactory
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DependencyInjection.ConfigureDbContext(builder, UnreachableConnectionString)
-            .AddInterceptors(new AppendOnlyAuditLogInterceptor());
+            .AddInterceptors(new AppendOnlyInterceptor());
         return new AppDbContext(builder.Options);
     }
 }

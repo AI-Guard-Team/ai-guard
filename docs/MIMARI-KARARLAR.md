@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 24 Kasım 2026 (A4)*
+*Son güncelleme: 24 Kasım 2026 (A5)*
 
 ---
 
@@ -43,6 +43,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
+| Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
 ---
 
@@ -194,7 +195,7 @@ dotnet test
 `AuditLog` yalnızca eklemeli olacak şekilde iki adımda korunuyor:
 
 1. **A1:** Özellikler `init`. `AppendOnlyAuditLogInterceptor` güncelleme veya silme içeren bir `SaveChanges` çağrısını reddediyor. `audit_logs`'a giden yabancı anahtarlar `Restrict`, çünkü `Cascade` ya da `SetNull` kaydı dolaylı yoldan değiştirebilirdi.
-2. **A5:** Uygulamanın veritabanı kullanıcısından `audit_logs` üzerindeki `UPDATE`/`DELETE` yetkisi alınacak. `ExecuteUpdate`, `ExecuteDelete` ve ham SQL interceptor'a uğramadığı için bu ikinci adım gerekli.
+2. **A5:** Veritabanında `audit_logs` için tetikleyici: güncelleme ve `TRUNCATE` hiç, silme yalnızca 1 yıldan eski kayıtta kabul. `ExecuteUpdate`, `ExecuteDelete` ve ham SQL interceptor'a uğramadığı için bu ikinci adım gerekliydi. Yetki geri almak yerine tetikleyici seçildi, çünkü uygulama tabloların sahibiyle bağlanıyor (K-32, S-7).
 
 `OldValue`/`NewValue` alanlarına şifre özeti, belirteç, anahtar veya yüz vektörü yazılmamalı.
 
@@ -681,7 +682,7 @@ FR-12, FR-20, FR-23 (İstenen), FR-35, FR-36, GAB 3.3.1, UC-08 4a/4b.
 | Anahtar ilk kullanımda okunuyor, açılışta değil | Anahtarı olmayan bir geliştiricinin bilgisayarında API yine açılıyor, yalnızca biyometrik uçlar hata veriyor. Docker Compose ve CI değişkeni zaten zorunlu tutuyor |
 | `KeyVersion` şimdilik hep 1; bilinmeyen sürüm reddediliyor | Anahtar değiştirmek gerekirse eski anahtar sürüm numarasıyla eklenecek |
 
-**Kanıt kareleri:** `IEvidenceStore` / `FileEvidenceStore`. Kare şifrelenip `EVIDENCE_STORAGE_PATH` klasörüne yazılıyor (varsayılan: uygulama klasöründe `data/evidence`; Docker'da `evidence` volume'u). Dosya adını sunucu üretiyor (`{guid}.bin`); silmede ad biçimi kontrol ediliyor, `../` ile klasör dışına çıkılamıyor. Kaydı veritabanına yazılamayan dosya geri siliniyor. Okuma A4'te kısa ömürlü imzalı bağlantıyla eklendi (K-31); süresi dolanların silinmesi A5'te.
+**Kanıt kareleri:** `IEvidenceStore` / `FileEvidenceStore`. Kare şifrelenip `EVIDENCE_STORAGE_PATH` klasörüne yazılıyor (varsayılan: uygulama klasöründe `data/evidence`; Docker'da `evidence` volume'u). Dosya adını sunucu üretiyor (`{guid}.bin`); silmede ad biçimi kontrol ediliyor, `../` ile klasör dışına çıkılamıyor. Kaydı veritabanına yazılamayan dosya geri siliniyor. Okuma A4'te kısa ömürlü imzalı bağlantıyla eklendi (K-31); süresi dolanlar A5'teki günlük saklama görevinde siliniyor (K-32).
 
 ---
 
@@ -915,9 +916,83 @@ Değerlendirici panelinin (S5) ve aday rapor sayfasının (E6) arka ucu (FR-27�
 
 **Sınırlılıklar ve sonraki kartlara notlar**
 
-- Kanıt karesinin açılması denetim kaydına yazılmıyor; erişim matrisi ve kayıt kuralları A5'te ele alınabilir.
-- `EvidenceFrame.DeleteAfter` geçmiş ama henüz silinmemiş bir kare detayda bağlantıyla görünüyor; silme A5'teki zamanlanmış görevde. Dosya silinmişse uç 404 dönüyor.
+- Kanıt karesinin açılması denetim kaydına yazılmıyor; erişim matrisi ve kayıt kuralları A5'te ele alınabilir. *A5'te: detay ve rapor açılışı `review.view` / `report.view` olarak yazılıyor, matris policy'lerle uygulanıyor (K-32).*
+- `EvidenceFrame.DeleteAfter` geçmiş ama henüz silinmemiş bir kare detayda bağlantıyla görünüyor; silme A5'teki zamanlanmış görevde. Dosya silinmişse uç 404 dönüyor. *A5'te: görev günde bir çalışıyor (K-32).*
 - Değerlendirici değiştirilirse (atama kaldırılırsa) eski değerlendiricinin kararı ve notları kalıyor; yeni değerlendirici görüyor ama aynı oturuma ikinci karar veremiyor.
+
+---
+
+## K-32 · Veri koruma: saklama süreleri, değiştirilemez kayıtlar, erişim matrisi, rıza metinleri (A5)
+
+KVKK ve GAB 3.3.8'deki veri yaşam döngüsünün koda dökülmesi (FR-34, FR-35, FR-36). Kod: `Application/DataProtection`, `Application/ConsentTexts`, `Application/Audit`, `Api/Auth/AccessPolicies`, `Api/DataProtection/DataRetentionWorker`.
+
+**Saklama süresi görevi.** `DataRetentionService` günde bir çalışıyor (`DataRetentionWorker`; ilk tur açılıştan 1 dakika sonra, `Retention:IntervalHours` ile değiştirilebilir, `Retention:Enabled=false` ile kapanıyor). Silinenler:
+
+| Veri | Ne zaman | Not |
+|---|---|---|
+| Kanıt karesi (dosya + kayıt) | `DeleteAfter` geçince (sınavın saklama süresi, varsayılan 30 gün) | Önce dosya, sonra kayıt: kayıt kalırsa sonraki tur siler, tersi olsa şifreli dosya sahipsiz kalırdı |
+| Olaylar, kareleri, ajan sinyalleri, doğrulama denemeleri | Sınavın saklama süresi sonunda | Oturum satırı, skor, cevaplar, notlar ve karar **kalıyor**; sınav sonucu ve karar silinmiyor. Oturumda `MonitoringDataDeletedAt` doluyor |
+| Referans yüz vektörü | Adayın son sınavından 30 gün sonra | "Son sınav": adayın oturumlarındaki en son bitiş, son istek ya da açılış. Hiç sınava girmemişse kayıt anından. Aday sonra yeniden fotoğraf yüklemeli |
+| Rıza kayıtları | 1 yıl sonra (geri alınmışsa geri alma anından) | Hâlâ duran bir yüz vektörünün dayandığı rıza silinmiyor |
+| Denetim kayıtları | 1 yıl sonra | Veritabanı tetikleyicisinin izin verdiği tek silme (aşağıda) |
+
+Saklama süresinin başladığı an: biten oturumda bitiş anı, hiç başlamayan oturumda sınav penceresinin kapanışı (o andan sonra oturum başlayamıyor). Süren oturumlara dokunulmuyor. Her oturum kendi işleminde ve satır kilidiyle (K-18) temizleniyor; aynı anda yanlış alarm işaretleyen istekle yarışmıyor.
+
+Her silme denetim kaydına yazılıyor: `retention.session_purged` (oturum başına, kaç olay/kare/sinyal/doğrulama gittiği), `retention.face_template_deleted` (aday başına) ve turun özeti `retention.cleanup`. Bu kayıtlarda kişisel veri yok, yalnızca kimlik ve sayı.
+
+**Saklama süresinden sonra inceleme ekranı.** Detay ve rapor yanıtlarında `monitoringDataDeletedAt` var. Doluysa olay listesi, skor grafiği ve gerekçeler boş; skor, işaretler, sınav sonucu ve karar kayıtlı hâliyle görünüyor. Grafik bilerek boş: olaylar olmadan yeniden hesaplansa sıfırdan oluşan, kayıtlı skorla çelişen bir eğri çıkardı.
+
+**Değiştirilemez denetim kaydı (K-10'un ikinci adımı).** Uygulama veritabanına tabloların sahibi olan kullanıcıyla bağlandığı için `REVOKE` tek başına işe yaramıyor (sahip yetkiyi geri verebilir). Bu yüzden göçle iki tetikleyici eklendi:
+
+- `audit_logs`: `UPDATE` ve `TRUNCATE` hiç, `DELETE` yalnızca 1 yıldan eski kayıtta kabul. Kod tarafında silmenin tek yolu `IAppDbContext.DeleteAuditLogsOlderThanAsync`; saklama görevi dışında çağrılmıyor.
+- `consent_texts`: `UPDATE`, `DELETE`, `TRUNCATE` hiç kabul edilmiyor.
+
+`ExecuteUpdate`, `ExecuteDelete` ve ham SQL interceptor'a uğramıyor; bunları artık tetikleyici durduruyor. Interceptor da genelleşti: `IAppendOnly` işaretli her varlık (`AuditLog`, `ConsentText`) için çalışıyor (`AppendOnlyInterceptor`). Ayrı ve yetkisi kısıtlı bir veritabanı kullanıcısı (S-7) hâlâ önerilir ama Docker ve CI kurulumunu değiştirdiği için bu karta alınmadı.
+
+**Erişim matrisi.** GAB 3.3.8'deki matrisin her satırı bir policy (`AccessPolicies`). Uçlar artık rol adı değil policy adı kullanıyor:
+
+| Policy | Matris satırı | Rol |
+|---|---|---|
+| `TakeExam` | Atandığı sınavı çözme, kendi rızasını verme ve geri alma | Aday |
+| `ReviewRead` | Kanıt karelerini ve olayları inceleme, rapor, bildirim hub'ı | Gözetmen, Yönetici |
+| `ReviewDecide` | Yanlış alarm, not ve karar | Gözetmen |
+| `Manage` | Kullanıcı, sınav, soru, atama, saklama süresi | Yönetici |
+| `ReadAuditLog` | Denetim kaydını görüntüleme | Yönetici |
+
+Policy yalnızca rolü kontrol ediyor; "kendi oturumu" ve "atandığı sınav" kuralı servislerde kalıyor (K-20, K-23, K-31). `AccessMatrixTests` uygulamadaki her ucu yansımayla bulup beklenen tabloyla karşılaştırıyor: **yeni bir uç ekleyen ya da yetkisini değiştiren, bu testteki tabloyu da güncellemeli.** Aynı test, `Roles = ...` kullanan bir uç kalmadığını ve hiçbir yanıt tipinde yüz vektörü, şablon ya da sayı dizisi alanı olmadığını da kontrol ediyor ("referans yüz vektörünü görme: kimse").
+
+**Denetim kaydı ucu.** `GET /api/audit-logs?action=&actorUserId=&targetType=&targetId=&from=&to=&page=&pageSize=` (yalnızca Admin, `ReadAuditLog`). En yeni önde, sayfa en fazla 200. `action` işlem adının başıyla eşleşiyor (`review.`, `retention.`). Yazma ucu yok.
+
+**Kişisel veri ekranlarının kaydı.** İnceleme detayı (`review.view`, verilen kanıt bağlantısı sayısıyla) ve rapor (`report.view`) her açılışta, bakan kişinin adına denetim kaydına yazılıyor. Kanıt karesinin kendisi girişsiz imzalı bağlantıyla açıldığı için (K-31) kayıt, bağlantının verildiği anda tutuluyor. Erişimi olmayanın isteği veri göstermediği için kaydedilmiyor.
+
+**Rıza metinleri.** `consent_texts` tablosu: tür (`Biometric`, `Session`), sürüm, başlık, metin, yayım anı. İlk sürümler (`kvkk-biometric-v1`, `kvkk-session-v1`) göçle geliyor; metinler GAB 3.3.8'deki yaşam döngüsü tablosuna göre yazıldı (`ConsentTextBodies`). Yayımlanan metin değişmiyor; metin değişecekse aynı türde yeni sürüm yeni bir göçle ekleniyor. Güncel sürüm, türün en son yayımlanan kaydı. Rıza kaydeden uçlar (A3) artık sürümü ayarlardan değil bu tablodan kontrol ediyor; eski sürümle gelen rıza A3'teki gibi reddediliyor (`BiometricOptions`'taki iki sürüm ayarı kaldırıldı).
+
+- `GET /api/consent-texts/{type}`: güncel metin. Önyüz rıza ekranında bunu gösterip `version`'ı rıza isteğiyle geri göndermeli.
+- `GET /api/consent-texts/{type}/{version}`: adayın geçmişte kabul ettiği metin.
+
+Metinler herkese aynı ve kişisel veri içermediği için giriş yapmış her kullanıcı okuyabiliyor. Gerçek kullanımda metinlerin kurumun hukuk birimince gözden geçirilmesi gerekiyor (GAB 3.3.8).
+
+**Raporun dışa aktarılması (FR-34).** Kartın görev satırı FR-34'ü anıyor ama kontrol listesinde yoktu; ekip kararıyla A5'e eklendi. Aynı rapor ucu `?format=Xlsx` ya da `?format=Pdf` ile dosya olarak iniyor (boşsa JSON). Erişim JSON raporla aynı (`ReviewRead`, atandığı sınav). İçerik JSON raporla aynı: özet, sonuç, işaretler, öne çıkan gerekçeler, olay türü özeti, karar ve notlar; zamanlar Türkiye saatiyle. Her dosyada "sistem kopya kararı vermez, karar desteğidir" uyarısı var (GAB 3.3.8).
+
+- Dosya adı `aday-raporu-{oturum}.xlsx|pdf`; aday adı dosya adına girmiyor.
+- Not ve ad gibi kullanıcı metinleri Excel'e düz metin olarak yazılıyor; `=` ile başlayan bir not formül olarak çalışmıyor (formül enjeksiyonu).
+- İndirme denetim kaydına `report.export` (biçimiyle) olarak yazılıyor: kişisel veri sistemin dışına çıkıyor.
+- Kod: `Application/Abstractions/IReportExporter`, `Infrastructure/Reports` (`ExcelReportExporter`, `PdfReportExporter`, ortak Türkçe etiketler `ReportText`).
+
+| Paket | Sürüm | Lisans | Not |
+|---|---|---|---|
+| ClosedXML | 0.104.2 | MIT | Excel |
+| QuestPDF | 2025.7.4 | QuestPDF Community | Akademik ve küçük ölçekli kullanımda ücretsiz; lisans türü kodda bildiriliyor (`LicenseType.Community`). Yıllık geliri 1 milyon doları aşan bir kurumda ücretli lisans gerekir |
+
+PDF'in yazı tipi kütüphanenin gömülü Lato'su (Türkçe karakterleri içeriyor); Docker imajına (`aspnet:8.0`, Debian) ek paket gerekmiyor. Docker'da PDF üretimi E5b'de elle denenmeli.
+
+**Kanıt karelerinin şifrelenmesi** A3'te yapılmıştı (K-26, AES-256-GCM, dosya adına bağlı bağlam); A5'te yalnızca silme eklendi.
+
+**Sınırlılıklar**
+
+- GAB'daki "itiraz süreci bitmişse" koşulu uygulanmadı: itiraz (FR-32) henüz yok, saklama süresi itirazı beklemiyor (S-26).
+- "Silinen veriler 7 gün içinde yedeklerden de çıkar" kuralı kodda değil, yedekleme düzeninde (S-25).
+- Reddedilen isteklerin (401/403) denetim kaydına yazılması (GAB 3.3.2) yapılmadı; bu istekler uygulama günlüğünde (S-27).
 
 ---
 
@@ -964,8 +1039,8 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | **Çözüldü (E1b):** compose'daki tek seferlik `migrate` servisi EF göç paketini (`efbundle`) çalıştırıyor; `api` bunun başarıyla bitmesini bekliyor |
 | S-5 | A6, E5b'ye bağlı ama tarihleri çakışıyor | Ayşe, Esma | Locust betiği 29 Kasım'da, ölçüm E5b'den sonra |
 | S-6 | Cevaptaki sorunun oturumun sınavına ait olması veritabanında zorlanmıyor | Esma (E4) | **Çözüldü (E4):** serviste kontrol ve test (K-24) |
-| S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı; göçler ayrı kullanıcıyla |
-| S-8 | `agent_signals` hızlı büyüyor; kullanıcı silme talebi | Ayşe (A5) | Saklama görevine eklenmesi; kişisel alanların anonimleştirilmesi |
+| S-7 | Uygulama yerelde `postgres` süper kullanıcısıyla bağlanıyor | Ayşe (A5), Yağmur (E1b) | **Kısmen (A5):** denetim kaydı ve rıza metinleri tetikleyiciyle korunuyor (K-32). Docker/sunucu için yalnızca gerekli yetkilere sahip ayrı kullanıcı (göçler ayrı kullanıcıyla) hâlâ öneri |
+| S-8 | `agent_signals` hızlı büyüyor; kullanıcı silme talebi | Ayşe (A5) | **Kısmen (A5):** sinyaller sınavın saklama süresi sonunda oturumun izleme verisiyle siliniyor (K-32). Kullanıcı silme talebi (KVKK m. 11) için uç yok |
 | S-9 | Olay ucu E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Ayşe | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-10 | `riskconfig.json` ağırlıkları başlangıç tahmini | Tüm ekip | Pilot oturumda ayarlanması, deneylerde sabit tutulması |
 | S-11 | Ajan aynı göstergeyi her sinyalde bildirirse her seferinde olay oluşur | Yağmur (Y2–Y4) | **Çözüldü (Y3):** gösterge yalnızca ilk görüldüğünde ve kaybolup yeniden göründüğünde olay oluyor (K-22) |
@@ -983,3 +1058,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-22 | Ses parçasının uzunluğu ve biçimi belirlenmedi | Yağmur (S4), Dilan (D5) | **Çözüldü (S4):** ~1 sn WebM/Opus, her parça kendi başına tam dosya; API WebM ve WAV kabul ediyor, en fazla 256 KiB (K-30). Vision 16 kHz mono'ya kendisi dönüştürüyor |
 | S-23 | Biyometrik rıza geri alınınca `AgentPairing` ve `IdentityVerification` adımındaki oturumlar iptal edilemiyor: durum makinesinde bu adımlardan `Cancelled` geçişi yok (GAB 3.4.4) | Ayşe (A3), Esma (E4) | Şimdilik oturum olduğu adımda kalıyor, vektör silindiği için doğrulamayı geçemiyor ve son başlangıç zamanını kaçıran takılı oturumlarla (K-24'teki S-16) aynı şekilde ele alınıyor. Tabloya bu iki geçişin eklenmesi önerilir |
 | S-24 | Tarayıcı ses parçasını WebM/Opus olarak kaydedemiyorsa (`MediaRecorder` yok ya da `audio/webm` desteklenmiyor) ses gönderilmiyor; kareler gidiyor | Yağmur (S4), Dilan (D5) | D5'te kare gelirken ses gelmeyen oturum için `MONITORING_GAP` üretilmesi; gerekirse tarayıcıda WAV'a dönüştürme. Desteklenen tarayıcılar `docs/tarayici-deneme-notlari.md`'deki S4 denemesiyle belirlenecek |
+| S-25 | GAB 3.3.8: "Silinen veriler en geç 7 gün içinde yedeklerden de çıkar" | Yağmur (E1b), Ayşe | Kodla değil yedekleme düzeniyle: yedekler en fazla 7 gün tutulmalı. Veritabanı yedeği alınıyorsa saklama süresi buna göre ayarlanmalı |
+| S-26 | GAB'da olaylar ve kararlar "saklama süresi sonunda (itiraz süreci bitmişse)" siliniyor; itiraz (FR-32) henüz yok | Ayşe, Esma | Şimdilik saklama süresi itirazı beklemiyor (K-32). FR-32 eklenirse açık itirazı olan oturum saklama görevinde atlanmalı |
+| S-27 | GAB 3.3.2: reddedilen istekler denetim kaydına yazılmalı | Ayşe, Esma | A5'te yapılmadı (K-32): her 401/403'ü kayda yazmak tabloyu hızla büyütür. Uygulama günlüğünde var; gerekirse yalnızca tekrarlayan reddedilmeler (ör. aynı kullanıcıdan art arda 403) kayda alınabilir |
+| S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |

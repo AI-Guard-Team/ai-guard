@@ -1,4 +1,5 @@
 using AIGuard.Domain.Entities;
+using AIGuard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace AIGuard.UnitTests;
@@ -6,7 +7,7 @@ namespace AIGuard.UnitTests;
 /// <summary>
 /// Interceptor veritabanına gitmeden çalıştığı için bu testler PostgreSQL gerektirmiyor.
 /// </summary>
-public class AppendOnlyAuditLogInterceptorTests
+public class AppendOnlyInterceptorTests
 {
     private static AuditLog SampleLog() => new() { Action = "user.login" };
 
@@ -31,6 +32,19 @@ public class AppendOnlyAuditLogInterceptorTests
         db.Attach(SampleLog()).State = state;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+    }
+
+    [Theory]
+    [InlineData(EntityState.Modified)]
+    [InlineData(EntityState.Deleted)]
+    public void Published_consent_texts_cannot_be_changed_or_deleted(EntityState state)
+    {
+        // A5 (K-32): yayımlanan metin değişmiyor; metin değişecekse yeni sürüm ekleniyor.
+        using var db = TestDbContextFactory.Create();
+        db.Attach(new ConsentText { Type = ConsentType.Biometric, Version = "v1", Title = "t", Body = "b" }).State = state;
+
+        var ex = Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
+        Assert.Contains(nameof(ConsentText), ex.Message);
     }
 
     [Fact]

@@ -11,7 +11,7 @@ namespace AIGuard.Api.Controllers;
 /// yanlış alarm yalnızca atanmış değerlendiriciye açık (K-31). Atanmadığı sınavın oturumu 404.
 /// </summary>
 [ApiController]
-[Authorize(Roles = $"{nameof(UserRole.Reviewer)},{nameof(UserRole.Admin)}")]
+[Authorize(Policy = AccessPolicies.ReviewRead)]
 public sealed class ReviewController(ReviewService review) : ControllerBase
 {
     // 4000 karakterlik not JSON'da kaçışlarla (ör. ç) birkaç katına çıkabiliyor; 32 KB bunu karşılıyor,
@@ -58,7 +58,7 @@ public sealed class ReviewController(ReviewService review) : ControllerBase
     /// tamamlanmış oturumda ve bir kez; oturum Decided olur, karar denetim kaydına yazılır.
     /// </summary>
     [HttpPost("api/review/sessions/{id:guid}/decision")]
-    [Authorize(Roles = nameof(UserRole.Reviewer))]
+    [Authorize(Policy = AccessPolicies.ReviewDecide)]
     [RequestSizeLimit(MaxBodyBytes)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -69,7 +69,7 @@ public sealed class ReviewController(ReviewService review) : ControllerBase
 
     /// <summary>Oturuma not ekler: <c>{ text }</c>. Karardan önce ya da sonra yazılabilir; notlar düzenlenmez.</summary>
     [HttpPost("api/review/sessions/{id:guid}/notes")]
-    [Authorize(Roles = nameof(UserRole.Reviewer))]
+    [Authorize(Policy = AccessPolicies.ReviewDecide)]
     [RequestSizeLimit(MaxBodyBytes)]
     [ProducesResponseType<ReviewNoteView>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -85,7 +85,7 @@ public sealed class ReviewController(ReviewService review) : ControllerBase
     /// Karar verilmiş oturumda 409.
     /// </summary>
     [HttpPost("api/events/{id:guid}/false-alarm")]
-    [Authorize(Roles = nameof(UserRole.Reviewer))]
+    [Authorize(Policy = AccessPolicies.ReviewDecide)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

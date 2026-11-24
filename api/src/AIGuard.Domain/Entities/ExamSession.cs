@@ -49,6 +49,12 @@ public class ExamSession : Entity
     /// </summary>
     public DateTimeOffset? PermissionRevokedAt { get; set; }
 
+    /// <summary>
+    /// Saklama süresi dolunca izleme verisinin (olaylar, kanıt kareleri, ajan sinyalleri, doğrulama denemeleri)
+    /// silindiği an (A5, K-32). Oturum, skor, cevaplar ve karar kalıyor; dolu olması "olaylar silindi" demek.
+    /// </summary>
+    public DateTimeOffset? MonitoringDataDeletedAt { get; set; }
+
     /// <summary>Oturumun ilk IP'si; değişirse IP_CHANGE olayı üretiliyor (A2).</summary>
     public IPAddress? InitialIpAddress { get; set; }
 
