@@ -1,10 +1,10 @@
 using System.Text.Json;
 using AIGuard.Application.Abstractions;
+using AIGuard.Application.ConsentTexts;
 using AIGuard.Domain.Entities;
 using AIGuard.Domain.Enums;
 using AIGuard.Domain.Sessions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace AIGuard.Application.Biometrics;
 
@@ -41,7 +41,6 @@ public sealed class BiometricEnrollmentService(
     IAppDbContext db,
     IFaceService faces,
     IFieldEncryptor encryptor,
-    IOptions<BiometricOptions> options,
     TimeProvider clock)
 {
     // Doğrulaması geçmiş ya da geçmek üzere olan oturumlar. Bu sırada referans değişirse aday
@@ -79,11 +78,13 @@ public sealed class BiometricEnrollmentService(
             return new(EnrollStatus.ConsentRequired);
         }
 
-        var textVersion = options.Value.BiometricConsentTextVersion;
-        if (consentTextVersion != textVersion)
+        // Aday güncel metni görmüş olmalı; metin yeni sürümle değiştiyse eski sürümle rıza alınmıyor (K-32).
+        if (!await db.IsCurrentVersionAsync(ConsentType.Biometric, consentTextVersion, ct))
         {
             return new(EnrollStatus.ConsentVersionMismatch);
         }
+
+        var textVersion = consentTextVersion!;
 
         if (!ImageFile.IsAcceptable(photo, ImageFile.MaxPhotoBytes))
         {

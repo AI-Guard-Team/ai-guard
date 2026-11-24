@@ -1,15 +1,15 @@
-using AIGuard.Domain.Entities;
+using AIGuard.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AIGuard.Infrastructure.Persistence.Interceptors;
 
 /// <summary>
-/// AuditLog kayıtlarının güncellenmesini ve silinmesini SaveChanges sırasında engelliyor.
-/// ExecuteUpdate/ExecuteDelete ve ham SQL buraya uğramadığı için A5'te veritabanı
-/// yetkisiyle ikinci bir koruma eklenecek (K-10).
+/// <see cref="IAppendOnly"/> kayıtların (denetim kaydı, rıza metinleri) güncellenmesini ve silinmesini
+/// SaveChanges sırasında engelliyor (K-10). ExecuteUpdate/ExecuteDelete ve ham SQL buraya uğramıyor; onları
+/// veritabanındaki tetikleyiciler durduruyor (K-32).
 /// </summary>
-public sealed class AppendOnlyAuditLogInterceptor : SaveChangesInterceptor
+public sealed class AppendOnlyInterceptor : SaveChangesInterceptor
 {
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
@@ -32,13 +32,13 @@ public sealed class AppendOnlyAuditLogInterceptor : SaveChangesInterceptor
             return;
         }
 
-        var violation = context.ChangeTracker.Entries<AuditLog>()
+        var violation = context.ChangeTracker.Entries<IAppendOnly>()
             .FirstOrDefault(e => e.State is EntityState.Modified or EntityState.Deleted);
 
         if (violation is not null)
         {
             throw new InvalidOperationException(
-                $"AuditLog kayıtları değiştirilemez veya silinemez (istenen işlem: {violation.State}).");
+                $"{violation.Entity.GetType().Name} kayıtları değiştirilemez veya silinemez (istenen işlem: {violation.State}).");
         }
     }
 }

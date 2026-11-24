@@ -1,7 +1,6 @@
 using AIGuard.Api.Auth;
 using AIGuard.Application.Events;
 using AIGuard.Application.Sessions;
-using AIGuard.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +10,7 @@ namespace AIGuard.Api.Controllers;
 /// <remarks>Yalnızca aday ve yalnızca kendi oturumuna yazabilir (E2, S-9).</remarks>
 [ApiController]
 [Route("api/sessions/{sessionId:guid}/events")]
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class SessionEventsController(EventService events, SessionIpGuard ipGuard, SessionAccessService access) : ControllerBase
 {
     [HttpPost]

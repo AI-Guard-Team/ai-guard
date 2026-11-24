@@ -16,7 +16,7 @@ public sealed record AgentContinueResponse(SessionState State);
 /// </summary>
 [ApiController]
 [Route("api/sessions/{sessionId:guid}/agent")]
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class SessionAgentController(
     AgentContinueService agent, SessionAccessService access, SessionIpGuard ipGuard) : ControllerBase
 {

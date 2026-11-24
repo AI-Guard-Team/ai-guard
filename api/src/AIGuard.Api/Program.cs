@@ -59,6 +59,9 @@ builder.Services.AddHostedService<AIGuard.Api.Agents.AgentSignalWatchdog>();
 // E4: süresi dolan oturumu otomatik teslim, istek gelmeyen oturumu bağlantı kesik sayma.
 builder.Services.AddHostedService<AIGuard.Api.Sessions.SessionTimekeeperService>();
 
+// A5: saklama süresi dolan kanıt kareleri, izleme verisi, yüz vektörleri, rıza ve denetim kayıtları (günde bir).
+builder.Services.AddHostedService<AIGuard.Api.DataProtection.DataRetentionWorker>();
+
 // E4: tabloda olmayan durum geçişi 409 (ProblemDetails).
 builder.Services.AddExceptionHandler<AIGuard.Api.Sessions.SessionTransitionExceptionHandler>();
 

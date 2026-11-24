@@ -1,9 +1,12 @@
 using AIGuard.Application.Agents;
+using AIGuard.Application.Audit;
 using AIGuard.Application.Auth;
 using AIGuard.Application.Exams;
 using AIGuard.Application.Sessions;
 using AIGuard.Application.Users;
 using AIGuard.Application.Biometrics;
+using AIGuard.Application.ConsentTexts;
+using AIGuard.Application.DataProtection;
 using AIGuard.Application.Events;
 using AIGuard.Application.Review;
 using AIGuard.Application.Risk;
@@ -64,6 +67,11 @@ public static class DependencyInjection
         services.AddSingleton<EvidenceLinkSigner>();
         services.AddScoped<ReviewService>();
         services.AddScoped<ReportService>();
+
+        // A5: veri koruma. Saklama süresi görevi, rıza metinleri ve denetim kaydının görüntülenmesi.
+        services.AddScoped<DataRetentionService>();
+        services.AddScoped<ConsentTextService>();
+        services.AddScoped<AuditLogService>();
 
         return services;
     }

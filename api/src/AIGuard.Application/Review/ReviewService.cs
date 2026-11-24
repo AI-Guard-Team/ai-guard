@@ -103,11 +103,18 @@ public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLin
                 e.EvidenceFrame is { } frame ? links.CreateUrl(frame.Id) : null))
             .ToList();
 
+        // Kanıt karelerine ve olaylara kimin baktığı izlenebilsin (GAB 3.3.2, K-32).
+        await ReviewRules.AuditViewAsync(db, "review.view", session.Id, actor, now,
+            new { evidenceLinks = events.Count(e => e.EvidenceUrl is not null) }, ct);
+
+        // Saklama süresi dolup olaylar silindiyse grafik çizilemiyor; sıfırdan oluşan bir eğri kayıtlı skorla çelişirdi.
+        var history = session.MonitoringDataDeletedAt is null ? ScoreHistory(session, evaluatedAt) : [];
+
         return new ReviewSessionDetail(
             session.Id, session.ExamId, session.Exam.Name, session.CandidateId, session.Candidate.FullName,
             session.State, status.Value, session.CreatedAt, session.StartedAt, session.EndedAt, session.RiskScore,
             SessionFlagList.Of(session.Flags), ReviewRules.Decision(session.ReviewerDecision),
-            ReviewRules.Notes(session.ReviewerNotes), events, ScoreHistory(session, evaluatedAt));
+            ReviewRules.Notes(session.ReviewerNotes), events, history, session.MonitoringDataDeletedAt);
     }
 
     /// <summary>

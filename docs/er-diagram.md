@@ -1,6 +1,6 @@
 # ER diyagramı
 
-Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261124135229_A4_ReviewerNotes`.
+Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261124145316_A5_DataProtection`.
 
 Model değiştiğinde diyagram da aynı PR'da güncellenmeli. Tablo ve sütun adları veritabanındaki snake_case adlar; kararların gerekçeleri [MIMARI-KARARLAR.md](MIMARI-KARARLAR.md) dosyasında.
 
@@ -105,6 +105,7 @@ erDiagram
         timestamptz last_seen_at "adaydan son istek; 30 sn yoksa Disconnected"
         timestamptz disconnected_at "kesinti anı; dönüşte CONNECTION_LOST süresi"
         timestamptz permission_revoked_at "izin kalkış anı; izinsiz süre PERMISSION_REVOKED (S4)"
+        timestamptz monitoring_data_deleted_at "saklama süresi doldu, izleme verisi silindi (A5)"
         inet initial_ip_address
         float risk_score
         int verification_attempts
@@ -128,9 +129,18 @@ erDiagram
         uuid user_id FK
         uuid exam_session_id FK "yalnızca Session türünde"
         varchar type "Biometric | Session"
-        varchar text_version
+        varchar text_version "consent_texts.version"
         timestamptz granted_at
         timestamptz withdrawn_at
+    }
+
+    consent_texts {
+        uuid id PK
+        varchar type "Biometric | Session"
+        varchar version UK
+        varchar title
+        text body
+        timestamptz published_at "türün en yenisi güncel"
     }
 
     reference_face_templates {
@@ -227,7 +237,7 @@ erDiagram
     }
 
     audit_logs {
-        uuid id PK
+        uuid id PK "yalnızca ekleme; tetikleyici, 1 yıl sonra silinir (K-32)"
         uuid actor_user_id FK "null = sistem"
         varchar action
         varchar target_type

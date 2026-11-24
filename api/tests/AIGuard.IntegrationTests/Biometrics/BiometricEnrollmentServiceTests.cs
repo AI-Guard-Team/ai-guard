@@ -1,5 +1,6 @@
 using AIGuard.Application.Abstractions;
 using AIGuard.Application.Biometrics;
+using AIGuard.Domain.Entities;
 using AIGuard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using static AIGuard.IntegrationTests.Biometrics.BiometricTestHelpers;
@@ -20,7 +21,7 @@ public class BiometricEnrollmentServiceTests(PostgresFixture fx) : IClassFixture
         await db.SaveChangesAsync();
         var photo = Jpeg();
 
-        var status = await Enrollment(db, new FakeFaceService()).EnrollAsync(candidate.Id, true, Settings.BiometricConsentTextVersion, photo);
+        var status = await Enrollment(db, new FakeFaceService()).EnrollAsync(candidate.Id, true, ConsentText.InitialBiometricVersion, photo);
 
         var template = await db.ReferenceFaceTemplates.AsNoTracking().SingleAsync(t => t.UserId == candidate.Id);
         var consent = await db.ConsentRecords.AsNoTracking().SingleAsync(c => c.Id == template.ConsentRecordId);
@@ -28,7 +29,7 @@ public class BiometricEnrollmentServiceTests(PostgresFixture fx) : IClassFixture
 
         Assert.Equal(EnrollStatus.Enrolled, status.Status);
         Assert.Equal(Vector(1), FaceVector.FromBytes(plain));
-        Assert.Equal((ConsentType.Biometric, Settings.BiometricConsentTextVersion), (consent.Type, consent.TextVersion));
+        Assert.Equal((ConsentType.Biometric, ConsentText.InitialBiometricVersion), (consent.Type, consent.TextVersion));
         Assert.All(photo, b => Assert.Equal(0, b)); // ham fotoğraf bellekte de bırakılmıyor
         Assert.True(await db.AuditLogs.AnyAsync(a => a.Action == "biometric.enroll" && a.ActorUserId == candidate.Id));
     }
@@ -66,7 +67,7 @@ public class BiometricEnrollmentServiceTests(PostgresFixture fx) : IClassFixture
         await db.SaveChangesAsync();
         var faces = new FakeFaceService { EnrollResult = FaceEnrollResult.Rejection(FaceIssue.MultipleFaces) };
 
-        var status = await Enrollment(db, faces).EnrollAsync(candidate.Id, true, Settings.BiometricConsentTextVersion, Jpeg());
+        var status = await Enrollment(db, faces).EnrollAsync(candidate.Id, true, ConsentText.InitialBiometricVersion, Jpeg());
 
         Assert.Equal(new EnrollResult(EnrollStatus.NoUsableFace, FaceIssue.MultipleFaces), status);
         Assert.False(await db.ReferenceFaceTemplates.AnyAsync(t => t.UserId == candidate.Id));
@@ -81,7 +82,7 @@ public class BiometricEnrollmentServiceTests(PostgresFixture fx) : IClassFixture
         var session = await PendingSessionAsync(db, SessionState.InProgress);
 
         var status = await Enrollment(db, new FakeFaceService { EnrollResult = FaceEnrollResult.Ok(Vector(2)) })
-            .EnrollAsync(session.CandidateId, true, Settings.BiometricConsentTextVersion, Jpeg());
+            .EnrollAsync(session.CandidateId, true, ConsentText.InitialBiometricVersion, Jpeg());
 
         Assert.Equal(EnrollStatus.SessionActive, status.Status);
     }

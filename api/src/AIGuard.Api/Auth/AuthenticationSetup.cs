@@ -64,6 +64,9 @@ public static class AuthenticationSetup
             // Varsayılan olarak her uç giriş istiyor. Herkese açık uçlar [AllowAnonymous] ile
             // açıkça işaretleniyor; yetki koymayı unutan yeni bir uç kendiliğinden kapalı kalıyor.
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+            // Erişim matrisi (GAB 3.3.8, K-32): uçlar rol adı yerine bu policy'leri kullanıyor.
+            AccessPolicies.Add(options);
         });
 
         return services;

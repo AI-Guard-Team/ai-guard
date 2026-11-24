@@ -13,10 +13,7 @@ public sealed class BiometricOptions
     /// <summary>Aynı oturumda iki doğrulama denemesi arasındaki en kısa süre.</summary>
     public int VerificationCooldownSeconds { get; set; } = 5;
 
-    /// <summary>Adayın onayladığı biyometrik rıza metninin güncel sürümü (A5'te metinlerle birlikte yönetilecek).</summary>
-    public string BiometricConsentTextVersion { get; set; } = "kvkk-biometric-v1";
-
-    public string SessionConsentTextVersion { get; set; } = "kvkk-session-v1";
+    // Rıza metinlerinin güncel sürümü A5'ten beri ayarlarda değil, consent_texts tablosunda (K-32).
 }
 
 public sealed class BiometricOptionsValidator : IValidateOptions<BiometricOptions>
@@ -28,11 +25,6 @@ public sealed class BiometricOptionsValidator : IValidateOptions<BiometricOption
         if (o.VerificationCooldownSeconds < 0)
         {
             errors.Add("Biometrics:VerificationCooldownSeconds negatif olamaz.");
-        }
-
-        if (string.IsNullOrWhiteSpace(o.BiometricConsentTextVersion) || string.IsNullOrWhiteSpace(o.SessionConsentTextVersion))
-        {
-            errors.Add("Rıza metni sürümleri boş olamaz.");
         }
 
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);

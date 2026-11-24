@@ -29,6 +29,7 @@ public interface IAppDbContext
     DbSet<ReviewerDecision> ReviewerDecisions { get; }
     DbSet<ReviewerNote> ReviewerNotes { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<ConsentText> ConsentTexts { get; }
 
     /// <summary>İşlem (transaction) başlatmak için.</summary>
     DatabaseFacade Database { get; }
@@ -41,6 +42,13 @@ public interface IAppDbContext
     /// sıraya sokmak için; çağıran açık bir işlem içinde olmalı.
     /// </summary>
     Task LockExamSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verilen andan önceki denetim kayıtlarını siliyor; yalnızca saklama süresi görevi için (A5, K-32). Denetim
+    /// kaydını silmenin tek yolu bu: SaveChanges silmeyi reddediyor, veritabanı tetikleyicisi de yalnızca 1 yılı
+    /// dolan kaydın silinmesine izin veriyor.
+    /// </summary>
+    Task<int> DeleteAuditLogsOlderThanAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Hata bir benzersizlik kısıtı ihlalinden mi geliyor (PostgreSQL 23505, K-11). Servisler

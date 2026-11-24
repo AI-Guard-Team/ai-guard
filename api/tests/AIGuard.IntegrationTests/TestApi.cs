@@ -27,6 +27,8 @@ internal sealed class TestApi
             // Testler sabit tarihli oturumlar kullanıyor; arka plandaki otomatik teslim onları kapatmasın (E4).
             // Süre denetimi SessionTimekeeper testlerinde FakeTimeProvider ile ayrıca sınanıyor.
             b.UseSetting("Sessions:TimekeeperEnabled", "false");
+            // Aynı nedenle saklama süresi görevi de kapalı (A5); DataRetentionServiceTests ayrıca sınıyor.
+            b.UseSetting("Retention:Enabled", "false");
             // Sonra eklenen kayıt geçerli: sahte gönderici yerine davetleri biriktiren gönderici.
             b.ConfigureServices(s => s.AddSingleton<IEmailSender>(Emails));
             // Testin kendi sahte servisleri (ör. S4'te analizci); sonra eklendiği için geçerli olan bunlar.
