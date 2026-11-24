@@ -27,6 +27,7 @@ public interface IAppDbContext
     DbSet<AgentSignal> AgentSignals { get; }
     DbSet<RiskSetting> RiskSettings { get; }
     DbSet<ReviewerDecision> ReviewerDecisions { get; }
+    DbSet<ReviewerNote> ReviewerNotes { get; }
     DbSet<AuditLog> AuditLogs { get; }
 
     /// <summary>İşlem (transaction) başlatmak için.</summary>

@@ -23,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AgentSignal> AgentSignals => Set<AgentSignal>();
     public DbSet<RiskSetting> RiskSettings => Set<RiskSetting>();
     public DbSet<ReviewerDecision> ReviewerDecisions => Set<ReviewerDecision>();
+    public DbSet<ReviewerNote> ReviewerNotes => Set<ReviewerNote>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public async Task LockExamSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)

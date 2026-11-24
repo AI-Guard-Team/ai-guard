@@ -5,6 +5,7 @@ using AIGuard.Application.Sessions;
 using AIGuard.Application.Users;
 using AIGuard.Application.Biometrics;
 using AIGuard.Application.Events;
+using AIGuard.Application.Review;
 using AIGuard.Application.Risk;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -57,6 +58,12 @@ public static class DependencyInjection
         services.AddSingleton<IValidateOptions<BiometricOptions>, BiometricOptionsValidator>();
         services.AddScoped<BiometricEnrollmentService>();
         services.AddScoped<SessionVerificationService>();
+
+        // A4: değerlendirici paneli, aday raporu ve kanıt karesi bağlantıları.
+        // İmza anahtarı süreç belleğinde; tek örnek olmalı ki detay ucunun verdiği bağlantı doğrulanabilsin.
+        services.AddSingleton<EvidenceLinkSigner>();
+        services.AddScoped<ReviewService>();
+        services.AddScoped<ReportService>();
 
         return services;
     }

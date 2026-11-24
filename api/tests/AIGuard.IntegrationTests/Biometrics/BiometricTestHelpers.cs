@@ -65,6 +65,9 @@ internal sealed class MemoryEvidenceStore : IEvidenceStore
         Files.Remove(storageKey);
         return Task.CompletedTask;
     }
+
+    public Task<byte[]?> ReadAsync(string storageKey, int keyVersion, CancellationToken ct = default) =>
+        Task.FromResult(Files.GetValueOrDefault(storageKey));
 }
 
 internal static class BiometricTestHelpers

@@ -4,8 +4,8 @@ public sealed record StoredEvidence(string StorageKey, int KeyVersion);
 
 /// <summary>Kanıt karelerinin şifreli dosya deposu (K-26).</summary>
 /// <remarks>
-/// Dosya adını depo üretir; kullanıcı girdisinden yol oluşturulmaz. Okuma (A4) ve saklama süresi
-/// dolanların silinmesi (A5) ilgili kartlarda eklenecek.
+/// Dosya adını depo üretir; kullanıcı girdisinden yol oluşturulmaz. Okuma değerlendirici ekranı için
+/// (A4, kısa ömürlü imzalı bağlantıyla); saklama süresi dolanların silinmesi A5'te eklenecek.
 /// </remarks>
 public interface IEvidenceStore
 {
@@ -13,4 +13,7 @@ public interface IEvidenceStore
 
     /// <summary>Kaydı veritabanına yazılamayan dosyayı geri almak için. Dosya yoksa sessizce geçer.</summary>
     Task DeleteAsync(string storageKey, CancellationToken ct = default);
+
+    /// <summary>Kareyi çözüp döner; dosya silinmişse (saklama süresi doldu) <c>null</c>.</summary>
+    Task<byte[]?> ReadAsync(string storageKey, int keyVersion, CancellationToken ct = default);
 }

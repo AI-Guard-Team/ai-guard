@@ -24,6 +24,20 @@ public static class AuthenticationSetup
 
                 options.Events = new JwtBearerEvents
                 {
+                    // SignalR (A4): tarayıcı WebSocket bağlantısında başlık gönderemiyor, belirteci
+                    // access_token sorgu parametresiyle yolluyor. Yalnızca /hubs altında kabul ediliyor;
+                    // REST uçlarında belirteç URL'de (ve sunucu günlüklerinde) taşınmasın.
+                    OnMessageReceived = context =>
+                    {
+                        if (context.HttpContext.Request.Path.StartsWithSegments("/hubs")
+                            && context.Request.Query["access_token"] is { Count: 1 } token)
+                        {
+                            context.Token = token.ToString();
+                        }
+
+                        return Task.CompletedTask;
+                    },
+
                     // FR-02: imza ve süre geçerli olsa da kullanıcı pasife alınmış ya da rolü
                     // değişmişse belirteç bir sonraki istekte reddediliyor.
                     OnTokenValidated = async context =>

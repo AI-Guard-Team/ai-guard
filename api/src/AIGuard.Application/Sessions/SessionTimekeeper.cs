@@ -10,7 +10,8 @@ namespace AIGuard.Application.Sessions;
 /// Sunucu saatine bağlı geçişler (E4): süresi dolan oturumu otomatik teslim eder (FR-09) ve bir süredir
 /// istek gelmeyen oturumu bağlantı kesik sayar (FR-26). Api'deki arka plan görevi birkaç saniyede bir çağırır.
 /// </summary>
-public sealed class SessionTimekeeper(IAppDbContext db, EventService events, TimeProvider clock)
+// reviewNotifier isteğe bağlı: testler bildirimsiz kurabiliyor; uygulamada DI her zaman veriyor (A4).
+public sealed class SessionTimekeeper(IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null)
 {
     /// <summary>
     /// Bu süre boyunca adaydan istek gelmezse bağlantı kesik sayılıyor. Önyüz sınav sırasında en geç
@@ -31,6 +32,7 @@ public sealed class SessionTimekeeper(IAppDbContext db, EventService events, Tim
             .Where(s => Running.Contains(s.State) && s.EndsAt != null && s.EndsAt <= now)
             .Select(s => s.Id).Take(BatchSize).ToListAsync(ct);
         var completed = 0;
+        var readyForReview = new List<SessionReadyForReview>();
         foreach (var id in due)
         {
             // Teslim isteği aynı anda gelirse kilit sırayla işletiyor; ikinci gelen durumu değişmiş görüyor.
@@ -44,8 +46,22 @@ public sealed class SessionTimekeeper(IAppDbContext db, EventService events, Tim
                 // Sunucuda kayıtlı cevaplarla teslim; bitiş anı süre sonu (FR-26). İzin beklerken bittiyse
                 // izinsiz süre de yazılıyor (FR-17, S4).
                 await SessionService.CompleteAsync(events, session, now, ct);
+                if (SessionReadyForReview.For(session) is { } message)
+                {
+                    readyForReview.Add(message);
+                }
+
                 return true;
             }, ct) ? 1 : 0;
+        }
+
+        // Her oturum kendi işleminde kaydedildi; bildirimler kayıttan sonra gidiyor (A4).
+        if (reviewNotifier is not null)
+        {
+            foreach (var message in readyForReview)
+            {
+                await reviewNotifier.SessionReadyForReviewAsync(message, ct);
+            }
         }
 
         var threshold = now - DisconnectAfter;

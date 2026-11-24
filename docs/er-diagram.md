@@ -1,6 +1,6 @@
 # ER diyagramı
 
-Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261120153203_E4_SessionActivity`.
+Kod: `api/src/AIGuard.Domain/Entities` ve `api/src/AIGuard.Infrastructure/Persistence/Configurations`. Son göç: `20261124135229_A4_ReviewerNotes`.
 
 Model değiştiğinde diyagram da aynı PR'da güncellenmeli. Tablo ve sütun adları veritabanındaki snake_case adlar; kararların gerekçeleri [MIMARI-KARARLAR.md](MIMARI-KARARLAR.md) dosyasında.
 
@@ -14,6 +14,7 @@ erDiagram
     users ||--o| reference_face_templates : "sahip (aday)"
     users ||--o{ exam_sessions : "aday"
     users ||--o{ reviewer_decisions : "değerlendirici"
+    users ||--o{ reviewer_notes : "yazan"
     users ||--o{ audit_logs : "yapan"
     users ||--o{ events : "yanlış alarm işaretleyen"
 
@@ -28,6 +29,7 @@ erDiagram
     exam_sessions ||--o{ consent_records : "oturum rızası"
     exam_sessions ||--o| agent_pairings : "0..1 (ajansızsa yok)"
     exam_sessions ||--o| reviewer_decisions : "0..1"
+    exam_sessions ||--o{ reviewer_notes : "1-N"
 
     questions ||--o{ answers : "cevaplanır"
     events ||--o| evidence_frames : "0..1"
@@ -214,6 +216,14 @@ erDiagram
         varchar decision "Clean | Suspicious | Violation"
         varchar note
         timestamptz decided_at
+    }
+
+    reviewer_notes {
+        uuid id PK
+        uuid exam_session_id FK
+        uuid author_id FK
+        varchar text
+        timestamptz created_at
     }
 
     audit_logs {

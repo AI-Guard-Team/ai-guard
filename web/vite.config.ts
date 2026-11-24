@@ -8,6 +8,8 @@ export default defineConfig({
     // Geliştirmede API aynı adresten çağrılır; böylece CORS ayarı gerekmez. 5080, api'nin launchSettings portudur.
     proxy: {
       '/api': 'http://localhost:5080',
+      // SignalR (A4, /hubs/review); WebSocket de yönlendiriliyor.
+      '/hubs': { target: 'http://localhost:5080', ws: true },
     },
   },
   test: {

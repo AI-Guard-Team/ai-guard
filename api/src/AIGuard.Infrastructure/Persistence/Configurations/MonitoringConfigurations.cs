@@ -111,7 +111,7 @@ internal sealed class ReviewerDecisionConfiguration : IEntityTypeConfiguration<R
 {
     public void Configure(EntityTypeBuilder<ReviewerDecision> b)
     {
-        b.Property(d => d.Note).HasMaxLength(4000);
+        b.Property(d => d.Note).HasMaxLength(ReviewerNote.MaxLength);
 
         b.HasOne(d => d.ExamSession)
             .WithOne(s => s.ReviewerDecision)
@@ -122,5 +122,27 @@ internal sealed class ReviewerDecisionConfiguration : IEntityTypeConfiguration<R
             .WithMany()
             .HasForeignKey(d => d.ReviewerId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class ReviewerNoteConfiguration : IEntityTypeConfiguration<ReviewerNote>
+{
+    public void Configure(EntityTypeBuilder<ReviewerNote> b)
+    {
+        b.Property(n => n.Text).HasMaxLength(ReviewerNote.MaxLength);
+
+        b.HasOne(n => n.ExamSession)
+            .WithMany(s => s.ReviewerNotes)
+            .HasForeignKey(n => n.ExamSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Kullanıcı silinse de yazdığı not ve kimin yazdığı bilgisi kaybolmasın.
+        b.HasOne(n => n.Author)
+            .WithMany()
+            .HasForeignKey(n => n.AuthorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Detay ekranı notları oturuma göre, yazılma sırasıyla okuyor.
+        b.HasIndex(n => new { n.ExamSessionId, n.CreatedAt });
     }
 }

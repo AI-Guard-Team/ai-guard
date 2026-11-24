@@ -22,6 +22,29 @@ public class ReviewerDecision : Entity
 }
 
 /// <summary>
+/// Değerlendiricinin oturuma yazdığı not (A4, S-1). Bir oturuma birden fazla not yazılabiliyor;
+/// karar verilmeden önce de yazılabildiği için karardaki tek not alanından ayrı tutuluyor.
+/// Notlar düzenlenmiyor ve silinmiyor: inceleme geçmişinin parçası.
+/// </summary>
+public class ReviewerNote : Entity
+{
+    /// <summary>Not ve karar notu için üst sınır (karakter).</summary>
+    public const int MaxLength = 4000;
+
+    public Guid ExamSessionId { get; set; }
+
+    public ExamSession ExamSession { get; set; } = null!;
+
+    public Guid AuthorId { get; set; }
+
+    public User Author { get; set; } = null!;
+
+    public required string Text { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
 /// Denetim kaydı. Yalnızca ekleniyor: özellikler init, güncelleme ve silme
 /// AppendOnlyAuditLogInterceptor tarafından reddediliyor (K-10).
 /// Eski/yeni değer alanlarına şifre, belirteç veya anahtar yazılmamalı.

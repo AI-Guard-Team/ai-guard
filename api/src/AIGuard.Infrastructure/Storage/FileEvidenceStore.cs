@@ -38,15 +38,29 @@ public sealed partial class FileEvidenceStore(string root, IFieldEncryptor encry
 
     public Task DeleteAsync(string storageKey, CancellationToken ct = default)
     {
-        // Veritabanından gelen ad bile olsa biçimi kontrol ediliyor: "../" gibi bir değer klasör dışına çıkamaz.
-        if (!KeyPattern().IsMatch(storageKey))
-        {
-            throw new ArgumentException("Geçersiz depo anahtarı.", nameof(storageKey));
-        }
-
-        File.Delete(Path.Combine(root, storageKey));
+        File.Delete(PathOf(storageKey));
         return Task.CompletedTask;
     }
+
+    public async Task<byte[]?> ReadAsync(string storageKey, int keyVersion, CancellationToken ct = default)
+    {
+        var path = PathOf(storageKey);
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var ciphertext = await File.ReadAllBytesAsync(path, ct);
+
+        // Bağlam dosya adını içerdiği için başka bir kaydın dosyası bu ada taşınsa bile çözülemez.
+        return encryptor.Decrypt(ciphertext, keyVersion, Context(storageKey));
+    }
+
+    // Veritabanından gelen ad bile olsa biçimi kontrol ediliyor: "../" gibi bir değer klasör dışına çıkamaz.
+    private string PathOf(string storageKey) =>
+        KeyPattern().IsMatch(storageKey)
+            ? Path.Combine(root, storageKey)
+            : throw new ArgumentException("Geçersiz depo anahtarı.", nameof(storageKey));
 
     [GeneratedRegex("^[0-9a-f]{32}\\.bin$")]
     private static partial Regex KeyPattern();

@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 21 Kasım 2026 (D2)*
+*Son güncelleme: 24 Kasım 2026 (A4)*
 
 ---
 
@@ -42,6 +42,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Biyometrik akış | Fotoğraf saklanmıyor; geçti/kaldı kararı görüntü servisinde, durum geçişleri E4'ten; başarısız deneme olay ve kanıt karesiyle (K-27) |
 | Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
+| İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
 
 ---
 
@@ -617,7 +618,7 @@ Hepsi yalnızca `Candidate` ve yalnızca kendi oturumu (K-20); her istekte IP ko
 
 **Uzun kesinti (S-13).** Ayrı olay türü eklenmedi; kesinti `CONNECTION_LOST` olarak süresiyle yazılıyor ve süre çarpanı (K-17) uzun kesintiyi ağırlaştırıyor. 5 dakika üstü için ayrıca ağırlık gerekirse `riskconfig.json`'da pilot oturumda ayarlanır.
 
-**Açık konu (S-16).** Rıza, eşleştirme veya doğrulama adımında takılı kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok). Aday yeniden başlamaya çalışınca 409 "son başlangıç zamanı geçti" alıyor. Bu oturumların raporda nasıl görüneceğine A4'te karar verilmeli.
+**Açık konu (S-16).** Rıza, eşleştirme veya doğrulama adımında takılı kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok). Aday yeniden başlamaya çalışınca 409 "son başlangıç zamanı geçti" alıyor. Bu oturumların raporda nasıl görüneceğine A4'te karar verilmeli. *A4'te: listede ve raporda `NotStarted` ("başlamadı") olarak görünüyorlar, karar verilemiyor; durum makinesi değişmedi (K-31).*
 
 ---
 
@@ -680,7 +681,7 @@ FR-12, FR-20, FR-23 (İstenen), FR-35, FR-36, GAB 3.3.1, UC-08 4a/4b.
 | Anahtar ilk kullanımda okunuyor, açılışta değil | Anahtarı olmayan bir geliştiricinin bilgisayarında API yine açılıyor, yalnızca biyometrik uçlar hata veriyor. Docker Compose ve CI değişkeni zaten zorunlu tutuyor |
 | `KeyVersion` şimdilik hep 1; bilinmeyen sürüm reddediliyor | Anahtar değiştirmek gerekirse eski anahtar sürüm numarasıyla eklenecek |
 
-**Kanıt kareleri:** `IEvidenceStore` / `FileEvidenceStore`. Kare şifrelenip `EVIDENCE_STORAGE_PATH` klasörüne yazılıyor (varsayılan: uygulama klasöründe `data/evidence`; Docker'da `evidence` volume'u). Dosya adını sunucu üretiyor (`{guid}.bin`); silmede ad biçimi kontrol ediliyor, `../` ile klasör dışına çıkılamıyor. Kaydı veritabanına yazılamayan dosya geri siliniyor. Okuma (kısa ömürlü imzalı bağlantı) A4'te, süresi dolanların silinmesi A5'te eklenecek.
+**Kanıt kareleri:** `IEvidenceStore` / `FileEvidenceStore`. Kare şifrelenip `EVIDENCE_STORAGE_PATH` klasörüne yazılıyor (varsayılan: uygulama klasöründe `data/evidence`; Docker'da `evidence` volume'u). Dosya adını sunucu üretiyor (`{guid}.bin`); silmede ad biçimi kontrol ediliyor, `../` ile klasör dışına çıkılamıyor. Kaydı veritabanına yazılamayan dosya geri siliniyor. Okuma A4'te kısa ömürlü imzalı bağlantıyla eklendi (K-31); süresi dolanların silinmesi A5'te.
 
 ---
 
@@ -852,6 +853,74 @@ S4 kartı tarayıcının `frames`, `audio` ve `events` uçlarına göndermesini 
 
 ---
 
+## K-31 · İnceleme paneli, aday raporu ve bildirimler (A4)
+
+Değerlendirici panelinin (S5) ve aday rapor sayfasının (E6) arka ucu (FR-27–FR-33). Kod: `Application/Review`, `Api/Controllers/ReviewController`, `ReportsController`, `EvidenceController`, `Api/Review/ReviewHub`.
+
+**Uçlar**
+
+| Uç | Kim | Ne yapar |
+|---|---|---|
+| `GET /api/review/exams/{examId}/sessions?risky=&flags=&sort=` | Değerlendirici, Admin | Oturum listesi ve karar bekleyen sayısı (`pendingCount`, FR-29). `flags` birden fazla verilebilir (`flags=NoAgent&flags=Indicated`), en az biri olanlar döner. `sort`: `Priority` (varsayılan), `Score`, `StartedAt` |
+| `GET /api/review/sessions/{id}` | Değerlendirici, Admin | Olay zaman çizelgesi, olay katkıları, skor geçmişi, notlar, karar, kanıt karesi bağlantıları |
+| `POST /api/review/sessions/{id}/decision` | Değerlendirici | `{ decision: Clean \| Suspicious \| Violation, note }` |
+| `POST /api/review/sessions/{id}/notes` | Değerlendirici | `{ text }`; 201 ve eklenen not |
+| `POST /api/events/{id}/false-alarm` | Değerlendirici | Olayı yanlış alarm işaretler |
+| `GET /api/reports/exams/{examId}/sessions/{sessionId}` | Değerlendirici, Admin | Aday bazında rapor |
+| `GET /api/evidence/{id}?exp=&sig=` | İmzalı bağlantıyı taşıyan | Kanıt karesi (aşağıda) |
+| SignalR `/hubs/review` | Değerlendirici, Admin | `SessionReadyForReview` mesajı |
+
+**Erişim.** Değerlendirici yalnızca `ExamAssignments`'ta `(ExamId, UserId, Role = Reviewer)` kaydı olan sınavı görür (K-23). Admin bütün sınavları okur ama karar, not ve yanlış alarm uçları ona kapalı (403): karar değerlendiricinin işi, Admin'in okuması E6'daki rapor sayfası ve denetim için. Atanmadığı sınavın oturumu için değerlendiriciye 404 dönüyor; oturumun varlığı da söylenmiyor (K-20'deki aday kuralıyla aynı).
+
+**İnceleme durumu (`status`).** Listede ve detayda her oturumun bir inceleme durumu var. Süren ve iptal edilen oturumlar listede yok.
+
+| Durum | Ne zaman | Karar verilebilir mi |
+|---|---|---|
+| `AwaitingReview` | `Completed` ve en az bir işaret var (`Risky`, `NoAgent`, `Indicated`, `PermissionGap`, `MonitoringGap`) | Evet |
+| `Completed` | `Completed`, hiç işaret yok | Hayır (kart: "yalnızca riskli veya işaretli") |
+| `Decided` | Karar verildi | Hayır, karar bir kez verilir |
+| `NotStarted` | Rıza, eşleştirme veya doğrulama adımında kalıp son başlangıç zamanını kaçırdı (S-16) | Hayır; not yazılabilir |
+
+**Sıralama.** Varsayılan sırada önce karar bekleyenler, sonra işaretliler (karar verilmiş olanlar dahil), sonra skor. Böylece yalnızca `NoAgent` işaretli, skoru 0 olan bir oturum da üstte kalıyor (FR-27). Satırdaki kısa gerekçe, kaydedildiği andaki katkısı en yüksek olayın gerekçesi (yanlış alarmlar hariç).
+
+**Karar.** Oturum kilitlenip (K-18) `TransitionTo(Decided)` ile geçiyor; `ReviewerDecision` ve denetim kaydı (`review.decision`, kararın kendisi ve not olup olmadığı) aynı işlemde yazılıyor. Oturum başına tek karar indeksi eşzamanlı ikinci kararı da reddediyor (409). Not en fazla 4000 karakter.
+
+**Notlar (S-1).** Ayrı `reviewer_notes` tablosu: bir oturuma birden fazla not, her biri yazanı ve zamanıyla. Karar verilmeden önce ve sonra yazılabiliyor, düzenlenmiyor ve silinmiyor. Karardaki not (`ReviewerDecision.Note`) kararın gerekçesi olarak ayrı kalıyor. Not metni denetim kaydına kopyalanmıyor, yalnızca hangi notun kimin tarafından eklendiği yazılıyor.
+
+**Yanlış alarm.** Olay silinmiyor; `IsFalseAlarm`, işaretleyen ve zaman yazılıyor. Olay skora artık girmiyor (K-17): oturumun skoru bitiş anına göre yeniden hesaplanıp kaydediliyor, eski ve yeni skor denetim kaydında (`event.false_alarm`). `Risky` işareti kalıyor; değerlendirici oturumun neden incelemeye düştüğünü görmeye devam etmeli. Karar verilmiş oturumda yanlış alarm işaretlenemiyor (kararın dayandığı kanıt sonradan değişmesin). İşaret geri alınamıyor; yanlışlıkla işaretlenirse not yazılmalı.
+
+**Detaydaki katkılar ve skor geçmişi.** Katkılar sınav bitiş anına göre risk motorundan yeniden hesaplanıyor (azalma, tekrar ve tür üst sınırı dahil); toplamları kayıtlı skorla aynı. `Event.ScoreContribution` ise olayın kaydedildiği andaki değer, ayrıca gösterilmiyor. Skor geçmişi (grafik verisi) olayların başlangıç ve bitiş anlarında ve düzenli aralıklarla (en az 1 dakika, en fazla ~300 nokta) hesaplanan skorlardan oluşuyor; azalma eğrisi de böylece görünüyor.
+
+**Kanıt karesi bağlantısı.** Panel kareyi `<img src>` ile açıyor ve tarayıcı bu istekte `Authorization` başlığı göndermiyor. Bu yüzden yetki kontrolü bağlantıyı üreten detay ucunda yapılıyor ve bağlantı imzalı:
+
+- `sig = HMAC-SHA256(anahtar, "evidence|{frameId}|{exp}")`, base64url. Bağlantı 5 dakika geçerli.
+- İmza kare kimliğine ve son tarihe bağlı: başka bir kareye ya da daha uzun süreye çevrilemiyor. Ömründen uzun son tarih taşıyan bağlantı da reddediliyor.
+- Geçersiz bağlantıda 404 dönüyor; karenin var olup olmadığı söylenmiyor. İmza geçersizse veritabanına ve dosyaya hiç dokunulmuyor. Yanıt `Cache-Control: private, no-store` ve `X-Content-Type-Options: nosniff`.
+- Şifresi çözülemeyen dosya (bozulmuş ya da başka bir dosyayla değiştirilmiş, GCM etiketi tutmuyor) 500 yerine 404 dönüyor ve bütünlük sorunu olarak loga yazılıyor.
+- Anahtar her açılışta rastgele üretilip yalnızca bellekte tutuluyor. API yeniden başlarsa eski bağlantılar geçersizleşiyor; panel detayı yeniden isteyip yeni bağlantı alıyor. Tek API örneğiyle çalıştığımız için yeterli (S-17); birden fazla örnek olursa anahtar ortak bir yerden okunmalı.
+- `EvidenceController` bu yüzden `[AllowAnonymous]` (K-20'deki gerekçe kuralı).
+
+**Bildirim (SignalR).** Oturum teslim edildiğinde ya da süresi dolup otomatik teslim edildiğinde (E4), işaretliyse `SessionReadyForReview` gidiyor: `{ sessionId, examId, riskScore, flags, endedAt }`. Aday adı gönderilmiyor; panel mesajı alınca listeyi yeniden çekiyor.
+
+- Değerlendirici bağlanınca atandığı sınavların gruplarına ekleniyor. Mesaj yalnızca o sınavın grubuna ve Admin'lere gidiyor. Bağlıyken yapılan yeni atama bir sonraki bağlantıda geçerli oluyor.
+- Mesaj teslim kaydedildikten (commit) sonra gidiyor. Gönderim hatası teslimi bozmuyor, yalnızca loga yazılıyor. API düşerse bildirim kaybolabiliyor ama oturum listede yine görünüyor; bildirim yalnızca kolaylık.
+- Bağlantı belirtecin süresi dolunca (15 dk) kapanıyor (`CloseOnAuthenticationExpiration`); istemci yeni belirteçle yeniden bağlanıyor. Böylece pasife alınan ya da rolü değişen kullanıcı açık bağlantıyla bildirim almaya devam edemiyor (E2, FR-02).
+- Tarayıcı WebSocket'te başlık gönderemediği için belirteç `access_token` sorgu parametresiyle geliyor. Bu yalnızca `/hubs` altında kabul ediliyor, REST uçlarında belirteç URL'de taşınmıyor. nginx'te `/hubs/` için ayrı `location` var: erişim günlüğü kapalı (belirteç loga düşmesin) ve okuma zaman aşımı 1 saat. Vite geliştirme sunucusunda da `/hubs` yönlendiriliyor.
+- Önyüz (S5): `new HubConnectionBuilder().withUrl('/hubs/review', { accessTokenFactory: () => token }).withAutomaticReconnect().build()` ve `connection.on('SessionReadyForReview', …)`.
+- `SessionService` ve `SessionTimekeeper` bildirimciyi kurucuda isteğe bağlı alıyor. Testler oturum akışını bildirimsiz kurabiliyor; uygulamada DI her zaman veriyor.
+
+**Diğer korumalar.** Karar ve not uçlarında gövde 32 KB ile sınırlı (`RequestSizeLimit`; TestServer bu sınırı uygulamadığı için testte özniteliğin varlığı kontrol ediliyor). Liste, detay ve rapor yanıtları kişisel veri içerdiği için `Cache-Control: no-store`.
+
+**Aday raporu.** Sınav sonucu (her soruda en yüksek `seq`'li cevap geçerli; doğru, yanlış, boş ve bağlantı kesikken verilen cevap sayısı), risk skoru ve işaretler, olay türü başına sayı, yanlış alarm sayısı ve katkı, en çok katkı yapan üç gerekçe, doğrulama denemesi sayısı, karar ve notlar. Hiç başlamayan oturumda sonuç `null` ("0 doğru" yanıltıcı olurdu). Zaman çizelgesi ve kanıt kareleri raporda yok, detay ucunda.
+
+**Sınırlılıklar ve sonraki kartlara notlar**
+
+- Kanıt karesinin açılması denetim kaydına yazılmıyor; erişim matrisi ve kayıt kuralları A5'te ele alınabilir.
+- `EvidenceFrame.DeleteAfter` geçmiş ama henüz silinmemiş bir kare detayda bağlantıyla görünüyor; silme A5'teki zamanlanmış görevde. Dosya silinmişse uç 404 dönüyor.
+- Değerlendirici değiştirilirse (atama kaldırılırsa) eski değerlendiricinin kararı ve notları kalıyor; yeni değerlendirici görüyor ama aynı oturuma ikinci karar veremiyor.
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -873,6 +942,8 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 
 ### A4 · Rapor API'si ve inceleme bildirimleri
 
+*A4'te uygulandı (K-31): liste ucu `pendingCount` dönüyor, varsayılan sırada işaretli oturumlar skordan bağımsız önde.*
+
 - **İnceleme bekleyen oturum sayısı (FR-29).** Değerlendirici panelinde, atandığı sınavlarda incelenmeyi bekleyen (riskli veya işaretli, henüz kararı olmayan) oturum sayısı gösterilmeli. Liste ucuyla birlikte bu sayı da dönmeli.
 - **İşaretli oturumlar skordan bağımsız listelenir (FR-27).** Listede öne çıkarma `Flags` içinde `Risky`, `NoAgent`, `Indicated`, `PermissionGap` veya `MonitoringGap` olmasına göre yapılmalı, yalnızca skora göre değil.
 
@@ -887,7 +958,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 
 | # | Konu | İlgili | Öneri |
 |---|---|---|---|
-| S-1 | A4'teki not ucu için ayrı tablo mu, `ReviewerDecision.Note` mu? | Ayşe, Şeyma | Birden fazla not gerekecekse A4'te `ReviewerNote` tablosu |
+| S-1 | A4'teki not ucu için ayrı tablo mu, `ReviewerDecision.Note` mu? | Ayşe, Şeyma | **Çözüldü (A4):** ayrı `reviewer_notes` tablosu, oturuma birden fazla not; karar notu `ReviewerDecision.Note`'ta (K-31) |
 | S-2 | Şifre özetleme yöntemi | Esma | **Karar (E2):** ASP.NET Core Identity PasswordHasher (PBKDF2) kalıyor; değişirse yalnızca `IdentityPasswordHasher` etkilenir |
 | S-3 | HMAC anahtarının şifreli saklanması (K-08) | Yağmur | Y2'de bu alanın kullanılması |
 | S-4 | Docker ortamında göçlerin uygulanması (K-07) | Yağmur | **Çözüldü (E1b):** compose'daki tek seferlik `migrate` servisi EF göç paketini (`efbundle`) çalıştırıyor; `api` bunun başarıyla bitmesini bekliyor |
@@ -905,7 +976,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-16 | `AgentPairing.EncryptedSessionKey` artık kullanılmıyor (K-21: veritabanında yalnızca özet) | Ayşe, Yağmur | Bir sonraki göçle kaldırılması; K-13 gereği önce ekipte konuşulacak |
 | S-17 | Ajan oturum anahtarları tek API sürecinin belleğinde; API yeniden başlarsa ya da birden fazla örnekle çalışırsa doğrulanamıyor | Yağmur, Esma | Proje tek örnekle çalışıyor; gerekirse paylaşılan önbellek (ör. Redis) ya da ajanın yeniden eşleşmesi |
 | S-18 | `vpn-ip-blocks.json` yalnızca örnek bloklar içeriyor; gerçek VPN/veri merkezi listesinin kaynağı belirlenmedi (FR-23, İstenen) | Yağmur, Ayşe | Pilot oturum öncesi bir kaynak seçilip liste doldurulması; seçilen kaynak ve tarih dosyaya yazılmalı |
-| S-16 | Rıza/eşleştirme/doğrulama adımında kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok) | Esma, Ayşe (A4) | Raporda "başlamadı" olarak gösterilmesi ya da zamanlanmış görevle iptal edilmesi; ekip kararı |
+| S-16 | Rıza/eşleştirme/doğrulama adımında kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok) | Esma, Ayşe (A4) | **Karar (A4):** listede ve raporda `NotStarted` olarak gösteriliyor, karar verilemiyor (K-31). Zamanlanmış görevle iptal istenirse durum makinesine geçiş gerekiyor (S-23) |
 | S-19 | Yüz doğrulamada `passed` kararını kim veriyor: vision mı, API mi? `Verification.Passed` yorumu "sonuç sunucuda eşiklere göre belirleniyor" diyor | Ayşe (A3), Dilan (D2) | **Çözüldü (A3):** kararı vision veriyor (`config.yaml`), API skorları, sonucu ve `reason`'ı kaydediyor; API'de eşik yok (K-27) |
 | S-20 | Kamera olay kuralları ("art arda 3 ölçümde yüz yok", "art arda 5 ölçümde bakış sapması") nerede çalışacak? | Ayşe, Dilan (D4) | API'de (K-16). Vision çok işçili ve durumsuz çalışacağı için oturum sayacı tutamaz; her kare için yalnızca ölçüm döner (`docs/contracts.md` 5. bölüm) |
 | S-21 | `POST /internal/analyze/frame` isteğinde `referenceVector` D4 kartında yok, ama vision vektör saklamadığı için 60 sn'lik kimlik kontrolünde gerekli | Ayşe, Dilan (D4) | Yalnızca `tasks` içinde `identity` varken gönderilsin; vision bu durumda alanı zorunlu tutuyor |
