@@ -519,6 +519,8 @@ FR-18, FR-19, UC-08 4a/4b. Ajan sanal makine, genel hipervizör ve yasaklı yaz�
 
 **Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil. macOS göstergeleri bu kartta yok.
 
+**macOS (Y7a).** Çekirdek macOS'ta değişmeden çalışıyor; macOS modülü yalnızca `IDeviceInspector`'ı uyguluyor. `Platform`, gösterge biçimi ve yukarıdaki "kurulum izi değil konuk izi" kuralı aynı kalıyor. Ayrıntılar ve doğrulananlar `agent/README.md` "macOS modülü için sözleşme" bölümünde.
+
 ---
 
 ## K-23 · Sınav, soru ve atama yönetimi (E3)

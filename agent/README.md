@@ -14,7 +14,7 @@ agent/
 │   │   └── Platform/              IDeviceInspector, DeviceIndicator, ForbiddenAppList
 │   ├── AIGuard.Agent.Windows/     Windows 10/11 (net8.0-windows): WindowsDeviceInspector, MachineDetector,
 │   │                              WindowsSystemProbe (WMI, kayıt defteri, süreçler), forbidden-apps.json (Y3)
-│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (göstergeler henüz yok)
+│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (göstergeler Y7a'da; aşağıdaki sözleşmeye bakın)
 ├── tests/AIGuard.Agent.Core.Tests/
 ├── tests/AIGuard.Agent.Windows.Tests/   Windows kuralları (sahte bilgisayarla) + gerçek WMI/kayıt defteri okuması
 └── tools/pairing-test.html        Tarayıcı denemesi için test sayfası
@@ -52,6 +52,37 @@ Sanal makine ve hipervizör bir kez; süreç listesi, ağ bağdaştırıcıları
 **Listeye yazılım eklemek:** `forbidden-apps.json`'a `{ "name": "...", "processes": [ "x.exe" ] }` ekleyip ajanı yeniden başlatmak yeterli; yeniden derleme gerekmez. Dosya bozuksa ajan açılmaz.
 
 Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-deneme-notlari.md)
+
+## macOS modülü için sözleşme (Y7a, Şeyma)
+
+`AIGuard.Agent.Core` işletim sisteminden bağımsız. Eşleştirme, imzalı sinyal, yerel uç ve ayar doğrulaması macOS'ta değişmeden çalışıyor. macOS modülünün yazması gereken tek parça `IDeviceInspector`.
+
+**Doğrulananlar (24 Kasım 2026):**
+
+- Çekirdeğin 81 testi Linux'ta da geçiyor (.NET 8 SDK container'ı); Windows'a özgü API kullanılmıyor.
+- `dotnet publish src/AIGuard.Agent.MacOS -r osx-arm64` ve `-r osx-x64` derleniyor. CI'daki `agent` işi bunu her PR'da kontrol ediyor ("macOS derlemesi" adımı).
+- Sunucu `MacOS` platformunu tanıyor (`AgentPlatform.MacOS`).
+
+**Değiştirilmeyecekler** (değişiklik gerekirse Yağmur'la birlikte karar verilir):
+
+| Ne | Kural |
+|---|---|
+| `IDeviceInspector.Platform` | Tam olarak `"MacOS"`. Eşleştirmede sunucuya bu gidiyor; başka yazım 400 alır |
+| `InspectAsync` | Yalnızca eşleşen göstergeler; tam süreç listesi, seri numarası, kullanıcı adı gibi veri gönderilmez (KVKK) |
+| Gösterge | `DeviceIndicator(Type, Name, Detail)`. `Type` yalnızca `DeviceIndicator` sabitleri; `Name` en fazla 64, `Detail` en fazla 128 karakter (`DeviceIndicator.Truncate`) |
+| Sinyal biçimi ve imza | Çekirdekte (`SignalSigner`); macOS modülü dokunmuyor. Sunucuyla aynı olduğu `Known_answer_matches_the_server` testiyle kontrol ediliyor |
+| Aynı gösterge her sinyalde | Sorun değil; sunucu yalnızca ilk görüldüğünde olay yazıyor (K-22) |
+
+**Windows'ta uyduğumuz kurallar; macOS'ta da aynısı beklenir:**
+
+- **Konuk izi ara, kurulum izi arama.** Mac'te Parallels Desktop ya da VMware Fusion'ın **kurulu olması** sanal makinede olunduğu anlamına gelmiyor. `VM_DETECTED` ancak ajan sanal makinenin **içinde** çalışıyorsa gönderilmeli. Örneğin `sysctl kern.hv_vmm_present` = 1, `ioreg` / `system_profiler` model adında "Parallels" ya da "VMware".
+- **`Name` sanal makine ürününün adı olsun:** `"Parallels"`, `"VMware"`. Windows'taki `"VMware"` ile aynı yazılırsa değerlendirici ekranında iki platform aynı görünür. `Detail` nereden anlaşıldığını söylesin, ör. `"sysctl:kern.hv_vmm_present, ioreg:model"`.
+- **`HYPERVISOR_INFO`** ürün belli değilse ama hipervizör varsa kullanılabilir. Düşük ağırlıklı bir bilgi göstergesi.
+- **Sanal makine bilgisi sınav boyunca değişmiyor.** Bir kez hesaplanıp saklanmalı; `sysctl`/`ioreg` her 5 sn'de çalıştırılmamalı (GAB 3.3.3: ortalama işlemci kullanımı %5'in altında).
+- **Hata ajanı durdurmasın.** Komut çalışmazsa gösterge yok sayılsın ve uyarı loglansın. `SignalSender` inceleme hatasında yine göstergesiz sinyal gönderiyor, ama inceleme kendi içinde de dayanıklı olmalı.
+- **Test edilebilirlik.** Windows'taki gibi okuma ile karar ayrı tutulursa (`IWindowsSystemProbe` + `MachineDetector`), kurallar Mac olmadan da test edilebilir.
+
+**Kapsam dışı (Y7a kartında yok):** yasaklı yazılım ve VPN göstergeleri macOS'ta yok; Y7b ya da ayrı bir kart. Kurulum paketi (Windows'taki `publish-windows.ps1` karşılığı) da bu kartta yok.
 
 ## Kurulum paketi (Y4)
 
