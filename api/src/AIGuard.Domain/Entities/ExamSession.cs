@@ -78,6 +78,8 @@ public class ExamSession : Entity
     public AgentPairing? AgentPairing { get; set; }
 
     public ReviewerDecision? ReviewerDecision { get; set; }
+
+    public ICollection<ReviewerNote> ReviewerNotes { get; set; } = new List<ReviewerNote>();
 }
 
 /// <summary>Cevap gönderimi. Her gönderim ayrı satır; bir soru için en yüksek Seq geçerli (E4).</summary>

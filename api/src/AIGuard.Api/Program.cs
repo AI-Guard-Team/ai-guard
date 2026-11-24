@@ -39,6 +39,11 @@ builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
 
+// A4: değerlendirici bildirimleri (/hubs/review). Enum'lar REST yanıtlarıyla aynı biçimde (ad olarak).
+builder.Services.AddSignalR().AddJsonProtocol(o =>
+    o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false)));
+builder.Services.AddSingleton<AIGuard.Application.Abstractions.IReviewNotifier, AIGuard.Api.Review.SignalRReviewNotifier>();
+
 // Swagger (E3): yalnızca Development'ta /swagger adresinde.
 builder.Services.AddApiDocumentation();
 
@@ -77,6 +82,9 @@ app.UseAuthorization();
 // Compose ve CI giriş yapmadan kontrol ediyor.
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();
+// Belirtecin süresi dolunca (15 dk) bağlantı kapanıyor; istemci yeni belirteçle yeniden bağlanıyor. Böylece
+// pasife alınan ya da rolü değişen kullanıcı açık bağlantıyla bildirim almaya devam edemiyor (E2, FR-02).
+app.MapHub<AIGuard.Api.Review.ReviewHub>(AIGuard.Api.Review.ReviewHub.Path, o => o.CloseOnAuthenticationExpiration = true);
 
 // Göçler burada uygulanmıyor (K-07); örnek veri yalnızca Development'ta yükleniyor (K-06).
 if (app.Environment.IsDevelopment())

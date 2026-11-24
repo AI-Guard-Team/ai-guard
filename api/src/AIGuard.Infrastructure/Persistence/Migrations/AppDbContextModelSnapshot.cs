@@ -787,6 +787,43 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.ToTable("reviewer_decisions", (string)null);
                 });
 
+            modelBuilder.Entity("AIGuard.Domain.Entities.ReviewerNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExamSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exam_session_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reviewer_notes");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_reviewer_notes_author_id");
+
+                    b.HasIndex("ExamSessionId", "CreatedAt")
+                        .HasDatabaseName("ix_reviewer_notes_exam_session_id_created_at");
+
+                    b.ToTable("reviewer_notes", (string)null);
+                });
+
             modelBuilder.Entity("AIGuard.Domain.Entities.RiskSetting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1175,6 +1212,27 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.Navigation("Reviewer");
                 });
 
+            modelBuilder.Entity("AIGuard.Domain.Entities.ReviewerNote", b =>
+                {
+                    b.HasOne("AIGuard.Domain.Entities.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_reviewer_notes_users_author_id");
+
+                    b.HasOne("AIGuard.Domain.Entities.ExamSession", "ExamSession")
+                        .WithMany("ReviewerNotes")
+                        .HasForeignKey("ExamSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_reviewer_notes_exam_sessions_exam_session_id");
+
+                    b.Navigation("Author");
+
+                    b.Navigation("ExamSession");
+                });
+
             modelBuilder.Entity("AIGuard.Domain.Entities.RiskSetting", b =>
                 {
                     b.HasOne("AIGuard.Domain.Entities.Exam", "Exam")
@@ -1228,6 +1286,8 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("ReviewerDecision");
+
+                    b.Navigation("ReviewerNotes");
 
                     b.Navigation("Verifications");
                 });

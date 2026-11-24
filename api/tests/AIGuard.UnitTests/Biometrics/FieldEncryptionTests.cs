@@ -97,8 +97,17 @@ public class FieldEncryptionTests
             Assert.False(onDisk.AsSpan().IndexOf(image) >= 0);
             Assert.Equal(image, Encryptor.Decrypt(onDisk, stored.KeyVersion, FileEvidenceStore.Context(stored.StorageKey)));
 
+            // A4: değerlendirici ekranı için okuma; başka bir dosyanın içeriği bu ada taşınırsa çözülemez.
+            Assert.Equal(image, await store.ReadAsync(stored.StorageKey, stored.KeyVersion));
+            var other = await store.SaveAsync(image);
+            File.Copy(Path.Combine(root, other.StorageKey), Path.Combine(root, stored.StorageKey), overwrite: true);
+            await Assert.ThrowsAnyAsync<System.Security.Cryptography.CryptographicException>(
+                () => store.ReadAsync(stored.StorageKey, stored.KeyVersion));
+            await Assert.ThrowsAsync<ArgumentException>(() => store.ReadAsync("../appsettings.json", 1));
+
             await store.DeleteAsync(stored.StorageKey);
             Assert.False(File.Exists(Path.Combine(root, stored.StorageKey)));
+            Assert.Null(await store.ReadAsync(stored.StorageKey, stored.KeyVersion)); // saklama süresi dolup silinmiş kare
             await Assert.ThrowsAsync<ArgumentException>(() => store.DeleteAsync("../appsettings.json"));
         }
         finally

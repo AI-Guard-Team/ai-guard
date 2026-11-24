@@ -16,7 +16,8 @@ namespace AIGuard.Application.Sessions;
 /// Oturumu değiştiren her işlem oturum satırını kilitliyor (K-18): teslim, otomatik teslim, cevap ve
 /// olay aynı anda gelse de sırayla işleniyor.
 /// </remarks>
-public sealed class SessionService(IAppDbContext db, EventService events, TimeProvider clock)
+// reviewNotifier isteğe bağlı: testler oturum akışını bildirimsiz kurabiliyor; uygulamada DI her zaman veriyor (A4).
+public sealed class SessionService(IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null)
 {
     public async Task<StartSessionResult> StartAsync(Guid examId, Guid candidateId, CancellationToken ct = default)
     {
@@ -179,8 +180,10 @@ public sealed class SessionService(IAppDbContext db, EventService events, TimePr
     }
 
     /// <summary>Adayın teslimi. Süre dolmuşsa da teslim kabul ediliyor; bitiş anı süre sonu oluyor.</summary>
-    public Task<SessionOperationResult> SubmitAsync(Guid sessionId, CancellationToken ct = default) =>
-        LockedAsync(sessionId, async (session, now) =>
+    public async Task<SessionOperationResult> SubmitAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        SessionReadyForReview? readyForReview = null;
+        var result = await LockedAsync(sessionId, async (session, now) =>
         {
             if (!SessionStateMachine.Running.Contains(session.State))
             {
@@ -190,8 +193,18 @@ public sealed class SessionService(IAppDbContext db, EventService events, TimePr
             }
 
             await CompleteAsync(events, session, now, ct);
+            readyForReview = SessionReadyForReview.For(session);
             return SessionOperationResult.Ok;
         }, ct);
+
+        // Teslim kaydedildikten sonra: bildirim gitmese de teslim geçerli (A4).
+        if (result.Status == SessionOperationStatus.Success && readyForReview is not null && reviewNotifier is not null)
+        {
+            await reviewNotifier.SessionReadyForReviewAsync(readyForReview, ct);
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Kamera/mikrofon izni kaldırıldı (S4, FR-17): InProgress → PermissionPending. Sorular gizleniyor, süre işliyor.
