@@ -37,6 +37,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
     refresh.current = onStateChange
   }, [onStateChange])
 
+  // İzin kalktı: kamerayı kapat, sunucuya bildir (oturum PermissionPending olur), sonra güncel durumu al.
   const revoke = useCallback(async () => {
     if (!sessionId) return
     stopStream(streamRef.current)
@@ -50,6 +51,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
     refresh.current()
   }, [sessionId])
 
+  // Tarayıcı olayları izin beklerken de gönderiliyor: aday o sırada başka sekmeye geçebilir.
   const watching = state === 'InProgress' || state === 'PermissionPending'
 
   useEffect(() => {
@@ -59,8 +61,10 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
     })
   }, [sessionId, watching])
 
+  // Sınav sürerken: akışı aç (ya da izin ekranında alınanı kullan), kare/ses gönderimini başlat.
+  // Durum değişince (izin, kesinti, teslim) temizleme işlevi gönderimi durduruyor.
   useEffect(() => {
-    if (!sessionId || state !== 'InProgress' || !supported()) return
+    if (!sessionId || !supported() || state !== 'InProgress') return
 
     let cancelled = false
     let stopMonitor: (() => void) | undefined
@@ -130,6 +134,8 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
     [],
   )
 
+  // "Kamera ve mikrofona izin ver" düğmesi. İzin istemi yalnızca kullanıcı tıklamasıyla güvenilir açıldığı için
+  // otomatik denenmiyor. Alınan akış saklanıyor; InProgress'e dönünce aynı akışla gönderim başlıyor.
   const requestPermission = useCallback(async () => {
     if (!sessionId) return
     if (!supported()) {

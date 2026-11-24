@@ -20,7 +20,11 @@ export function isStreamLive(stream: MediaStream | null | undefined): stream is 
   return !!stream && stream.getTracks().length > 0 && stream.getTracks().every((track) => track.readyState === 'live')
 }
 
-/** Akıştan kare ve ses alan tarayıcı uygulaması. `dispose` video öğesini bırakır; akışı durdurmaz. */
+/**
+ * Akıştan kare ve ses alan tarayıcı uygulaması. `dispose` video öğesini bırakır; akışı durdurmaz.
+ * Gönderim zamanlaması `mediaMonitor`'da; bu dosya yalnızca tarayıcı API'lerini (video, canvas, MediaRecorder) kullanıyor,
+ * böylece zamanlama testleri gerçek kamera olmadan yazılabiliyor.
+ */
 export function createBrowserCapture(stream: MediaStream): MediaMonitorDeps & { dispose(): void } {
   const video = document.createElement('video')
   video.muted = true
@@ -30,6 +34,7 @@ export function createBrowserCapture(stream: MediaStream): MediaMonitorDeps & { 
   const canvas = document.createElement('canvas')
 
   return {
+    // Videonun o anki görüntüsünü küçültüp JPEG'e çevirir. Video henüz görüntü vermiyorsa (açılış) kare atlanır.
     captureFrame() {
       if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) return Promise.resolve(null)
       const scale = Math.min(1, MAX_FRAME_WIDTH / video.videoWidth)
@@ -40,6 +45,7 @@ export function createBrowserCapture(stream: MediaStream): MediaMonitorDeps & { 
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
       return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/jpeg', JPEG_QUALITY))
     },
+    // Yalnızca mikrofon izinden kayıt; görüntü ses parçasına girmesin. 32 kbit/sn konuşma tespiti için yeterli.
     createRecorder() {
       if (typeof MediaRecorder === 'undefined') return null
       const audio = stream.getAudioTracks()

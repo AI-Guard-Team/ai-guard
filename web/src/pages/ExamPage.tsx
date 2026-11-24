@@ -341,7 +341,10 @@ export function ExamPage() {
       </div>
       <FormAlert message={error} />
       {notice ? <p className="field-hint is-danger">{notice}</p> : null}
+      {/* S4: kamera/mikrofon açılamadıysa ya da tarayıcı desteklemiyorsa. */}
       {view?.state === 'InProgress' ? <FormAlert message={monitoring.error} /> : null}
+
+      {/* S4: FULLSCREEN_EXIT ancak tam ekrana girilmişse oluşur; tarayıcı tam ekranı yalnızca tıklamayla açıyor. */}
 
       {!loading && view?.state === 'InProgress' && !fullscreen && document.fullscreenEnabled ? (
         <div className="action-row">
@@ -355,6 +358,7 @@ export function ExamPage() {
 
       {!loading && view && FINISHED.has(view.state) ? <p>Sınav teslim edildi.</p> : null}
 
+      {/* S4, FR-17: izin beklerken sorular sunucudan gelmiyor; süre işliyor, aday izni buradan yeniden verir. */}
       {!loading && view?.state === 'PermissionPending' ? (
         <div>
           <p>
