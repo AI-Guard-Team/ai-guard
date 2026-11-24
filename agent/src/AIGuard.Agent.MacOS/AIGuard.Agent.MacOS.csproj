@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- macOS ajanı. Şimdilik yalnızca ortak çekirdeği başlatıyor; macOS'a özgü inceleme Y3'te. -->
+  <!-- macOS ajanı. Ortak çekirdeği başlatıyor ve sanal makine incelemesini ekliyor (Y5). -->
   <PropertyGroup>
     <AssemblyName>aiguard-agent</AssemblyName>
     <RootNamespace>AIGuard.Agent.MacOS</RootNamespace>
@@ -8,6 +8,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AIGuard.Agent.Core\AIGuard.Agent.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AIGuard.Agent.MacOS.Tests" />
   </ItemGroup>
 
 </Project>

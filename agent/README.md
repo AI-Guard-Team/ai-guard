@@ -14,8 +14,9 @@ agent/
 │   │   └── Platform/              IDeviceInspector, DeviceIndicator, ForbiddenAppList
 │   ├── AIGuard.Agent.Windows/     Windows 10/11 (net8.0-windows): WindowsDeviceInspector, MachineDetector,
 │   │                              WindowsSystemProbe (WMI, kayıt defteri, süreçler), forbidden-apps.json (Y3)
-│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (göstergeler Y7a'da; aşağıdaki sözleşmeye bakın)
+│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (sanal makine, Y5)
 ├── tests/AIGuard.Agent.Core.Tests/
+├── tests/AIGuard.Agent.MacOS.Tests/     macOS sanal makine kuralları (sahte donanımla; Y5)
 ├── tests/AIGuard.Agent.Windows.Tests/   Windows kuralları (sahte bilgisayarla) + gerçek WMI/kayıt defteri okuması
 └── tools/pairing-test.html        Tarayıcı denemesi için test sayfası
 ```
@@ -53,14 +54,20 @@ Sanal makine ve hipervizör bir kez; süreç listesi, ağ bağdaştırıcıları
 
 Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-deneme-notlari.md)
 
-## macOS modülü için sözleşme (Y7a, Şeyma)
+## macOS sanal makine tespiti (Y5)
+
+`MachineDetector` Parallels ve VMware konuğunu `VM_DETECTED` olarak bildiriyor; ürün belli değilse `HYPERVISOR_INFO`. Okuma `sysctl kern.hv_vmm_present`, `system_profiler SPHardwareDataType` ve `ioreg -rd1 -c IOPlatformExpertDevice` ile. Sonuç bir kez saklanıyor. Yasaklı yazılım, VPN ve kurulum paketi S6'da.
+
+Deneme: [docs/y5-macos-deneme-notlari.md](../docs/y5-macos-deneme-notlari.md)
+
+## macOS modülü için sözleşme (Y5)
 
 `AIGuard.Agent.Core` işletim sisteminden bağımsız. Eşleştirme, imzalı sinyal, yerel uç ve ayar doğrulaması macOS'ta değişmeden çalışıyor. macOS modülünün yazması gereken tek parça `IDeviceInspector`.
 
 **Doğrulananlar (24 Kasım 2026):**
 
 - Çekirdeğin 81 testi Linux'ta da geçiyor (.NET 8 SDK container'ı); Windows'a özgü API kullanılmıyor.
-- `dotnet publish src/AIGuard.Agent.MacOS -r osx-arm64` ve `-r osx-x64` derleniyor. CI'daki `agent` işi bunu her PR'da kontrol ediyor ("macOS derlemesi" adımı).
+- `dotnet publish src/AIGuard.Agent.MacOS -r osx-arm64` ve `-r osx-x64` derleniyor. CI'daki `agent` işi bunu her PR'da kontrol ediyor ("macOS derlemesi" adımı). 24 Kasım 2026'da aynı iki runtime bu Mac'te de derlendi.
 - Sunucu `MacOS` platformunu tanıyor (`AgentPlatform.MacOS`).
 
 **Değiştirilmeyecekler** (değişiklik gerekirse Yağmur'la birlikte karar verilir):
@@ -82,7 +89,7 @@ Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-denem
 - **Hata ajanı durdurmasın.** Komut çalışmazsa gösterge yok sayılsın ve uyarı loglansın. `SignalSender` inceleme hatasında yine göstergesiz sinyal gönderiyor, ama inceleme kendi içinde de dayanıklı olmalı.
 - **Test edilebilirlik.** Windows'taki gibi okuma ile karar ayrı tutulursa (`IWindowsSystemProbe` + `MachineDetector`), kurallar Mac olmadan da test edilebilir.
 
-**Kapsam dışı (Y7a kartında yok):** yasaklı yazılım ve VPN göstergeleri macOS'ta yok; Y7b ya da ayrı bir kart. Kurulum paketi (Windows'taki `publish-windows.ps1` karşılığı) da bu kartta yok.
+**Kapsam dışı (S6):** yasaklı yazılım, VPN ve `.pkg` kurulum paketi bu kartta yok. Değerlendirme Y7b'de.
 
 ## Kurulum paketi (Y4)
 

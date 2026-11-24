@@ -517,9 +517,9 @@ FR-18, FR-19, UC-08 4a/4b. Ajan sanal makine, genel hipervizör ve yasaklı yaz�
 
 **Y4'e not:** Göstergeli oturumda (`VM_DETECTED` veya `FORBIDDEN_APP`) oturum `AgentPairing`'de bekliyor. Gerekçeyle devam ve `SessionFlags.Indicated` Y4'te.
 
-**Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil. macOS göstergeleri bu kartta yok.
+**Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil.
 
-**macOS (Y7a).** Çekirdek macOS'ta değişmeden çalışıyor; macOS modülü yalnızca `IDeviceInspector`'ı uyguluyor. `Platform`, gösterge biçimi ve yukarıdaki "kurulum izi değil konuk izi" kuralı aynı kalıyor. Ayrıntılar ve doğrulananlar `agent/README.md` "macOS modülü için sözleşme" bölümünde.
+**macOS (Y5).** Çekirdek değişmeden çalışıyor; macOS modülü yalnızca `IDeviceInspector`'ı uyguluyor. `Platform` `"MacOS"`, gösterge biçimi ve "kurulum izi değil konuk izi" kuralı aynı. Parallels ve VMware için bakılan yerler: `kern.hv_vmm_present`, `system_profiler` model adı/kimliği, `IOPlatformExpertDevice` içindeki manufacturer/product/model. Adlar `Parallels` ve `VMware`. Ürün belli değilse (ör. UTM, `VirtualMac`) yalnızca `HYPERVISOR_INFO`. Bütün `ioreg` ağacı okunmuyor; ana bilgisayarda Parallels veya Fusion kurulu olması gösterge üretmiyor. Sonuç bir kez saklanıyor. Yasaklı yazılım ve VPN S6'da. Deneme: `docs/y5-macos-deneme-notlari.md`.
 
 ---
 

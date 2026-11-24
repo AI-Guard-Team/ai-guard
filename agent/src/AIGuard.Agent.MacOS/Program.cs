@@ -4,7 +4,8 @@ using AIGuard.Agent.MacOS;
 
 var builder = AgentHost.CreateBuilder(args);
 
-// Platforma özgü tek parça: ortak çekirdek geri kalanını kuruyor.
+// Platforma özgü parçalar: ortak çekirdek geri kalanını kuruyor.
+builder.Services.AddSingleton<IMacSystemProbe, MacSystemProbe>();
 builder.Services.AddSingleton<IDeviceInspector, MacDeviceInspector>();
 
 await AgentHost.Build(builder).RunAsync();
