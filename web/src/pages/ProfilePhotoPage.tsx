@@ -5,16 +5,8 @@ import { Button } from '../components/Button'
 import { FormAlert } from '../components/AuthCard'
 import { Modal } from '../components/Modal'
 import { useToast } from '../components/useToast'
+import { ACCEPTED_PHOTO_TYPES, PhotoPrepareError, prepareReferencePhoto, rejectedPhotoType } from './prepareReferencePhoto'
 import { useCamera } from './useCamera'
-
-const MAX_BYTES = 5 * 1024 * 1024
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-
-function photoError(file: File): string | null {
-  if (!ACCEPTED_TYPES.includes(file.type)) return 'Fotoğraf JPEG, PNG veya WebP olmalıdır.'
-  if (file.size > MAX_BYTES) return 'Fotoğraf 5 MB’den küçük olmalıdır.'
-  return null
-}
 
 export function ProfilePhotoPage() {
   const showToast = useToast()
@@ -27,6 +19,8 @@ export function ProfilePhotoPage() {
   const [withdrawOpen, setWithdrawOpen] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
   const [withdrawing, setWithdrawing] = useState(false)
+  const [preparing, setPreparing] = useState(false)
+  const generation = useRef(0)
 
   const previewUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo])
   useEffect(() => {
@@ -35,13 +29,32 @@ export function ProfilePhotoPage() {
   }, [previewUrl])
 
   const remember = (file: File) => {
-    const problem = photoError(file)
-    if (problem) {
-      setError(problem)
+    const typeError = rejectedPhotoType(file)
+    if (typeError) {
+      generation.current += 1
+      setPreparing(false)
+      setPhoto(null)
+      setError(typeError)
       return
     }
+
+    const id = ++generation.current
     setError(null)
-    setPhoto(file)
+    setPhoto(null)
+    setPreparing(true)
+    void prepareReferencePhoto(file).then(
+      (prepared) => {
+        if (id !== generation.current) return
+        setPhoto(prepared)
+        setPreparing(false)
+      },
+      (caught) => {
+        if (id !== generation.current) return
+        setPhoto(null)
+        setPreparing(false)
+        setError(caught instanceof PhotoPrepareError ? caught.message : 'Fotoğraf işlenemedi. Lütfen başka bir dosya deneyin.')
+      },
+    )
   }
 
   const openCamera = () => {
@@ -136,9 +149,11 @@ export function ProfilePhotoPage() {
           <input
             id="reference-photo"
             type="file"
-            accept={ACCEPTED_TYPES.join(',')}
+            accept={ACCEPTED_PHOTO_TYPES.join(',')}
             onChange={(event) => {
-              const file = event.target.files?.[0]
+              const input = event.target
+              const file = input.files?.[0]
+              input.value = ''
               if (file) remember(file)
             }}
           />
@@ -158,8 +173,8 @@ export function ProfilePhotoPage() {
         <video ref={videoRef} className={camera.live ? 'camera-preview' : 'visually-hidden'} muted playsInline />
         {previewUrl ? <img className="camera-preview" src={previewUrl} alt="Seçilen kayıt fotoğrafı" /> : null}
 
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Kaydediliyor…' : 'Fotoğrafı kaydet'}
+        <Button type="submit" disabled={pending || preparing}>
+          {pending ? 'Kaydediliyor…' : preparing ? 'Hazırlanıyor…' : 'Fotoğrafı kaydet'}
         </Button>
       </form>
 
