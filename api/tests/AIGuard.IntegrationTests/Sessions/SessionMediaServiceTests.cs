@@ -145,6 +145,18 @@ public class SessionMediaServiceTests(PostgresFixture fx) : IClassFixture<Postgr
     }
 
     [SkippableFact]
+    public async Task Network_jitter_between_one_per_second_frames_is_tolerated()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var id = await SessionAsync();
+
+        // Önyüz saniyede bir gönderiyor; önceki istek gecikip sonraki hızlı varınca aralık 1 sn'nin altına düşüyor.
+        Assert.Equal(MediaReceiveStatus.Accepted, await FrameAsync(id, Jpeg));
+        _clock.Advance(TimeSpan.FromMilliseconds(400));
+        Assert.Equal(MediaReceiveStatus.Accepted, await FrameAsync(id, Jpeg));
+    }
+
+    [SkippableFact]
     public async Task Limit_is_per_session()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");

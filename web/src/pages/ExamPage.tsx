@@ -406,7 +406,14 @@ export function ExamPage() {
         <p>Süre doldu. Sınav sunucudaki cevaplarla teslim ediliyor.</p>
       ) : null}
 
-      {question && view && ANSWERABLE.has(view.state) ? (
+      {/* S4: izin istemi yanıtlanana ya da kamera/mikrofon açılana kadar sorular gösterilmiyor; süre işliyor. */}
+      {!loading && view?.state === 'InProgress' && !monitoring.ready && !monitoring.error ? (
+        <p>
+          Sorular kamera ve mikrofon açılınca görünür. Tarayıcı izin isterse <strong>İzin ver</strong>'i seçin.
+        </p>
+      ) : null}
+
+      {question && view && ANSWERABLE.has(view.state) && monitoring.ready ? (
         <div className="exam-body">
           <div className="exam-question">
             <p>

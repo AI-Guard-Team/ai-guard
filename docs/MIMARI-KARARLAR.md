@@ -43,6 +43,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
+| Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-35) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
@@ -423,6 +424,8 @@ FR-01–FR-03. Önyüzle sözleşme `web/src/api/auth.ts` ve `client.ts` ile bir
 | `POST /api/auth/refresh` | açık | `{refreshToken}` → `200` yeni çift · 401 |
 | `POST /api/auth/logout` | açık | `{refreshToken}` → `204` (belirteç yoksa da 204) |
 | `POST /api/auth/set-password` | açık | `{token, password}` → `204` · 400 |
+| `POST /api/auth/forgot-password` | açık | `{email}` → her durumda `202` (K-33) |
+| `POST /api/auth/reset-password` | açık | `{token, password}` → `204` · 400 (K-33) |
 | `POST /api/auth/change-password` | giriş yapmış | `{currentPassword, newPassword}` → `204` · 400 |
 | `POST /api/users` | Admin | `{fullName, email, role}` → `201 {id}` · 400 · 409; davet e-postası gider |
 | `GET /api/users?role=` | Admin | → `[{id, fullName, email, role, isActive, inviteStatus, createdAt}]` |
@@ -454,7 +457,7 @@ FR-01–FR-03. Önyüzle sözleşme `web/src/api/auth.ts` ve `client.ts` ile bir
 
 **Hata yanıtları.** ProblemDetails; kullanıcıya gösterilecek Türkçe metin `detail` alanında (önyüz bunu gösteriyor). Giriş hatasında e-postanın var olup olmadığı veya hesabın pasif olup olmadığı ayrılmıyor; var olmayan e-postada da sahte bir özet doğrulanıyor ki yanıt süresinden anlaşılmasın. `change-password`'da yanlış mevcut şifre 401 değil 400: 401 önyüzde belirteç yenilemeyi tetikleyip kullanıcıyı çıkarırdı.
 
-**Denetim kaydı (FR-35).** `user.login`, `user.lockout`, `user.create`, `user.invite_accept`, `user.password_change`, `user.role_change`, `user.activate`, `user.deactivate`, `auth.refresh_reuse`. Eski ve yeni değere yalnızca rol ve durum yazılıyor (K-10).
+**Denetim kaydı (FR-35).** `user.login`, `user.lockout`, `user.create`, `user.invite_accept`, `user.password_change`, `user.password_reset_request`, `user.password_reset` (K-33), `user.role_change`, `user.activate`, `user.deactivate`, `auth.refresh_reuse`. Eski ve yeni değere yalnızca rol ve durum yazılıyor (K-10).
 
 **E-posta.** Kartta istendiği gibi sahte gönderici (`Infrastructure/Email/LoggingEmailSender`) davet bağlantısını loga yazıyor. Bağlantı `Web:BaseUrl` ayarı (varsayılan `http://localhost:5173`) + `/set-password?token=`. Bağlantı bir kimlik bilgisi olduğu için gerçek kullanımda SMTP gibi bir gönderici gerekir (S-15).
 
@@ -520,9 +523,9 @@ FR-18, FR-19, UC-08 4a/4b. Ajan sanal makine, genel hipervizör ve yasaklı yaz�
 
 **Y4'e not:** Göstergeli oturumda (`VM_DETECTED` veya `FORBIDDEN_APP`) oturum `AgentPairing`'de bekliyor. Gerekçeyle devam ve `SessionFlags.Indicated` Y4'te.
 
-**Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil. macOS göstergeleri bu kartta yok.
+**Sınırlılıklar:** OBS sanal kamerası OBS sürecinden anlaşılıyor; kamera aygıtı ayrıca denetlenmiyor. AnyDesk ve TeamViewer servis olarak kuruluysa aday kullanmasa da süreç çalışıyor ve gösterge oluşuyor. Hyper-V konuğu (Hyper-V'de açılmış sanal makine) karta göre `HYPERVISOR_INFO` sayılıyor, `VM_DETECTED` değil.
 
-**macOS (Y7a).** Çekirdek macOS'ta değişmeden çalışıyor; macOS modülü yalnızca `IDeviceInspector`'ı uyguluyor. `Platform`, gösterge biçimi ve yukarıdaki "kurulum izi değil konuk izi" kuralı aynı kalıyor. Ayrıntılar ve doğrulananlar `agent/README.md` "macOS modülü için sözleşme" bölümünde.
+**macOS (Y5).** Çekirdek değişmeden çalışıyor; macOS modülü yalnızca `IDeviceInspector`'ı uyguluyor. `Platform` `"MacOS"`, gösterge biçimi ve "kurulum izi değil konuk izi" kuralı aynı. Parallels ve VMware için bakılan yerler: `kern.hv_vmm_present`, `system_profiler` model adı/kimliği, `IOPlatformExpertDevice` içindeki manufacturer/product/model. Adlar `Parallels` ve `VMware`. Ürün belli değilse (ör. UTM, `VirtualMac`) yalnızca `HYPERVISOR_INFO`. Bütün `ioreg` ağacı okunmuyor; ana bilgisayarda Parallels veya Fusion kurulu olması gösterge üretmiyor. Sonuç bir kez saklanıyor. Yasaklı yazılım ve VPN S6'da. Deneme: `docs/y5-macos-deneme-notlari.md`.
 
 ---
 
@@ -840,14 +843,15 @@ S4 kartı tarayıcının `frames`, `audio` ve `events` uçlarına göndermesini 
 - **Tekrarlanan bildirim süreyi kısaltmıyor.** Kamera ve mikrofon ayrı ayrı "ended" verebilir; ikinci `granted: false` ilk anı değiştirmiyor.
 - **Kare ve ses yalnızca `InProgress`'te kabul ediliyor.** İzin beklerken, bağlantı kesikken, sınav başlamadan ya da bittikten sonra 409.
 - **Biçim dosyanın ilk baytlarından.** Content-Type'a güvenilmiyor: görüntüde K-27'deki `ImageFile` kuralı, seste WebM (EBML `1A 45 DF A3`) ya da WAV (`RIFF….WAVE`).
-- **Sunucu tarafı hız sınırı.** Oturum ve tür başına 500 ms'den sık gelen parça 429 alıyor (`SessionMediaRateLimiter`). Saniyede bir gönderimin ağda sıkışmasına pay bırakılıyor. Sınır API belleğinde; API tek örnekle çalışıyor (S-17 ile aynı varsayım).
+- **Sunucu tarafı hız sınırı.** Oturum ve tür başına 250 ms'den sık gelen parça 429 alıyor (`SessionMediaRateLimiter`), yani en fazla saniyede 4. İlk sürümde 500 ms'ydi; tarayıcı denemesinde ağ gecikmesi değişince saniyede bir gönderilen meşru kareler sunucuya 500 ms'den yakın vardı ve düştü. Sınır API belleğinde; API tek örnekle çalışıyor (S-17 ile aynı varsayım).
 - **Kare bağlantıyı canlı tutuyor.** Kare ya da ses geldiğinde `LastSeenAt` en geç 5 sn'de bir yazılıyor. Her saniye veritabanına yazılmıyor; kesinti eşiği (30 sn) bunun çok üstünde.
 - **Analiz D4/D5'te.** Uçlar veriyi `IMediaAnalyzer`'a veriyor. Şimdiki uygulama (`PendingMediaAnalyzer`) hiçbir şey yapmıyor, çünkü vision'ın analiz uçları henüz 503 dönüyor ve her saniye `MONITORING_GAP` üretirdi. D4/D5 bu arayüzü vision istemcisiyle uygulayıp kaydı değiştirecek. Olay kuralları (S-20) ve `MONITORING_GAP` orada.
 - **Hiçbir şey saklanmıyor.** Kare ve ses istek bitince bellekten çıkıyor. Tarayıcıda da kuyruğa ya da depolamaya yazılmıyor (kart).
 
 **Önyüz** (`web/src/exam/`):
 
-- `useExamMonitoring`: `InProgress`'te `getUserMedia({ video, audio })`. İzin verilmezse ya da bir iz "ended" olursa `granted: false` bildirilip oturum yeniden okunuyor. `PermissionPending`'de "Kamera ve mikrofona izin ver" düğmesi izni yeniden alıp `granted: true` gönderiyor. Sınav dışında kamera ve mikrofon kapatılıyor.
+- `useExamMonitoring`: `InProgress`'te `getUserMedia({ video, audio })`. İzin verilmezse, bir iz "ended" olursa ya da site izni "engelle"ye çekilirse (`navigator.permissions` değişikliği) `granted: false` bildirilip oturum yeniden okunuyor; hangisi önce gelirse bir kez. `PermissionPending`'de "Kamera ve mikrofona izin ver" düğmesi izni yeniden alıp `granted: true` gönderiyor. Sınav dışında kamera ve mikrofon kapatılıyor; bağlantı kesikken açık kalıyor.
+- **Sorular yalnızca kamera ve mikrofon açıkken görünüyor.** İzin istemi yanıtlanana ya da izin verilene kadar sorular yerine açıklama gösteriliyor, süre işliyor. Bu önyüzde uygulanıyor; sunucu `InProgress`'te soruları yine döndürüyor (S-29).
 - `mediaMonitor`: saniyede bir kare (en fazla 640 px genişlik, JPEG 0,8). Önceki kare gitmeden yenisi gönderilmiyor, yavaş bağlantıda istek birikmiyor. Ses `MediaRecorder` ile ~1 sn parçalar. **Kayıt her parçada yeniden başlatılıyor:** `timeslice` ile yalnızca ilk parçada WebM başlığı olur, vision ise her parçayı ayrı çözüyor.
 - `browserEvents`: `visibilitychange` ve `blur`/`focus` → `TAB_BLUR`, süresiyle dönüşte. Aday hiç dönmese de ayrılma 60 sn'de bir o ana kadarki süresiyle bildiriliyor. `fullscreenchange` → `FULLSCREEN_EXIT`, `copy`/`cut`/`paste` → `COPY_PASTE`, `contextmenu` → `RIGHT_CLICK`. Aynı tür saniyede en fazla bir kez. Olaylar engellenmiyor, yalnızca bildiriliyor.
 - **Tam ekran düğmesi.** Hiçbir ekran tam ekrana geçmediği için `FULLSCREEN_EXIT` hiç oluşmazdı. Sınav ekranına "Tam ekrana geç" düğmesi eklendi; tarayıcılar tam ekranı yalnızca kullanıcı tıklamasıyla açıyor.
@@ -997,6 +1001,28 @@ PDF'in yazı tipi kütüphanenin gömülü Lato'su (Türkçe karakterleri içeri
 
 ---
 
+## K-33 · Şifre sıfırlama (UI1)
+
+Kartlarda ve GAB'da yok. Stitch'teki "Şifremi unuttum ve sıfırlama akışı" ekranı için eklendi; ekip kararıyla ayrı PR'da.
+
+| Uç | Yetki | Gövde → Yanıt |
+|---|---|---|
+| `POST /api/auth/forgot-password` | açık | `{email}` → her durumda `202` |
+| `POST /api/auth/reset-password` | açık | `{token, password}` → `204` · 400 |
+
+| Kural | Değer | Gerekçe |
+|---|---|---|
+| Belirteç | 256 bit rastgele, 30 dk, tek kullanımlık; `users.password_reset_token_hash`'te SHA-256 özeti (K-08) | Davetle aynı yöntem; e-postadaki bağlantı bir kimlik bilgisi olduğu için ömür kısa |
+| Yanıt | Hesap yok, pasif ya da daveti kabul edilmemiş olsa da `202` | E-postanın kayıtlı olup olmadığı sızmasın (K-20'deki giriş kuralıyla aynı) |
+| Daveti kabul edilmemiş hesap | Sıfırlama gönderilmiyor | Bu kullanıcı davet bağlantısını kullanmalı; iki ayrı kanıt yolu açılmasın |
+| Bekleme | Aynı hesaba 2 dk'da en fazla bir e-posta; yeni bağlantı eskisini geçersiz kılıyor | Başkasının adresine e-posta yağdırılamasın |
+| Sıfırlama sonrası | Şifre kuralı (K-20), hesap kilidi kalkıyor, bütün yenileme belirteçleri iptal | Kilitlenen gerçek kullanıcı şifresini sıfırlayınca hemen girebilsin; çalınmış oturum kapansın |
+| Denetim kaydı | `user.password_reset_request`, `user.password_reset` | FR-35 |
+
+- Kurala uymayan şifre bağlantıyı harcamıyor; kullanıcı aynı bağlantıyla tekrar deneyebiliyor.
+- Bağlantı `Web:BaseUrl` + `/reset-password?token=`. Davette olduğu gibi sahte gönderici loga yazıyor (S-15).
+- Sınırlılık: hesap varken e-posta gönderildiği için yanıt süresi biraz uzayabiliyor. Sahte gönderici beklemediği için şu an fark yok; gerçek SMTP gelirse gönderim kuyruğa alınmalı.
+
 ## K-35 · Aday listesi ve kayıt fotoğrafı durumu (UI1)
 
 Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekran 8) için. Kartlarda yok; ekip kararıyla ayrı API PR'ında.
@@ -1079,3 +1105,4 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-26 | GAB'da olaylar ve kararlar "saklama süresi sonunda (itiraz süreci bitmişse)" siliniyor; itiraz (FR-32) henüz yok | Ayşe, Esma | Şimdilik saklama süresi itirazı beklemiyor (K-32). FR-32 eklenirse açık itirazı olan oturum saklama görevinde atlanmalı |
 | S-27 | GAB 3.3.2: reddedilen istekler denetim kaydına yazılmalı | Ayşe, Esma | A5'te yapılmadı (K-32): her 401/403'ü kayda yazmak tabloyu hızla büyütür. Uygulama günlüğünde var; gerekirse yalnızca tekrarlayan reddedilmeler (ör. aynı kullanıcıdan art arda 403) kayda alınabilir |
 | S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |
+| S-29 | Sorular kamera/mikrofon açılmadan önyüzde gizleniyor, ama sunucu `InProgress`'te soruları yine döndürüyor; değiştirilmiş bir istemci kamera açmadan soruları okuyabilir | Yağmur (S4), Esma (E4) | Sunucuda da kontrol: oturum uç `GET /api/sessions/{id}` soruları ancak son birkaç saniyede kare gelmişse döndürsün. K-24'ü değiştirdiği için ekip kararı gerekiyor |

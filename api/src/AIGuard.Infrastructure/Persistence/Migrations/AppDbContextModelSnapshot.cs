@@ -1002,6 +1002,15 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTimeOffset?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_reset_expires_at");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("password_reset_token_hash");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -1018,6 +1027,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.HasIndex("NormalizedEmail")
                         .IsUnique()
                         .HasDatabaseName("ix_users_normalized_email");
+
+                    b.HasIndex("PasswordResetTokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_password_reset_token_hash");
 
                     b.ToTable("users", null, t =>
                         {

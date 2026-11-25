@@ -37,22 +37,34 @@ Otomatik testler jsdom'da çalışıyor. Orada gerçek kamera, `MediaRecorder` v
 
 ## Sonuçlar
 
+**24 Kasım 2026, Windows 11, Chrome ve Edge (otomatik, sahte kamera/mikrofon).** Bilgisayarda kamera olmadığı için tarayıcı `--use-fake-device-for-media-stream` ile çalıştırıldı: görüntü ve ses sentetik, ama `getUserMedia`, `MediaRecorder`, canvas, tam ekran, site izni ve olaylar gerçek tarayıcınınki. İzin kaldırma Chrome'un site izni ayarıyla (`Browser.setPermission`) yapıldı. Betik depoda değil; 34 kontrol, Chrome'da 9, Edge'de 4 çalıştırma.
+
 | Adım | Chrome | Edge | Firefox | Safari |
 |---|---|---|---|---|
-| 1 | | | | |
-| 2 (kare) | | | | |
-| 2 (ses) | | | | |
-| 3 | | | | |
-| 4 | | | | |
-| 5 | | | | |
-| 6 | | | | |
-| 7 | | | | |
-| 8 | | | | |
-| 9 | | | | |
-| 10 | | | | |
-| 11 | | | | |
-| 12 | | | | |
-| 13 | | | | |
+| 1 (izin verilmeden sorular gizli, süre işliyor) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 2 (kare: saniyede 1, JPEG, ~10 KB) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 2 (ses: her parça tam WebM, ~3 KB) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 3, 4 (`TAB_BLUR`) | **Denenemedi** | **Denenemedi** | Denenmedi | Denenmedi |
+| 5 (`FULLSCREEN_EXIT`) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 6 (`COPY_PASTE`, `RIGHT_CLICK`) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 7 (izin kaldırılınca sorular gizli, süre işliyor, kamera kapalı, kendiliğinden fark ediliyor) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 8 (izinle dönüş, `PERMISSION_REVOKED` sunucu süresiyle, `PermissionGap`) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 9 (yalnızca mikrofon) | Denenmedi | Denenmedi | Denenmedi | Denenmedi |
+| 10 (izin beklerken süre dolması) | Otomatik testte (sunucu) | | | |
+| 11 (bağlantı kesintisi) | Denenmedi | Denenmedi | Denenmedi | Denenmedi |
+| 12 (teslimde kamera kapanıyor) | Geçti | Geçti | Denenmedi | Denenmedi |
+| 13 (tarayıcıda kare/ses saklanmıyor) | Geçti | Geçti | Denenmedi | Denenmedi |
+| İzin istemi reddedilince sorular hiç görünmüyor | Geçti | Geçti | Denenmedi | Denenmedi |
+
+**Denemede bulunup düzeltilenler:**
+
+- Kamera/mikrofon izni verilmeden sorular görünüyordu → artık izin verilene kadar gizli.
+- Sunucunun 500 ms'lik hız sınırı, ağ gecikmesi oynayınca meşru kareleri 429 ile düşürdü (9 çalıştırmada 1 kare) → 250 ms.
+- İzin kaldırma yalnızca iz "ended" ile anlaşılıyordu → site izni değişikliği de dinleniyor.
+
+**Sahte aygıttan kaynaklanan, ürünle ilgisi olmayan takılmalar:** Chrome'un sahte kamerası bazen açıldıktan kısa süre sonra izi kendisi bitiriyor ya da durdurulduktan sonra "bulunamadı" diyor; uygulama bunu doğru şekilde izin kaybı sayıp sınavı izin beklemeye alıyor. Görünür pencere öndeki başka uygulama yüzünden bazen tam ekrana ilk tıklamada geçemedi. `TAB_BLUR` denenemedi çünkü Playwright sekmeleri her zaman "görünür ve odakta" tutuyor.
+
+**Gerçek kamerayla elle denenmesi gerekenler:** 3–4 (başka sekmeye/uygulamaya geçip dönme), 7 (adres çubuğundaki kamera simgesinden izni kaldırma), 9, 11; Firefox ve Safari'nin hepsi.
 
 ## Bilinen noktalar
 

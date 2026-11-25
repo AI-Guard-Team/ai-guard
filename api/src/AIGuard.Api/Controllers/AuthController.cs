@@ -79,6 +79,38 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Kartta yok; önyüzdeki "Şifremi unuttum" ekranı için. Hesap olsun olmasın her zaman 202 dönüyor
+    /// (e-postanın kayıtlı olup olmadığı sızmasın). Sıfırlama bağlantısı e-postayla gidiyor.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous] // kullanıcı şifresini bilmiyor; kanıt e-postaya giden bağlantı
+    [RequestSizeLimit(1024)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
+    {
+        await auth.RequestPasswordResetAsync(request, ct);
+        return Accepted();
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous] // kanıt sıfırlama bağlantısındaki tek kullanımlık belirteç
+    [RequestSizeLimit(2048)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
+    {
+        var result = await auth.ResetPasswordAsync(request, ct);
+        return result.Status switch
+        {
+            AuthOperationStatus.Success => NoContent(),
+            AuthOperationStatus.InvalidPassword => Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: "Şifre kurala uymuyor.", detail: result.Error),
+            _ => Problem(statusCode: StatusCodes.Status400BadRequest, title: "Geçersiz bağlantı.",
+                detail: "Sıfırlama bağlantısı geçersiz, kullanılmış veya süresi dolmuş. Yeni bir bağlantı isteyin."),
+        };
+    }
+
     /// <summary>Kartta yok; önyüzdeki profil sayfasının "şifre değiştir" formu için (GAB 3.4.5, K-20).</summary>
     [HttpPost("change-password")]
     [Authorize]

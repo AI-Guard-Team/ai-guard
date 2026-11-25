@@ -11,8 +11,8 @@ export const BIOMETRIC_TEXT_VERSION = 'kvkk-biometric-v1'
 export function uploadReferencePhoto(photo: Blob): Promise<void> {
   const body = new FormData()
   body.append('photo', photo, photo instanceof File ? photo.name : 'kayit-fotografi.jpg')
-  body.append('biometricConsent', 'true')
-  body.append('textVersion', BIOMETRIC_TEXT_VERSION)
+  body.append('consent', 'true')
+  body.append('consentTextVersion', BIOMETRIC_TEXT_VERSION)
   return apiRequest(PROFILE_ENDPOINTS.photo, { method: 'POST', body })
 }
 

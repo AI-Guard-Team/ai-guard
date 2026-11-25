@@ -68,4 +68,16 @@ internal sealed class CapturingEmailSender : IEmailSender
     }
 
     public string InviteTokenFor(string email) => _tokensByEmail[email];
+
+    private readonly ConcurrentDictionary<string, List<string>> _resetTokensByEmail = new(StringComparer.OrdinalIgnoreCase);
+
+    public Task SendPasswordResetAsync(string email, string fullName, string resetToken, DateTimeOffset expiresAt, CancellationToken ct = default)
+    {
+        _resetTokensByEmail.AddOrUpdate(email, _ => [resetToken], (_, list) => { lock (list) { list.Add(resetToken); } return list; });
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Bu adrese giden sıfırlama belirteçleri, gönderim sırasıyla.</summary>
+    public IReadOnlyList<string> ResetTokensFor(string email) =>
+        _resetTokensByEmail.TryGetValue(email, out var list) ? list.ToList() : [];
 }

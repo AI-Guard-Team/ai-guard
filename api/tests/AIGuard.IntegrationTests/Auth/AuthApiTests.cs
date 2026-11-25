@@ -249,6 +249,55 @@ public class AuthApiTests(PostgresFixture fx) : IClassFixture<PostgresFixture>
     }
 
     [SkippableFact]
+    public async Task Forgotten_password_is_reset_with_a_single_use_link()
+    {
+        // Şifremi unuttum: bağlantı gider, yeni şifre belirlenir, eski oturumlar kapanır, bağlantı ikinci kez çalışmaz.
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var user = await SavedUserAsync(UserRole.Candidate);
+        var tokens = await LoginAsync(user.Email);
+
+        var forgot = await Api.Anonymous().PostAsJsonAsync("/api/auth/forgot-password", new { email = user.Email.ToUpperInvariant() });
+        var token = Assert.Single(Api.Emails.ResetTokensFor(user.Email));
+        var weak = await Api.Anonymous().PostAsJsonAsync("/api/auth/reset-password", new { token, password = "kisa" });
+        var reset = await Api.Anonymous().PostAsJsonAsync("/api/auth/reset-password", new { token, password = "Yeni-Sifre-789" });
+        var reuse = await Api.Anonymous().PostAsJsonAsync("/api/auth/reset-password", new { token, password = "Baska-Sifre-456" });
+        var oldRefresh = await Api.Anonymous().PostAsJsonAsync("/api/auth/refresh", new { refreshToken = tokens.RefreshToken });
+        var oldLogin = await Api.Anonymous().PostAsJsonAsync("/api/auth/login", new { email = user.Email, password = Password });
+        var newLogin = await Api.Anonymous().PostAsJsonAsync("/api/auth/login", new { email = user.Email, password = "Yeni-Sifre-789" });
+
+        Assert.Equal(HttpStatusCode.Accepted, forgot.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, weak.StatusCode); // kurala uymayan şifre bağlantıyı harcamaz
+        Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, reuse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, oldRefresh.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task Forgot_password_does_not_reveal_whether_the_email_exists()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var invited = TestData.UserWithRole(UserRole.Candidate); // daveti kabul etmemiş: şifresi yok
+        await using (var db = fx.CreateContext())
+        {
+            db.Users.Add(invited);
+            await db.SaveChangesAsync();
+        }
+
+        var unknown = await Api.Anonymous().PostAsJsonAsync("/api/auth/forgot-password", new { email = $"{Guid.NewGuid():N}@test.local" });
+        var notAccepted = await Api.Anonymous().PostAsJsonAsync("/api/auth/forgot-password", new { email = invited.Email });
+        var empty = await Api.Anonymous().PostAsJsonAsync("/api/auth/forgot-password", new { email = "" });
+        var badToken = await Api.Anonymous().PostAsJsonAsync("/api/auth/reset-password", new { token = "yok", password = "Yeni-Sifre-789" });
+
+        Assert.Equal(HttpStatusCode.Accepted, unknown.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, notAccepted.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, empty.StatusCode);
+        Assert.Empty(Api.Emails.ResetTokensFor(invited.Email)); // davet bekleyen hesaba sıfırlama gitmez
+        Assert.Equal(HttpStatusCode.BadRequest, badToken.StatusCode);
+    }
+
+    [SkippableFact]
     public async Task There_is_no_self_registration_endpoint()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");

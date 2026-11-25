@@ -400,6 +400,76 @@ describe('sınav ekranı', () => {
       expect(bodyOf(calls(fetchMock, '/permission')[0])).toEqual({ granted: false })
     })
 
+    it('kamera ve mikrofon açılana kadar soruları göstermez, süre işler', async () => {
+      let allow: (stream: MediaStream) => void = () => undefined
+      setGetUserMedia(
+        () =>
+          new Promise<MediaStream>((resolve) => {
+            allow = resolve
+          }),
+      )
+      renderExam((url) => (url.endsWith('/frames') ? jsonResponse(202) : jsonResponse(200, session())))
+
+      expect(await screen.findByText(/Sorular kamera ve mikrofon açılınca görünür/)).toBeInTheDocument()
+      expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+      expect(screen.getByText(/Kalan süre 12:/)).toBeInTheDocument()
+
+      // Aday tarayıcının izin istemine "İzin ver" dedi.
+      allow(fakeStream())
+
+      expect(await screen.findByText(/2 \+ 2 kaçtır/)).toBeInTheDocument()
+      expect(screen.queryByText(/Sorular kamera ve mikrofon açılınca görünür/)).not.toBeInTheDocument()
+    })
+
+    it('izin verilmezse soruları hiç göstermez', async () => {
+      setGetUserMedia(() => Promise.reject(new DOMException('izin yok', 'NotAllowedError')))
+      let state = 'InProgress'
+      const fetchMock = renderExam((url, init) => {
+        if (url.endsWith('/permission')) {
+          state = JSON.parse(init.body as string).granted ? 'InProgress' : 'PermissionPending'
+          return jsonResponse(200, { state })
+        }
+        return jsonResponse(200, session(state === 'InProgress' ? {} : { state, questions: [] }))
+      })
+
+      expect(await screen.findByRole('button', { name: 'Kamera ve mikrofona izin ver' })).toBeInTheDocument()
+      expect(bodyOf(calls(fetchMock, '/permission')[0])).toEqual({ granted: false })
+      expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
+    })
+
+    it('site izni "engelle"ye çekilince akış kapanmasa da izin kaldırmayı bildirir', async () => {
+      class FakePermissionStatus extends EventTarget {
+        state: PermissionState = 'granted'
+        onchange: (() => void) | null = null
+      }
+      const statuses = { camera: new FakePermissionStatus(), microphone: new FakePermissionStatus() }
+      Object.defineProperty(navigator, 'permissions', {
+        configurable: true,
+        value: { query: vi.fn(async ({ name }: { name: 'camera' | 'microphone' }) => statuses[name]) },
+      })
+      let state = 'InProgress'
+      const fetchMock = renderExam((url, init) => {
+        if (url.endsWith('/permission')) {
+          state = JSON.parse(init.body as string).granted ? 'InProgress' : 'PermissionPending'
+          return jsonResponse(200, { state })
+        }
+        if (url.endsWith('/frames')) return jsonResponse(202)
+        return jsonResponse(200, session(state === 'InProgress' ? {} : { state, questions: [] }))
+      })
+      await screen.findByText(/2 \+ 2 kaçtır/)
+
+      // Chrome adres çubuğundan engellemede iz "ended" olmayabiliyor; yalnızca izin durumu değişiyor.
+      statuses.camera.state = 'denied'
+      statuses.camera.dispatchEvent(new Event('change'))
+
+      expect(await screen.findByRole('button', { name: 'Kamera ve mikrofona izin ver' })).toBeInTheDocument()
+      expect(calls(fetchMock, '/permission').map(bodyOf)).toEqual([{ granted: false }])
+      expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
+      expect(allStopped()).toBe(true)
+      Reflect.deleteProperty(navigator, 'permissions')
+    })
+
     it('tarayıcı olaylarını türü ve süresiyle gönderir', async () => {
       const fetchMock = renderExam((url) => (url.endsWith('/events') ? jsonResponse(201) : jsonResponse(200, session())))
       await screen.findByText(/2 \+ 2 kaçtır/)

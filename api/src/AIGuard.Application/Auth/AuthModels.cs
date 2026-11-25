@@ -9,6 +9,10 @@ public sealed record RefreshRequest(string? RefreshToken);
 
 public sealed record SetPasswordRequest(string? Token, string? Password);
 
+public sealed record ForgotPasswordRequest(string? Email);
+
+public sealed record ResetPasswordRequest(string? Token, string? Password);
+
 public sealed record ChangePasswordRequest(string? CurrentPassword, string? NewPassword);
 
 /// <summary>Giriş ve yenilemenin yanıtı. Önyüz accessToken ve refreshToken alanlarını okuyor.</summary>
