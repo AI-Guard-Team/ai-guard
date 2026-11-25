@@ -28,17 +28,17 @@ function stubPhotoDecoder(width: number, height: number, encodedBytes = 32) {
 }
 
 describe('kayıt fotoğrafı', () => {
-  it('aday olmayan kullanıcıyı kendi ana sayfasına döndürür', () => {
+  it('aday olmayan kullanıcıya 403 gösterir', async () => {
     signInAs('Reviewer')
-    renderApp('/profile/photo')
+    await renderApp('/profile/photo')
 
-    expect(screen.getByRole('heading', { name: 'İncelemeler' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Bu sayfaya erişim yetkiniz yok' })).toBeInTheDocument()
   })
 
   it('rıza olmadan kamerayı açmaz ve fotoğraf göndermez', async () => {
     const fetchMock = mockFetch(() => jsonResponse(204))
     signInAs('Candidate')
-    renderApp('/profile/photo')
+    await renderApp('/profile/photo')
 
     expect(screen.getByRole('button', { name: 'Kameradan çek' })).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Fotoğrafı kaydet' }))
@@ -51,7 +51,7 @@ describe('kayıt fotoğrafı', () => {
     stubPhotoDecoder(800, 600)
     const fetchMock = mockFetch(() => jsonResponse(204))
     signInAs('Candidate')
-    renderApp('/profile/photo')
+    await renderApp('/profile/photo')
 
     await userEvent.click(screen.getByRole('checkbox'))
     expect(screen.getByRole('button', { name: 'Kameradan çek' })).toBeEnabled()
@@ -73,7 +73,7 @@ describe('kayıt fotoğrafı', () => {
     stubPhotoDecoder(4032, 3024, 128)
     const fetchMock = mockFetch(() => jsonResponse(204))
     signInAs('Candidate')
-    renderApp('/profile/photo')
+    await renderApp('/profile/photo')
 
     await userEvent.click(screen.getByRole('checkbox'))
     await userEvent.upload(screen.getByLabelText('Fotoğraf'), jpeg('telefon.jpg', 6 * 1024 * 1024))
@@ -94,7 +94,7 @@ describe('kayıt fotoğrafı', () => {
   it('biyometrik rızayı geri alır', async () => {
     const fetchMock = mockFetch(() => jsonResponse(204))
     signInAs('Candidate')
-    renderApp('/profile/photo')
+    await renderApp('/profile/photo')
 
     await userEvent.click(screen.getByRole('button', { name: 'Biyometrik rızayı geri al' }))
     await userEvent.click(screen.getByRole('button', { name: 'Rızayı geri al' }))

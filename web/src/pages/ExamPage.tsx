@@ -14,7 +14,7 @@ import {
   type SessionView,
 } from '../api/sessions'
 import { Button } from '../components/Button'
-import { FormAlert } from '../components/AuthCard'
+import { FormAlert } from '../components/Alert'
 import { Modal } from '../components/Modal'
 import {
   chosenOptions,

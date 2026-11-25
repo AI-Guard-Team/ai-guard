@@ -1,34 +1,122 @@
-/* Renk ve yazı tipi değişkenlerinin tek kaynağı. Bileşenler bu adları kullanır, renk kodu yazmaz. */
+/*
+ * Renk, yazı, boşluk ve hareket değişkenlerinin TEK kaynağı (Stitch DESIGN.md, "Sıcak Minimalizm").
+ * Bileşenler yalnızca bu adları kullanır; başka bir dosyada renk kodu yazılmaz.
+ *
+ * Paletin ham renkleri --palette-* adıyla burada durur, bileşenler anlamsal adları (--color-*) kullanır.
+ * Bir rengi değiştirmek için yalnızca bu dosya düzenlenir.
+ */
 :root {
-  --font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-size: 16px;
+  /* ---------- Ham palet (DESIGN.md) ---------- */
+  --palette-bordeaux: #5b0015;
+  --palette-bordeaux-deep: #490b1a;
+  --palette-navy: #142841;
+  --palette-navy-deep: #0d1c30;
+  --palette-ivory: #f7f2e0;
+  --palette-paper: #fffdf7;
+  --palette-sand: #fbebd3;
+  --palette-slate: #798da6;
+  --palette-sky: #80aee8;
+  --palette-sage: #4f7a63;
+  --palette-amber: #c98a2b;
+  --palette-alarm: #b3261e;
+
+  /* ---------- Yüzeyler ---------- */
+  --color-bg: var(--palette-ivory);
+  --color-surface: var(--palette-paper);
+  --color-surface-accent: var(--palette-sand);
+  --color-surface-muted: #f1ead3;
+  --color-sidebar: var(--palette-navy);
+  --color-sidebar-hover: #1d3654;
+  --color-sidebar-active: #243f61;
+  --color-sidebar-text: #c9d4e3;
+  --color-sidebar-text-strong: #ffffff;
+
+  /* ---------- Metin ---------- */
+  --color-text: var(--palette-navy);
+  /* DESIGN.md'deki #798DA6 fildişi zeminde 3:1 kalıyor; okunur metin için aynı tonun koyusu (≈ 6:1). */
+  --color-text-muted: #4b5b72;
+  --color-text-subtle: #5f6f86;
+  --color-text-on-dark: var(--palette-ivory);
+
+  /* ---------- Çizgiler ---------- */
+  --color-border: rgb(121 141 166 / 28%);
+  --color-border-strong: rgb(121 141 166 / 60%);
+  --color-divider: rgb(121 141 166 / 20%);
+
+  /* ---------- Eylem ---------- */
+  --color-primary: var(--palette-bordeaux);
+  --color-primary-hover: var(--palette-bordeaux-deep);
+  --color-on-primary: var(--palette-ivory);
+  --color-secondary-hover: rgb(20 40 65 / 6%);
+  --color-focus: var(--palette-sky);
+  --color-selected: rgb(128 174 232 / 24%);
+  --color-link: var(--palette-bordeaux);
+
+  /* ---------- Durum (metin + açık zemin) ---------- */
+  --color-success: var(--palette-sage);
+  --color-success-text: #3a5c4a;
+  --color-success-bg: rgb(79 122 99 / 13%);
+  --color-warning: var(--palette-amber);
+  /* Kehribar açık zeminde 2.6:1; metin için koyusu. */
+  --color-warning-text: #7f5512;
+  --color-warning-bg: rgb(201 138 43 / 15%);
+  --color-danger: var(--palette-alarm);
+  --color-danger-hover: #93201a;
+  --color-danger-text: #9c2019;
+  --color-danger-bg: rgb(179 38 30 / 11%);
+  --color-info: var(--palette-sky);
+  --color-info-text: #24476f;
+  --color-info-bg: rgb(128 174 232 / 20%);
+  --color-neutral-text: var(--color-text-muted);
+  --color-neutral-bg: rgb(121 141 166 / 14%);
+
+  /* ---------- Yazı ---------- */
+  --font-heading: 'Manrope Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-size-xs: 0.75rem; /* 12 */
+  --font-size-sm: 0.875rem; /* 14 */
+  --font-size-md: 1rem; /* 16 */
+  --font-size-lg: 1.125rem; /* 18 */
+  --font-size-xl: 1.375rem; /* 22 */
+  --font-size-2xl: 1.75rem; /* 28 */
+  --font-size-3xl: 2.25rem; /* 36 */
+  --line-height-tight: 1.25;
   --line-height: 1.5;
 
-  --color-bg: #02030a;
-  --color-surface: rgb(10 16 40 / 62%);
-  --color-text: #f4f7fb;
-  --color-muted: #b7c3d6;
-  --color-border: rgb(255 255 255 / 28%);
-  --color-primary: #ffffff;
-  --color-primary-hover: #e4ebff;
-  --color-on-primary: #070b16;
-  --color-danger: #e25b6f;
-  --color-danger-hover: #c4475b;
-  --color-focus: #6aa4ff;
+  /* ---------- Boşluk (DESIGN.md spacing) ---------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
 
-  --color-success-bg: rgb(18 92 58 / 45%);
-  --color-success-text: #b9f0d0;
-  --color-warning-bg: rgb(120 84 10 / 45%);
-  --color-warning-text: #ffe3a3;
-  --color-danger-bg: rgb(140 28 48 / 45%);
-  --color-danger-text: #ffc0c9;
-  --color-info-bg: rgb(28 70 160 / 45%);
-  --color-info-text: #d5e4ff;
-  --color-neutral-bg: rgb(255 255 255 / 10%);
-  --color-neutral-text: #d5deea;
-
-  --radius: 18px;
+  /* ---------- Şekil ---------- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
   --radius-pill: 999px;
-  --shadow: 0 24px 60px rgb(0 0 0 / 45%);
-  --header-height: 64px;
+
+  /* ---------- Derinlik: lacivert tabanlı yumuşak gölgeler ---------- */
+  --shadow-sm: 0 1px 2px rgb(20 40 65 / 6%), 0 2px 8px rgb(20 40 65 / 4%);
+  --shadow-md: 0 4px 12px rgb(20 40 65 / 6%), 0 12px 24px rgb(20 40 65 / 5%);
+  --shadow-lg: 0 12px 32px rgb(20 40 65 / 12%), 0 24px 48px rgb(20 40 65 / 8%);
+
+  /* ---------- Hareket ---------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration: 200ms;
+
+  /* ---------- Yerleşim ---------- */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+  --content-max: 1200px;
+  --focus-ring: 0 0 0 3px rgb(128 174 232 / 55%);
+  --z-sidebar: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
 }

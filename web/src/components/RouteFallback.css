@@ -1,0 +1,13 @@
+.route-fallback {
+  display: grid;
+  place-items: center;
+  min-height: 60dvh;
+  color: var(--color-text-subtle);
+  animation: route-fallback-in var(--duration) var(--ease-out) 300ms both;
+}
+
+@keyframes route-fallback-in {
+  from {
+    opacity: 0;
+  }
+}

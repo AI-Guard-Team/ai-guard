@@ -96,8 +96,8 @@ async function doRefresh(): Promise<boolean> {
     tokenStore.set({ accessToken: data.accessToken, refreshToken: data.refreshToken ?? null })
     return true
   } catch {
-    // Yenileme başarısızsa oturum kapatılır; RequireAuth kullanıcıyı giriş sayfasına yönlendirir.
-    tokenStore.clear()
+    // Yenileme başarısızsa oturum kapatılır; RequireAuth kullanıcıyı "oturum süresi doldu" ekranına yönlendirir.
+    tokenStore.clear('expired')
     return false
   }
 }

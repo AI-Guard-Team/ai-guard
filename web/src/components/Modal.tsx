@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { Button } from './Button'
+import './Modal.css'
 
 interface ModalProps {
   open: boolean

@@ -1,0 +1,49 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: grid;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand-subtitle {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.brand-dark .brand-name {
+  color: var(--color-sidebar-text-strong);
+}
+
+.brand-dark .brand-subtitle {
+  color: var(--color-sidebar-text);
+}
+
+.brand-light .brand-name {
+  color: var(--color-text);
+}
+
+.brand-light .brand-subtitle {
+  color: var(--color-text-muted);
+}

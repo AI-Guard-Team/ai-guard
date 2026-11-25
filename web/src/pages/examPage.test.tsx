@@ -89,10 +89,10 @@ function session(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function renderExam(handler: FetchHandler) {
+async function renderExam(handler: FetchHandler) {
   const fetchMock = mockFetch(handler)
   signInAs('Candidate')
-  renderApp(PATH)
+  await renderApp(PATH)
   return fetchMock
 }
 
@@ -104,7 +104,7 @@ describe('sınav ekranı', () => {
   })
 
   it('kalan süreyi sunucunun bitiş ve saatinden gösterir', async () => {
-    renderExam(() => jsonResponse(200, session()))
+    await renderExam(() => jsonResponse(200, session()))
 
     expect(await screen.findByRole('heading', { name: 'Genel Yetenek' })).toBeInTheDocument()
     expect(screen.getByText('Kalan süre 12:30')).toBeInTheDocument()
@@ -114,7 +114,7 @@ describe('sınav ekranı', () => {
   })
 
   it('ajan çalışıyorsa üst çubukta gösterir', async () => {
-    renderExam((url) =>
+    await renderExam((url) =>
       String(url).endsWith('/agent')
         ? jsonResponse(200, {
             state: 'InProgress',
@@ -132,7 +132,7 @@ describe('sınav ekranı', () => {
 
   it('tek soru gösterir ve alttan diğer soruya geçer', async () => {
     const second = '55555555-5555-5555-5555-555555555555'
-    renderExam(() =>
+    await renderExam(() =>
       jsonResponse(
         200,
         session({
@@ -156,7 +156,7 @@ describe('sınav ekranı', () => {
   })
 
   it('kayıtlı cevabı seçili getirir ve yeni seçimi sıradaki seq ile gönderir', async () => {
-    const fetchMock = renderExam((url) => {
+    const fetchMock = await renderExam((url) => {
       if (url.endsWith('/answers')) return jsonResponse(201)
       return jsonResponse(200, session({ answers: [{ questionId: QUESTION, selectedOption: 0, seq: 4 }] }))
     })
@@ -179,7 +179,7 @@ describe('sınav ekranı', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve
     })
-    renderExam(async (url) => {
+    await renderExam(async (url) => {
       if (String(url).endsWith('/answers')) {
         await gate
         return jsonResponse(201)
@@ -197,7 +197,7 @@ describe('sınav ekranı', () => {
   })
 
   it('gönderilemeyen cevabı bekliyor diye gösterir', async () => {
-    renderExam((url) => {
+    await renderExam((url) => {
       if (String(url).endsWith('/answers')) throw new TypeError('offline')
       return jsonResponse(200, session())
     })
@@ -209,7 +209,7 @@ describe('sınav ekranı', () => {
   })
 
   it('sunucu kapalıysa cevabı kuyrukta tutar', async () => {
-    renderExam((url) => (String(url).endsWith('/answers') ? jsonResponse(502) : jsonResponse(200, session())))
+    await renderExam((url) => (String(url).endsWith('/answers') ? jsonResponse(502) : jsonResponse(200, session())))
 
     await userEvent.click(await screen.findByRole('radio', { name: '4' }))
 
@@ -219,7 +219,7 @@ describe('sınav ekranı', () => {
   })
 
   it('her yeni seçimde bir sonraki sıra numarasını gönderir', async () => {
-    const fetchMock = renderExam((url) =>
+    const fetchMock = await renderExam((url) =>
       String(url).endsWith('/answers')
         ? jsonResponse(201)
         : jsonResponse(
@@ -243,7 +243,7 @@ describe('sınav ekranı', () => {
 
   it('oturumu 10 saniyede bir yeniler', async () => {
     const intervals = vi.spyOn(window, 'setInterval')
-    const fetchMock = renderExam(() => jsonResponse(200, session()))
+    const fetchMock = await renderExam(() => jsonResponse(200, session()))
 
     await screen.findByText(/2 \+ 2 kaçtır/)
     const poll = intervals.mock.calls.find(([, delay]) => delay === SESSION_POLL_MS)
@@ -270,7 +270,7 @@ describe('sınav ekranı', () => {
       },
     ]
     const order: string[] = []
-    renderExam((url, init) => {
+    await renderExam((url, init) => {
       const path = String(url)
       order.push(`${init?.method ?? 'GET'} ${path}`)
       if (path.endsWith('/answers')) return jsonResponse(201)
@@ -294,7 +294,7 @@ describe('sınav ekranı', () => {
   })
 
   it('cevaptaki 409 ayrıntısını gösterir', async () => {
-    renderExam((url) =>
+    await renderExam((url) =>
       String(url).endsWith('/answers')
         ? jsonResponse(409, { detail: 'Sınav süresi doldu; cevap kabul edilmedi.' })
         : jsonResponse(200, session()),
@@ -317,7 +317,7 @@ describe('sınav ekranı', () => {
     ]
     let submitted = false
     const order: string[] = []
-    renderExam((url, init) => {
+    await renderExam((url, init) => {
       const path = String(url)
       const method = init?.method ?? 'GET'
       order.push(`${method} ${path}`)
@@ -348,7 +348,7 @@ describe('sınav ekranı', () => {
     const allStopped = () => media.tracks.every((track) => track.readyState === 'ended')
 
     it('sınav sürerken kamera ve mikrofonu açar ve saniyede bir kare gönderir', async () => {
-      const fetchMock = renderExam((url) => (url.endsWith('/frames') ? jsonResponse(202) : jsonResponse(200, session())))
+      const fetchMock = await renderExam((url) => (url.endsWith('/frames') ? jsonResponse(202) : jsonResponse(200, session())))
 
       await waitFor(() => expect(calls(fetchMock, '/frames').length).toBeGreaterThanOrEqual(1), { timeout: 2_500 })
       expect(media.getUserMedia).toHaveBeenCalledWith({ video: { facingMode: 'user' }, audio: true })
@@ -363,7 +363,7 @@ describe('sınav ekranı', () => {
 
     it('izin kalkınca sunucuya bildirir, soruları gizler, süreyi gösterir ve izin verilince döner', async () => {
       let state = 'InProgress'
-      const fetchMock = renderExam((url, init) => {
+      const fetchMock = await renderExam((url, init) => {
         if (url.endsWith('/permission')) {
           state = JSON.parse(init.body as string).granted ? 'InProgress' : 'PermissionPending'
           return jsonResponse(200, { state })
@@ -392,7 +392,7 @@ describe('sınav ekranı', () => {
 
     it('sınav başında izin verilmezse sınavı izin beklemeye alır', async () => {
       setGetUserMedia(() => Promise.reject(new DOMException('izin yok', 'NotAllowedError')))
-      const fetchMock = renderExam((url) =>
+      const fetchMock = await renderExam((url) =>
         url.endsWith('/permission') ? jsonResponse(200, { state: 'PermissionPending' }) : jsonResponse(200, session()),
       )
 
@@ -401,7 +401,7 @@ describe('sınav ekranı', () => {
     })
 
     it('tarayıcı olaylarını türü ve süresiyle gönderir', async () => {
-      const fetchMock = renderExam((url) => (url.endsWith('/events') ? jsonResponse(201) : jsonResponse(200, session())))
+      const fetchMock = await renderExam((url) => (url.endsWith('/events') ? jsonResponse(201) : jsonResponse(200, session())))
       await screen.findByText(/2 \+ 2 kaçtır/)
 
       fireEvent.contextMenu(document.body)
@@ -415,7 +415,7 @@ describe('sınav ekranı', () => {
     })
 
     it('bağlantı kesikken izleme ve olay gönderimi yapmaz', async () => {
-      const fetchMock = renderExam(() => jsonResponse(200, session({ state: 'Disconnected', questions: [] })))
+      const fetchMock = await renderExam(() => jsonResponse(200, session({ state: 'Disconnected', questions: [] })))
       await screen.findByRole('button', { name: 'Kimliği yeniden doğrula' })
 
       fireEvent.contextMenu(document.body)
@@ -428,7 +428,7 @@ describe('sınav ekranı', () => {
 
     it('teslimden sonra kamerayı kapatır', async () => {
       let submitted = false
-      renderExam((url) => {
+      await renderExam((url) => {
         if (url.endsWith('/submit')) {
           submitted = true
           return jsonResponse(204)

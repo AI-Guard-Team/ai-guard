@@ -1,0 +1,41 @@
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.profile-facts {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+
+.profile-facts > div {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.profile-facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.profile-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.profile-grid .alert {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1099px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}

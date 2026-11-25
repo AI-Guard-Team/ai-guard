@@ -44,6 +44,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
 | Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
+| Önyüz tasarımı | Renk, yazı, boşluk tek dosyada (`web/src/styles/theme.css`); bileşen stili bileşenin yanında; yazı tipleri pakette; nginx'te CSP ve güvenlik başlıkları; sayfalar tembel yükleniyor; yetkisiz rol 403 görüyor (K-34) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
 ---
@@ -1020,6 +1021,31 @@ Kartlarda ve GAB'da yok. Stitch'teki "Şifremi unuttum ve sıfırlama akışı" 
 - Kurala uymayan şifre bağlantıyı harcamıyor; kullanıcı aynı bağlantıyla tekrar deneyebiliyor.
 - Bağlantı `Web:BaseUrl` + `/reset-password?token=`. Davette olduğu gibi sahte gönderici loga yazıyor (S-15).
 - Sınırlılık: hesap varken e-posta gönderildiği için yanıt süresi biraz uzayabiliyor. Sahte gönderici beklemediği için şu an fark yok; gerçek SMTP gelirse gönderim kuyruğa alınmalı.
+
+---
+
+## K-34 · Önyüz tasarım sistemi (UI1)
+
+Stitch tasarımı ve `DESIGN.md` (Sıcak Minimalizm: fildişi zemin, bordo ana eylem, lacivert menü) web'e taşındı. Ekranlar üç PR'da geliyor: 1–6 (tema, kabuk, giriş, profil, hata sayfaları), 7–13 (aday sınav öncesi akışı), 14–15 (sınav ve kesinti).
+
+| Kural | Gerekçe |
+|---|---|
+| Renk, yazı, boşluk, gölge ve hareket değişkenleri yalnızca `web/src/styles/theme.css`'te; bileşenler anlamsal adları (`--color-primary`, `--color-text-muted`…) kullanır, renk kodu yazmaz | Renk değişince tek dosya değişsin |
+| Her bileşenin stili yanındaki `.css` dosyasında (`components/Button.css`), sayfa düzenleri `layouts/` altında | Modüler; kullanılmayan sayfanın stili inmez |
+| İkincil metin `#4B5B72` (DESIGN.md'deki `#798DA6` yalnızca çizgide); kehribar uyarı metni koyulaştırıldı | `#798DA6` fildişi zeminde 3:1, okunur metin için 4,5:1 gerekiyor (WCAG AA) |
+| Manrope + Inter `@fontsource-variable` paketinden, CDN yok; Vite yazı tipini `data:` olarak gömmüyor | CSP `font-src 'self'`; kullanıcının IP'si üçüncü tarafa gitmiyor |
+| Göz, kamera, kilit ikonu yok; şifre "Göster/Gizle" metniyle | DESIGN.md gözetim çağrıştıran metaforları yasaklıyor |
+| Ekranda gerçek olmayan iddia yok (Stitch'teki "ISO 27001 sertifikalı", "256-bit SSL", sahte grafikler çıkarıldı); şifre kuralı ekranda sunucunun kuralı (8–128 karakter) | Kullanıcıyı yanıltmamak |
+| Giriş dışındaki sayfalar `React.lazy` ile ayrı parça; kabuğun içinde ayrı `Suspense` | Adayın giriş sayfası sınav/kamera kodunu indirmiyor; sayfa değişince yan menü yerinde kalıyor |
+| Giriş ekranlarında form dikeyde ortalanmıyor, sabit üst boşluktan başlıyor | Ekranlar arası geçişte başlık kaymıyor (ölçülen CLS 0) |
+| Rolün açamayacağı sayfada 403 ekranı (eskiden sessizce ana sayfaya atılıyordu) | Kullanıcı nedenini görsün (Stitch ekran 6) |
+| Yenileme belirteci reddedilince "Oturum süresi doldu" ekranı; kullanıcının kendi çıkışında gösterilmiyor (`tokenStore.endReason`) | Kullanıcı neden çıkarıldığını bilsin; giriş sonrası kaldığı sayfaya dönsün |
+| Profilde şifre değişince aynı sekmede yeni şifreyle sessizce yeniden giriş | Sunucu bütün yenileme belirteçlerini iptal ediyor (K-20); aksi hâlde sekme 15 dk sonra düşerdi |
+| "Beni hatırla (30 gün)" eklenmedi | Belirteçler bilerek yalnızca bellekte; 30 günlük açık oturum sınav güvenliğiyle çelişiyor |
+
+**nginx güvenlik başlıkları** (`web/docker/nginx.conf`): `Content-Security-Policy` (yalnızca kendi kaynakları; `connect-src`'de ajanın yerel ucu `http://127.0.0.1:47321`, K-19), `Referrer-Policy: no-referrer` (davet ve sıfırlama bağlantısındaki belirteç başka siteye gitmesin), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` (kamera ve mikrofon yalnızca bu site), `Cross-Origin-Opener-Policy`. `/assets/` bir yıl önbellekte, `index.html` önbelleğe alınmıyor. Derlenmiş uygulama bu CSP ile denendi; ihlal yok.
+
+**Testlerde:** `renderApp` artık `async`; sayfa parçalarını önceden yükleyip `act` içinde çiziyor. Testte `await renderApp(...)` yazın. Windows'ta testleri `C:\` (büyük harf) yolundan çalıştırın; `c:\` ile vitest modülleri iki kez yükleyip "failed to find the current suite" hatası veriyor.
 
 ---
 

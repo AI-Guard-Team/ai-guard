@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { uploadReferencePhoto, withdrawBiometricConsent } from '../api/profile'
 import { Button } from '../components/Button'
-import { FormAlert } from '../components/AuthCard'
+import { FormAlert } from '../components/Alert'
 import { Modal } from '../components/Modal'
 import { useToast } from '../components/useToast'
 import { ACCEPTED_PHOTO_TYPES, PhotoPrepareError, prepareReferencePhoto, rejectedPhotoType } from './prepareReferencePhoto'
+import { ProfileTabs } from './profile/ProfileTabs'
 import { useCamera } from './useCamera'
 
 export function ProfilePhotoPage() {
@@ -122,6 +123,8 @@ export function ProfilePhotoPage() {
   }
 
   return (
+    <>
+    <ProfileTabs />
     <section className="card">
       <h1>Kayıt fotoğrafı</h1>
       <p className="auth-lead">
@@ -197,5 +200,6 @@ export function ProfilePhotoPage() {
         </div>
       </Modal>
     </section>
+    </>
   )
 }

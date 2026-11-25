@@ -1,9 +1,14 @@
-// Rol ana sayfalarının yer tutucusu; içerikleri ilgili kartlarda (S2, S3, S5, E6) doldurulacak.
+import { PageHeader } from '../components/PageHeader'
+import { Panel } from '../components/Panel'
+
+// Rol ana sayfalarının yer tutucusu; içerikleri sonraki ekran PR'larında (Stitch 7, 18, 23) doldurulacak.
 export function RoleHomePage({ title }: { title: string }) {
   return (
-    <section className="card">
-      <h1>{title}</h1>
-      <p>Bu sayfa yapım aşamasında.</p>
-    </section>
+    <>
+      <PageHeader title={title} />
+      <Panel>
+        <p className="field-hint">Bu bölüm hazırlanıyor. İçerik sonraki sürümde eklenecek.</p>
+      </Panel>
+    </>
   )
 }

@@ -13,10 +13,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function renderWizard(handler: FetchHandler) {
+async function renderWizard(handler: FetchHandler) {
   const fetchMock = mockFetch(handler)
   signInAs('Candidate')
-  renderApp(PATH)
+  await renderApp(PATH)
   return fetchMock
 }
 
@@ -64,7 +64,7 @@ function isAgentStatusGet(url: string, init?: RequestInit): boolean {
 
 describe('sınav öncesi sihirbazı', () => {
   it('rıza onaylanmadan devam etmez ve kamerayı göstermez', async () => {
-    const fetchMock = renderWizard(() => jsonResponse(204))
+    const fetchMock = await renderWizard(() => jsonResponse(204))
 
     await userEvent.click(await screen.findByRole('button', { name: 'Devam' }))
     expect(screen.queryByRole('button', { name: 'Kamerayı aç' })).not.toBeInTheDocument()
@@ -74,7 +74,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('açık rızayı oturuma kaydedip ajan adımına geçer', async () => {
-    const fetchMock = renderWizard(() => jsonResponse(204))
+    const fetchMock = await renderWizard(() => jsonResponse(204))
 
     await acceptConsent()
 
@@ -87,7 +87,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('rıza reddedilince oturumun iptal edildiğini söyler', async () => {
-    const fetchMock = renderWizard(() => jsonResponse(204))
+    const fetchMock = await renderWizard(() => jsonResponse(204))
 
     await userEvent.click(await screen.findByRole('button', { name: 'Rızayı reddet' }))
 
@@ -99,7 +99,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('rıza 409 dönerse sunucunun bildirdiği nedeni gösterir', async () => {
-    renderWizard((url) =>
+    await renderWizard((url) =>
       url.includes('/consent')
         ? jsonResponse(409, { title: 'Kayıt fotoğrafı yüklenmeden sınava başlanamaz.', status: 409 })
         : jsonResponse(204),
@@ -113,7 +113,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('rızası alınmış oturumda sayfa yeniden açılınca ajan adımından devam eder', async () => {
-    const fetchMock = renderWizard((url, init) =>
+    const fetchMock = await renderWizard((url, init) =>
       isAgentStatusGet(url, init) ? jsonResponse(200, agentStatus()) : jsonResponse(500),
     )
 
@@ -123,7 +123,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('kimlik adımındaki oturumda sayfa yeniden açılınca kamera adımından devam eder', async () => {
-    renderWizard((url, init) =>
+    await renderWizard((url, init) =>
       isAgentStatusGet(url, init)
         ? jsonResponse(200, agentStatus({ state: 'IdentityVerification', canContinueWithoutAgent: false }))
         : jsonResponse(500),
@@ -135,7 +135,7 @@ describe('sınav öncesi sihirbazı', () => {
 
   it('eşleşmeden sonra sunucu kimlik adımına geçince kameraya gider', async () => {
     let paired = false
-    const fetchMock = renderWizard(
+    const fetchMock = await renderWizard(
       consentOr((url, init) => {
         if (url.includes('/agent-code')) return jsonResponse(201, { code: CODE, expiresAt: '2026-11-20T12:00:00Z' })
         if (url === AGENT_PAIR_URL) {
@@ -166,7 +166,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('ajan bulunamazsa gerekçeyi noAgent ile gönderir', async () => {
-    const fetchMock = renderWizard(
+    const fetchMock = await renderWizard(
       consentOr((url, init) => {
         if (url.includes('/agent-code')) return jsonResponse(201, { code: CODE, expiresAt: '2026-11-20T12:00:00Z' })
         if (url === AGENT_PAIR_URL) throw new TypeError('Failed to fetch')
@@ -191,7 +191,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('göstergelerin nedenini ve çözümünü gösterir, gerekçeyi indicated ile gönderir', async () => {
-    const fetchMock = renderWizard(
+    const fetchMock = await renderWizard(
       consentOr((url, init) => {
         if (url.endsWith('/agent/continue')) return jsonResponse(200, { state: 'IdentityVerification' })
         if (isAgentStatusGet(url, init)) {
@@ -231,7 +231,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('ajan varken ajansız devamı gizler', async () => {
-    renderWizard(
+    await renderWizard(
       consentOr((url, init) => {
         if (isAgentStatusGet(url, init)) {
           return jsonResponse(200, agentStatus({ paired: true, agentActive: true, canContinueWithoutAgent: false }))
@@ -247,7 +247,7 @@ describe('sınav öncesi sihirbazı', () => {
   })
 
   it('ajansız devam 409 alınca adımda kalır ve ajanın çalıştığını söylemez', async () => {
-    renderWizard(
+    await renderWizard(
       consentOr((url, init) => {
         if (url.endsWith('/agent/continue')) {
           return jsonResponse(409, { detail: 'Güvenlik ajanı çalışıyor; ajansız devam edilemez.' })
@@ -278,7 +278,7 @@ describe('sınav öncesi sihirbazı', () => {
     }
 
     let paired = false
-    renderWizard(
+    await renderWizard(
       consentOr((url, init) => {
         if (url.includes('/agent-code')) return jsonResponse(201, { code: CODE, expiresAt: '2026-11-20T12:00:00Z' })
         if (url === AGENT_PAIR_URL) {
