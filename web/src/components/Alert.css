@@ -48,3 +48,16 @@
   border-color: rgb(179 38 30 / 28%);
   color: var(--color-danger-text);
 }
+
+.alert-text {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.alert-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+}

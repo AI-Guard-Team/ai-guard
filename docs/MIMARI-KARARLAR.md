@@ -45,6 +45,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
 | Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
 | Önyüz tasarımı | Renk, yazı, boşluk tek dosyada (`web/src/styles/theme.css`); bileşen stili bileşenin yanında; yazı tipleri pakette; nginx'te CSP ve güvenlik başlıkları; sayfalar tembel yükleniyor; yetkisiz rol 403 görüyor (K-34) |
+| Aday akışı ekranları | Sihirbaz sırası rıza → ajan → hazırlık → kimlik; süre kimlik doğrulanınca başladığı için kurallar ondan önce. Rıza metni ve sürümü sunucudan (K-36) |
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-35) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
@@ -1047,6 +1048,9 @@ Stitch tasarımı ve `DESIGN.md` (Sıcak Minimalizm: fildişi zemin, bordo ana e
 **nginx güvenlik başlıkları** (`web/docker/nginx.conf`): `Content-Security-Policy` (yalnızca kendi kaynakları; `connect-src`'de ajanın yerel ucu `http://127.0.0.1:47321`, K-19), `Referrer-Policy: no-referrer` (davet ve sıfırlama bağlantısındaki belirteç başka siteye gitmesin), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` (kamera ve mikrofon yalnızca bu site), `Cross-Origin-Opener-Policy`. `/assets/` bir yıl önbellekte, `index.html` önbelleğe alınmıyor. Derlenmiş uygulama bu CSP ile denendi; ihlal yok.
 
 **Testlerde:** `renderApp` artık `async`; sayfa parçalarını önceden yükleyip `act` içinde çiziyor. Testte `await renderApp(...)` yazın. Windows'ta testleri `C:\` (büyük harf) yolundan çalıştırın; `c:\` ile vitest modülleri iki kez yükleyip "failed to find the current suite" hatası veriyor.
+
+---
+
 ## K-35 · Aday listesi ve kayıt fotoğrafı durumu (UI1)
 
 Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekran 8) için. Kartlarda yok; ekip kararıyla ayrı API PR'ında.
@@ -1060,6 +1064,24 @@ Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekr
 - En son oluşturulan oturum dönüyor, iptal edilmiş olsa da. Rızayı reddeden aday yeni oturum açabildiğini görsün (FR-10).
 - Liste tek ek sorguyla dolduruluyor (N+1 yok).
 - Biyometrik durum ucu vektörü ve fotoğrafı döndürmüyor. Rıza geri alınınca şablon silindiği için `enrolled: false` oluyor (K-27).
+
+---
+
+## K-36 · Aday akışı ekranları (UI1, Stitch 7–13)
+
+| Karar | Gerekçe |
+|---|---|
+| Sihirbaz adımları: Aydınlatma ve rıza → Güvenlik ajanı → **Hazırlık** → Kimlik doğrulama. Stitch'te "Başla" en sondaydı | Sunucuda süre ve hak kimlik doğrulaması başarılı olunca başlıyor (K-24). Kurallar doğrulamadan sonra gösterilseydi aday onları okurken süresi işlerdi |
+| Rıza metni ve sürümü `GET /api/consent-texts/{type}`'tan; rıza isteği bu sürümle gidiyor. Metin düz yazı olarak çiziliyor (HTML yorumlanmıyor) | Önyüz `kvkk-*-v1` sürümünü koda gömmüştü; A5'ten sonra metin değişirse her rıza 400 alırdı. Metni HTML olarak çizmek XSS'e kapı açardı |
+| Kayıt fotoğrafı formu `consent` ve `consentTextVersion` alanlarıyla gidiyor | Önyüz `biometricConsent` ve `textVersion` gönderiyordu; sunucu (`PhotoUploadForm`) bunları okumadığı için her yükleme "açık rıza gerekli" ile reddediliyordu |
+| `ApiError.title` Türkçe ProblemDetails başlığını veriyor; mesaj önce `detail`, yoksa Türkçe `title` | Fotoğraf, rıza ve doğrulama uçları nedeni `title`'da veriyor; önyüz bunu gösteremiyor, genel hata yazıyordu. İngilizce varsayılan başlıklar gösterilmiyor |
+| Sınav kartının durumu saf fonksiyonda (`features/exams/examStatus.ts`), kart yalnızca çiziyor | Kurallar (pencere, son başlangıç, hak, fotoğraf, iptal) tek yerde ve ayrı test ediliyor |
+| Tamamlanan sınavda yalnızca "Teslim edildi" görünüyor; karar ve risk adaya gösterilmiyor | Kararı değerlendirici veriyor; adaya bildirim ayrı bir iş (itiraz FR-32 yok) |
+| Rıza reddi onay penceresiyle; reddedilince "hakkınız kullanılmadı" bilgisi | FR-10; yanlışlıkla tıklamada oturum iptal olmasın |
+| Kamera kutusu açılmadan da 4:3 yer kaplıyor; yükleme yer tutucuları gerçek içerikle aynı yükseklikte | Sayfa kayması (ölçülen CLS 0) |
+| Ajan durumu sekme arka plandayken yoklanmıyor | Gereksiz istek ve pil tüketimi olmasın |
+
+Ortak parçalar: `hooks/useResource` (yükleme, iptal, yeniden deneme; geç gelen yanıt yenisinin üstüne yazmaz), `components/{Skeleton,EmptyState,Checkbox,Stepper}`, `features/camera/CameraView`, `features/consent/ConsentTextPanel`.
 
 ---
 

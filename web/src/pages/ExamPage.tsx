@@ -27,7 +27,7 @@ import {
 } from '../exam/answerQueue'
 import { formatRemaining, remainingMs } from '../exam/remainingTime'
 import { useExamMonitoring } from '../exam/useExamMonitoring'
-import { captureFrames, useCamera } from './useCamera'
+import { captureFrames, useCamera } from '../features/camera/useCamera'
 
 const ANSWERABLE = new Set(['InProgress', 'Disconnected'])
 const RUNNING = new Set(['InProgress', 'PermissionPending', 'Disconnected'])
@@ -282,11 +282,8 @@ export function ExamPage() {
       // Kesik oturumda cevaplar yeniden doğrulamadan önce gider; sunucu onları izlenmeyen diye işaretler.
       if (!(await flush())) return
       const frames = await captureFrames(video)
-      const result = await verifyIdentity(sessionId, frames)
-      if (result?.passed === false) {
-        setError('Kimlik doğrulanamadı. Yüzünüzün net göründüğünden emin olup yeniden deneyin.')
-        return
-      }
+      // Başarısız doğrulama 422 ile hata olarak gelir (A3); yanıtta "passed" alanı yok.
+      await verifyIdentity(sessionId, frames)
       camera.stop()
       await pull()
     } catch (caught) {

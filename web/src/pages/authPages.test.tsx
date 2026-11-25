@@ -28,7 +28,7 @@ describe('giriş', () => {
 
   it('doğru bilgilerle role göre ana sayfaya gider', async () => {
     const accessToken = makeAccessToken({ sub: 'aday-1', role: 'Candidate', name: 'Ayşe Demir' })
-    const fetchMock = mockFetch(() => jsonResponse(200, { accessToken, refreshToken: 'yenileme' }))
+    const fetchMock = mockFetch((url) => (url.endsWith('/login') ? jsonResponse(200, { accessToken, refreshToken: 'yenileme' }) : jsonResponse(200, [])))
     await renderApp('/login')
 
     await userEvent.type(screen.getByLabelText('E-posta'), 'aday@aiguard.local')
@@ -42,7 +42,7 @@ describe('giriş', () => {
 
   it('girişten önce açılmak istenen sayfaya döner', async () => {
     const accessToken = makeAccessToken({ sub: 'aday-1', role: 'Candidate' })
-    mockFetch(() => jsonResponse(200, { accessToken, refreshToken: 'yenileme' }))
+    mockFetch((url) => (url.endsWith('/login') ? jsonResponse(200, { accessToken, refreshToken: 'yenileme' }) : jsonResponse(200, [])))
     await renderApp('/login', { from: '/profile' })
 
     await userEvent.type(screen.getByLabelText('E-posta'), 'aday@aiguard.local')
@@ -54,7 +54,7 @@ describe('giriş', () => {
 
   it.each(['//kotu.example', '/\\kotu.example', 'https://kotu.example'])('dış adrese (%s) yönlendirmez', async (from) => {
     const accessToken = makeAccessToken({ sub: 'aday-1', role: 'Candidate' })
-    mockFetch(() => jsonResponse(200, { accessToken, refreshToken: 'yenileme' }))
+    mockFetch((url) => (url.endsWith('/login') ? jsonResponse(200, { accessToken, refreshToken: 'yenileme' }) : jsonResponse(200, [])))
     await renderApp('/login', { from })
 
     await userEvent.type(screen.getByLabelText('E-posta'), 'aday@aiguard.local')

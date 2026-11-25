@@ -15,6 +15,21 @@ export class ApiError extends Error {
     this.status = status
     this.body = body
   }
+
+  /** Sunucunun Türkçe kısa nedeni (ProblemDetails "title"); ASP.NET'in İngilizce varsayılan başlığıysa undefined. */
+  get title(): string | undefined {
+    return userFacingTitle(this.body)
+  }
+}
+
+// ASP.NET'in varsayılan başlıkları ("Bad Request", "One or more validation errors occurred.") yalnızca
+// ASCII; bizim uçlarımızın başlıkları Türkçe. Türkçe harf içermeyen başlık kullanıcıya gösterilmez.
+const TURKISH_LETTER = /[çğıöşüÇĞİÖŞÜ]/
+
+function userFacingTitle(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined
+  const { title } = body as { title?: unknown }
+  return typeof title === 'string' && TURKISH_LETTER.test(title) ? title : undefined
 }
 
 export interface RequestOptions {
@@ -38,11 +53,13 @@ const DEFAULT_MESSAGES: Record<number, string> = {
 const SERVER_ERROR_MESSAGE = 'Sunucuda bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
 
 function errorMessage(status: number, body: unknown): string {
-  // ProblemDetails'in "title" alanı ASP.NET'te İngilizce varsayılan metin taşıdığı için yalnızca "detail" ve "message" kullanılır.
+  // Önce "detail" (ayrıntı ve ne yapılacağı), yoksa Türkçe "title"; İngilizce varsayılan başlık gösterilmez.
   if (body && typeof body === 'object') {
     const { detail, message } = body as { detail?: unknown; message?: unknown }
     if (typeof detail === 'string' && detail) return detail
     if (typeof message === 'string' && message) return message
+    const title = userFacingTitle(body)
+    if (title) return title
   }
   return DEFAULT_MESSAGES[status] ?? (status >= 500 ? SERVER_ERROR_MESSAGE : 'Beklenmeyen bir hata oluştu.')
 }

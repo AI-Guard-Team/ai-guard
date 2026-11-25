@@ -13,8 +13,9 @@ const SetPasswordPage = lazy(loaders.setPassword)
 const ForgotPasswordPage = lazy(loaders.forgotPassword)
 const ResetPasswordPage = lazy(loaders.resetPassword)
 const ProfilePage = lazy(loaders.profile)
-const ProfilePhotoPage = lazy(loaders.profilePhoto)
-const ExamStartPage = lazy(loaders.examStart)
+const ReferencePhotoPage = lazy(loaders.profilePhoto)
+const PreflightPage = lazy(loaders.examStart)
+const MyExamsPage = lazy(loaders.myExams)
 const ExamPage = lazy(loaders.exam)
 const RoleHomePage = lazy(loaders.roleHome)
 
@@ -40,10 +41,10 @@ export default function App() {
               <Route path="/review/*" element={<RoleHomePage title="İncelemeler" />} />
             </Route>
             <Route element={<RequireAuth roles={['Candidate']} />}>
-              <Route path="/profile/photo" element={<ProfilePhotoPage />} />
-              <Route path="/exams/:sessionId/start" element={<ExamStartPage />} />
+              <Route path="/profile/photo" element={<ReferencePhotoPage />} />
+              <Route path="/exams/:sessionId/start" element={<PreflightPage />} />
               <Route path="/exams/:sessionId" element={<ExamPage />} />
-              <Route path="/exams/*" element={<RoleHomePage title="Sınavlarım" />} />
+              <Route path="/exams" element={<MyExamsPage />} />
             </Route>
           </Route>
         </Route>

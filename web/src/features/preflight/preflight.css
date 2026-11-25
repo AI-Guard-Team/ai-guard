@@ -1,0 +1,118 @@
+.preflight {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.preflight-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-self: start;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.preflight-back:hover {
+  color: var(--color-text);
+}
+
+.preflight-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  min-height: 2.75rem;
+}
+
+.preflight-header h1 {
+  font-size: var(--font-size-2xl);
+}
+
+/* Adımlar arasında geçerken içerik alanı en az bu yükseklikte: alt kısım zıplamaz. */
+.preflight-body {
+  min-height: 28rem;
+}
+
+.step-panel {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.step-panel > header {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 65ch;
+}
+
+.step-panel > header h2 {
+  font-size: var(--font-size-xl);
+}
+
+.step-panel > header p {
+  color: var(--color-text-muted);
+}
+
+.step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-divider);
+}
+
+.step-actions-start {
+  justify-content: flex-start;
+}
+
+.fact-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fact-list li {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.fact-list li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-success);
+}
+
+.fact-list strong {
+  display: block;
+  font-weight: 600;
+}
+
+.fact-list span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 767px) {
+  .step-panel {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .step-actions {
+    justify-content: stretch;
+  }
+
+  .step-actions > * {
+    flex: 1 1 100%;
+  }
+}
