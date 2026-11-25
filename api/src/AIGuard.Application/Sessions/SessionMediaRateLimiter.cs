@@ -16,10 +16,11 @@ public enum MediaKind
 public sealed class SessionMediaRateLimiter
 {
     /// <summary>
-    /// Saniyede bir gönderimin ağ gecikmesiyle sıkışıp ardışık gelmesine pay bırakan en kısa aralık.
-    /// Bu süre içinde gelen ikinci parça reddediliyor.
+    /// İki parça arasındaki en kısa aralık; daha sık gelen parça reddediliyor (en fazla saniyede 4).
+    /// Önyüz saniyede bir gönderiyor, ama ağ gecikmesi değişince iki kare sunucuya 500 ms'den yakın varabiliyor;
+    /// tarayıcı denemesinde 500 ms'lik sınır böyle meşru kareleri düşürdü. 250 ms bu oynamaya pay bırakıyor.
     /// </summary>
-    public static readonly TimeSpan MinInterval = TimeSpan.FromMilliseconds(500);
+    public static readonly TimeSpan MinInterval = TimeSpan.FromMilliseconds(250);
 
     // Bu kadar eski kayıtlar ara sıra siliniyor; biten oturumlar bellekte birikmesin.
     private static readonly TimeSpan Expiry = TimeSpan.FromMinutes(1);

@@ -25,6 +25,8 @@ function supported(): boolean {
  * - İzin kalkarsa sunucuya bildiriliyor; oturum PermissionPending olur, sorular gizlenir, süre işler.
  * - `requestPermission` izni yeniden alıp sınava döndürür; izinsiz süreyi sunucu ölçer (K-30).
  * - InProgress ve PermissionPending'de tarayıcı olayları gönderiliyor.
+ * - `ready`: kamera ve mikrofon gerçekten açık. Sınav ekranı soruları yalnızca bu durumda gösteriyor; izin istemi
+ *   yanıtlanmadan ya da izin verilmeden sorular görünmüyor.
  */
 export function useExamMonitoring({ sessionId, state, onStateChange }: Options) {
   const streamRef = useRef<MediaStream | null>(null)
@@ -68,6 +70,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
 
     let cancelled = false
     let stopMonitor: (() => void) | undefined
+    let stopPermissionWatch: (() => void) | undefined
     let dispose: (() => void) | undefined
 
     void (async () => {
@@ -98,32 +101,47 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
         // 409: oturum artık sürmüyor (izin, kesinti, teslim); güncel durumu al. Diğer hatalar yoklamaya kalır.
         if (caught instanceof ApiError && caught.status === 409) refresh.current()
       }
+
+      // İzin iki yoldan kalkabilir: akış kapanır ("ended") ya da site izni "engelle" olur. Chrome adres çubuğundan
+      // engellemede akışı her zaman kapatmıyor (S4 tarayıcı denemesi); bu yüzden izin durumu da dinleniyor.
+      // Hangisi önce gelirse bir kez bildiriliyor.
+      let ended = false
+      const permissionLost = () => {
+        if (ended || cancelled) return
+        ended = true
+        stopMonitor?.()
+        setError(DENIED)
+        void revoke()
+      }
+
       stopMonitor = startMediaMonitor(
         stream,
         {
           onFrame: (frame) => sendFrame(sessionId, frame).catch(onRejected),
           onAudio: (chunk) => sendAudio(sessionId, chunk).catch(onRejected),
-          onTrackEnded: () => {
-            setError(DENIED)
-            void revoke()
-          },
+          onTrackEnded: permissionLost,
         },
         capture,
       )
+      stopPermissionWatch = watchPermissions(permissionLost)
     })()
 
     return () => {
       cancelled = true
       stopMonitor?.()
+      stopPermissionWatch?.()
       dispose?.()
     }
   }, [revoke, sessionId, state])
 
   // Sınav dışında kamera ve mikrofon kapalı (kamera ışığı söner). İzin beklerken alınan yeni akış korunur.
+  // Bağlantı kesikken de akış açık kalıyor: aday çevrimdışı cevap vermeye devam edebiliyor (S3) ve dönüşte
+  // yeniden izin istenmiyor; kare gönderimi bu sırada durmuş oluyor.
   useEffect(() => {
-    if (state === 'InProgress' || state === 'PermissionPending') return
+    if (state === 'InProgress' || state === 'PermissionPending' || state === 'Disconnected') return
     stopStream(streamRef.current)
     streamRef.current = null
+    // Akış kapandı; "hazır" değeri aşağıda duruma göre türetiliyor, burada ayrıca güncellenmiyor.
   }, [state])
 
   useEffect(
@@ -165,8 +183,39 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
   return {
     // Gönderim yalnızca InProgress'te; başka durumda akış kapatılmış olur.
     live: live && state === 'InProgress',
+    // Sorular yalnızca kamera ve mikrofon açıkken (S4). Bağlantı kesikken akış açık kaldığı için sorular da görünüyor.
+    ready: live && (state === 'InProgress' || state === 'Disconnected'),
     error: supported() ? error : UNSUPPORTED,
     requesting,
     requestPermission,
+  }
+}
+
+/**
+ * Kamera ve mikrofon izninin "engelle"ye çekilmesini dinler. Permissions API'yi desteklemeyen ya da "microphone" adını
+ * tanımayan tarayıcıda (ör. Firefox) o izin için sessizce vazgeçiliyor; akışın kapanması yine yakalanıyor.
+ */
+function watchPermissions(onDenied: () => void): () => void {
+  const permissions = typeof navigator !== 'undefined' ? navigator.permissions : undefined
+  if (!permissions?.query) return () => undefined
+  let active = true
+  const cleanups: Array<() => void> = []
+  for (const name of ['camera', 'microphone']) {
+    permissions
+      .query({ name: name as PermissionName })
+      .then((status) => {
+        if (!active) return
+        const onChange = () => {
+          if (status.state === 'denied') onDenied()
+        }
+        status.addEventListener('change', onChange)
+        cleanups.push(() => status.removeEventListener('change', onChange))
+        onChange()
+      })
+      .catch(() => undefined)
+  }
+  return () => {
+    active = false
+    cleanups.forEach((cleanup) => cleanup())
   }
 }
