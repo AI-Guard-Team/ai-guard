@@ -1,25 +1,55 @@
+/*
+ * Sınav ekranı (Stitch 14–15, K-37) "optik form" yönünde (K-38): sakin, kâğıt hissi.
+ * Üstte erir süre çizgisi, ince durum çubuğu; ortada beyaz soru kâğıdı; altta minyatür cevap kâğıdı.
+ */
+
 .exam-room {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  overflow-x: clip;
 }
 
-/* ---------- Üst çubuk: her zaman görünür ---------- */
+/* ---------- Süre çizgisi: 3px, sağdan sola erir ---------- */
+
+.exam-timeline {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 3px;
+  background: var(--color-divider);
+}
+
+.exam-timeline span {
+  display: block;
+  height: 100%;
+  background: var(--color-text);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+.exam-timeline-warning span {
+  background: var(--color-warning);
+}
+
+.exam-timeline-danger span {
+  background: var(--color-danger);
+}
+
+/* ---------- Üst çubuk (sabit yükseklik: içerik yüklenince uzamasın) ---------- */
 
 .exam-topbar {
   position: sticky;
-  top: 0;
-  z-index: var(--z-overlay);
+  top: 3px;
+  z-index: 2;
   display: grid;
-  /* Sağ sütun içeriği kadar: düğmeler yüklenince alt satıra kaymaz, çubuğun yüksekliği sabit kalır. */
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: var(--space-4) var(--space-6);
-  height: 4.5rem;
-  padding: var(--space-3) var(--space-6);
+  gap: var(--space-4);
+  height: var(--topbar-height);
+  padding: 0 var(--space-6);
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
+  background: var(--color-bg);
 }
 
 .exam-topbar-title {
@@ -33,206 +63,215 @@
   display: none;
 }
 
-.exam-topbar-title h1 {
+.exam-topbar-meta {
+  display: flex;
+  gap: 0.6ch;
+  min-width: 0;
   overflow: hidden;
-  font-size: var(--font-size-lg);
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.exam-topbar-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sınav adı h1 ama mono etiket boyutunda: sayfanın asıl odağı soru kâğıdı. */
+.exam-topbar-meta h1 {
+  display: inline;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--color-text);
 }
 
 .exam-topbar-actions {
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.exam-fullscreen {
+  min-width: 2.5rem;
+  padding: 0;
 }
 
 .exam-topbar-placeholder {
   visibility: hidden;
 }
 
-/* ---------- Süre ---------- */
+/* ---------- Kalan süre: büyük ama sakin ---------- */
 
 .exam-timer {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-info-bg);
-  color: var(--color-text);
-  transition:
-    background-color var(--duration) var(--ease-out),
-    color var(--duration) var(--ease-out);
+  display: flex;
+  justify-content: center;
 }
 
 .exam-timer-value {
-  min-width: 4.5ch;
-  font-family: var(--font-heading);
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xl);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
 }
 
-.exam-timer-warning {
-  background: var(--color-warning-bg);
+.exam-timer-warning .exam-timer-value {
   color: var(--color-warning-text);
 }
 
-.exam-timer-danger {
-  background: var(--color-danger-bg);
+.exam-timer-danger .exam-timer-value {
   color: var(--color-danger-text);
 }
 
-/* ---------- Durum çipleri ---------- */
+/* ---------- Durum noktaları: Kamera · Ajan · Bağlantı ---------- */
 
-.exam-chips {
+.exam-signals {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.exam-chip {
+.exam-signal {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--color-neutral-bg);
+  gap: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
   white-space: nowrap;
 }
 
-.exam-chip-dot {
+.exam-signal-dot {
   width: 0.5rem;
   height: 0.5rem;
+  border: 1.5px solid currentcolor;
   border-radius: 50%;
-  background: var(--palette-slate);
 }
 
-.exam-chip-ok .exam-chip-dot {
+.exam-signal-ok .exam-signal-dot {
+  border-color: var(--color-success);
   background: var(--color-success);
 }
 
-.exam-chip-warn {
-  background: var(--color-warning-bg);
+.exam-signal-warn {
   color: var(--color-warning-text);
 }
 
-.exam-chip-warn .exam-chip-dot {
+.exam-signal-warn .exam-signal-dot {
   background: var(--color-warning);
+  border-color: var(--color-warning);
 }
 
-/* ---------- Bant ---------- */
-
-.exam-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
-  font-size: var(--font-size-sm);
+.exam-signal-value {
+  font-weight: 500;
 }
 
-.exam-banner svg {
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.exam-banner-offline {
-  border-bottom: 1px solid rgb(201 138 43 / 35%);
-  background: var(--color-warning-bg);
-  color: var(--color-warning-text);
-}
-
-/* ---------- İçerik ---------- */
+/* ---------- Ana alan ---------- */
 
 .exam-main {
-  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
   width: 100%;
-  max-width: 76rem;
+  max-width: calc(760px + var(--space-12) * 2);
   margin: 0 auto;
   padding: var(--space-8) var(--space-6) var(--space-12);
 }
 
 .exam-main > .alert {
-  margin-bottom: var(--space-6);
+  margin: 0;
 }
 
 .exam-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 18rem;
-  align-items: start;
   gap: var(--space-6);
+  min-width: 0;
 }
 
-.exam-question-column {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.exam-pager {
+/* Bağlantı koptu: kâğıdın üstünde kehribar kesikli ince not şeridi. */
+.exam-banner {
   display: flex;
-  justify-content: space-between;
   gap: var(--space-3);
+  align-items: flex-start;
+  width: 100%;
+  max-width: calc(760px + var(--space-12) * 2);
+  margin: var(--space-6) auto 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px dashed var(--color-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: var(--font-size-sm);
 }
 
-/* ---------- Soru ---------- */
+.exam-banner svg {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
 
-.question-card {
+/* ---------- Soru kâğıdı ---------- */
+
+.question-paper {
+  position: relative;
   display: grid;
-  gap: var(--space-5);
-  padding: var(--space-8);
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  padding: var(--space-8) var(--space-8) var(--space-6) 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
 }
 
-.question-card-header {
+/* Kenar boşluğunda büyük Fraunces soru numarası. */
+.question-number {
+  padding-top: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--font-size-4xl);
+  font-variation-settings: 'opsz' 144;
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-primary);
+}
+
+.question-body {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.question-paper-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.question-card-count {
-  font-family: var(--font-heading);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-}
-
-.question-card-count span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
+  gap: var(--space-4);
 }
 
 .question-mark {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 2.25rem;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border-strong);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
+.question-mark:hover {
+  background: var(--color-secondary-hover);
+}
+
 .question-mark.is-marked {
-  border-color: rgb(201 138 43 / 55%);
-  background: var(--color-warning-bg);
-  color: var(--color-warning-text);
+  color: var(--color-primary);
 }
 
 .question-mark:focus-visible,
@@ -242,36 +281,32 @@
 }
 
 .question-text {
-  max-width: 70ch;
-  font-size: var(--font-size-lg);
-  font-weight: 500;
-  line-height: 1.55;
-  white-space: pre-line;
+  max-width: 62ch;
+  font-size: 1.1875rem; /* 19 */
+  line-height: 1.65;
+  white-space: pre-wrap;
 }
 
+/* Seçenekler: kenarlık yok, aralarında ince çizgi. */
 .question-options {
   display: grid;
-  gap: var(--space-3);
+  border-top: 1px solid var(--color-divider);
 }
 
 .question-option {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-4);
   min-height: 3.5rem;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
   cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .question-option:hover {
-  border-color: var(--color-border-strong);
-  background: rgb(128 174 232 / 8%);
+  background: var(--color-row-hover);
 }
 
 .question-option input {
@@ -280,58 +315,87 @@
   pointer-events: none;
 }
 
-.question-option-letter {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-info-bg);
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
 .question-option:has(input:checked) {
-  border-color: var(--color-focus);
   background: var(--color-selected);
 }
 
-.question-option:has(input:checked) .question-option-letter {
-  background: var(--color-text);
-  color: var(--color-text-on-dark);
-}
-
 .question-option:has(input:focus-visible) {
-  box-shadow: var(--focus-ring);
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
 }
 
 .question-option:has(input:disabled) {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-.question-card-footer {
+.question-option-text {
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+}
+
+.question-paper-footer {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 1.5rem;
+  gap: var(--space-4);
+  min-height: 2rem;
 }
 
 .question-save {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--color-success-text);
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
 
+/* Sunucu onayından sonra beliren küçük mühür tik, kendiliğinden söner. */
+.question-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-success-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  animation: saved-fade 1200ms var(--ease-out) both;
+}
+
+.question-saved-tick {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+  transform: rotate(-8deg);
+}
+
+@keyframes saved-fade {
+  0% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+
+  15%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
 .question-clear {
-  padding: 0;
+  padding: var(--space-1) var(--space-2);
   border: 0;
-  background: none;
-  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-link);
   font-size: var(--font-size-sm);
   font-weight: 600;
   text-decoration: underline;
@@ -339,116 +403,98 @@
   cursor: pointer;
 }
 
-/* ---------- Soru gezintisi ---------- */
+/* ---------- Minyatür cevap kâğıdı + önceki/sonraki ---------- */
 
-.question-nav {
-  position: sticky;
-  top: 6rem;
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
-.question-nav-summary {
-  display: grid;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-}
-
-.question-nav-progress {
-  overflow: hidden;
-  height: 0.5rem;
-  border-radius: var(--radius-pill);
-  background: var(--color-neutral-bg);
-}
-
-.question-nav-progress span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-primary);
-  transition: width var(--duration) var(--ease-out);
-}
-
-.question-nav-legend {
+.exam-sheet-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
 }
 
-.question-nav-legend li::before {
-  content: '';
-  display: inline-block;
-  width: 0.625rem;
-  height: 0.625rem;
-  margin-right: var(--space-1);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 3px;
-  vertical-align: -1px;
-}
-
-.question-nav-legend li.is-answered::before {
-  border-color: var(--color-text);
-  background: var(--color-text);
-}
-
-.question-nav-legend li.is-marked::before {
-  border-color: var(--color-warning);
-  background: var(--color-warning);
-}
-
-.question-nav-grid {
+.answer-sheet {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1 1 26rem;
+}
+
+.answer-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(1.875rem, 1fr));
+  gap: var(--space-2) var(--space-1);
+  max-width: 40rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.question-nav-grid button {
-  width: 100%;
-  aspect-ratio: 1;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+.answer-sheet-item {
+  display: grid;
+  place-items: center;
+  padding: 2px 0 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
   cursor: pointer;
 }
 
-.question-nav-grid button.is-answered {
-  border-color: var(--color-text);
-  background: var(--color-text);
-  color: var(--color-text-on-dark);
+.answer-sheet-item[aria-current='true'] {
+  border-bottom-color: var(--color-text);
 }
 
-.question-nav-grid button.is-marked {
-  border-color: var(--color-warning);
-  box-shadow: inset 0 0 0 2px var(--color-warning);
-}
-
-.question-nav-grid button[aria-current='true'] {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.question-nav-grid button:focus-visible {
+.answer-sheet-item:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
 }
 
-/* ---------- Durum ekranları ---------- */
+.exam-pager {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ---------- İzin kaldırıldı: bulanık kâğıt + belge kartı ---------- */
+
+.exam-veiled {
+  position: relative;
+  display: grid;
+}
+
+.exam-veiled > * {
+  grid-area: 1 / 1;
+}
+
+.exam-veil-paper {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-height: 26rem;
+  padding: var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  filter: blur(3px);
+}
+
+.exam-veil-paper span {
+  height: 0.75rem;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-muted);
+}
+
+.exam-veil-paper span:first-child {
+  width: 70%;
+  height: 1.25rem;
+}
+
+.exam-veiled .exam-state {
+  align-self: center;
+  margin: var(--space-8);
+}
+
+/* ---------- Durum kartları (süre doldu, teslim, kesinti) ---------- */
 
 .exam-state {
   display: grid;
@@ -460,18 +506,22 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-md);
   text-align: center;
+}
+
+.exam-veiled .exam-state {
+  justify-self: center;
+  box-shadow: var(--shadow-lg);
 }
 
 .exam-state-wide {
   max-width: 44rem;
   margin-top: 0;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-2);
 }
 
 .exam-state h2 {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-2xl);
 }
 
 .exam-state p {
@@ -494,17 +544,17 @@
   place-items: center;
   width: 4rem;
   height: 4rem;
+  border: 1.5px solid currentcolor;
   border-radius: 50%;
-  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .exam-state-icon.is-warning {
-  background: var(--color-warning-bg);
+  border-style: dashed;
   color: var(--color-warning-text);
 }
 
 .exam-state-icon.is-success {
-  background: var(--color-success-bg);
   color: var(--color-success-text);
 }
 
@@ -513,7 +563,7 @@
   max-width: 28rem;
 }
 
-/* ---------- Teslim ---------- */
+/* ---------- Teslim penceresi ---------- */
 
 .submit-summary {
   display: grid;
@@ -524,76 +574,75 @@
 
 .submit-summary > div {
   padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   text-align: center;
 }
 
 .submit-summary dt {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
 }
 
 .submit-summary dd {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xl);
 }
 
 /* ---------- Tablet ve telefon ---------- */
 
-@media (max-width: 1279px) {
+@media (max-width: 1023px) {
   .exam-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
     height: auto;
+    min-height: var(--topbar-height);
+    padding: var(--space-2) var(--space-4);
   }
 
-  /* Eylem satırının yeri baştan ayrılır: düğmeler gelince içerik kaymaz. */
   .exam-topbar-actions {
     grid-column: 1 / -1;
-    justify-content: space-between;
-    min-height: 2.75rem;
-  }
-}
-
-@media (max-width: 1023px) {
-  .exam-topbar {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .exam-topbar-actions {
     flex-wrap: wrap;
+    justify-content: space-between;
+    padding-bottom: var(--space-2);
   }
 
-  .exam-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .question-nav {
-    position: static;
-  }
-
-  .exam-main {
-    padding: var(--space-5) var(--space-4) var(--space-10);
-  }
-
-  .exam-banner {
-    padding: var(--space-3) var(--space-4);
+  .exam-signals {
+    flex-wrap: wrap;
   }
 }
 
 @media (max-width: 767px) {
-  .question-card {
-    padding: var(--space-5) var(--space-4);
+  .exam-main {
+    padding: var(--space-5) var(--space-3) var(--space-10);
   }
 
-  .question-nav-grid {
-    grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr));
+  .question-paper {
+    grid-template-columns: var(--space-10) minmax(0, 1fr);
+    padding: var(--space-5) var(--space-4) var(--space-5) 0;
   }
 
-  .exam-state {
-    padding: var(--space-8) var(--space-5);
+  .question-number {
+    font-size: var(--font-size-2xl);
+  }
+
+  .question-text {
+    font-size: var(--font-size-lg);
+  }
+
+  .exam-pager {
+    width: 100%;
+  }
+
+  .exam-pager .button {
+    flex: 1;
+  }
+
+  .exam-topbar .button span,
+  .exam-signal {
+    font-size: var(--font-size-2xs);
   }
 }

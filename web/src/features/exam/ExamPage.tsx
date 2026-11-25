@@ -9,7 +9,7 @@ import { useCamera } from '../camera/useCamera'
 import { agentChip, cameraChip, connectionChip } from './examChips'
 import { FinishedPanel, NotStartedPanel, OfflineBanner, PermissionPanel, ReconnectPanel, TimeUpPanel } from './ExamInterruptions'
 import { ExamStatusChips } from './ExamStatusChips'
-import { ExamTimer } from './ExamTimer'
+import { ExamTimeLine, ExamTimer } from './ExamTimer'
 import { QuestionCard } from './QuestionCard'
 import { QuestionNavigator } from './QuestionNavigator'
 import { SubmitDialog } from './SubmitDialog'
@@ -58,19 +58,33 @@ export function ExamPage() {
 
   return (
     <div className="exam-room">
+      <ExamTimeLine remaining={remaining} totalMs={(view?.durationMinutes ?? 0) * 60_000} />
       <header className="exam-topbar">
         <div className="exam-topbar-title">
           <span className="exam-topbar-brand">
             <BrandMark />
           </span>
-          {view ? <h1>{view.examName}</h1> : <Skeleton height="1.5rem" width="12rem" />}
+          {view ? (
+            <div className="kicker exam-topbar-meta">
+              <span className="exam-topbar-name">
+                <h1>{view.examName}</h1>
+              </span>
+              {question && answering ? (
+                <span className="numeric">
+                  · Soru {String(index + 1).padStart(2, '0')}/{String(questions.length).padStart(2, '0')}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <Skeleton height="1rem" width="12rem" />
+          )}
         </div>
         <ExamTimer remaining={remaining} />
         <div className="exam-topbar-actions">
           <ExamStatusChips chips={chips} />
           {state === 'InProgress' && !fullscreen.fullscreen && fullscreen.supported ? (
-            <Button variant="secondary" onClick={fullscreen.enter} icon={<Maximize size={18} aria-hidden="true" />}>
-              Tam ekrana geç
+            <Button variant="ghost" className="exam-fullscreen" onClick={fullscreen.enter} aria-label="Tam ekrana geç" title="Tam ekrana geç">
+              <Maximize size={18} aria-hidden="true" />
             </Button>
           ) : null}
           {/* Düğme her zaman yer kaplar; sınav sürmüyorsa görünmez ve tıklanamaz (yüklemede çubuk uzamasın). */}
@@ -107,7 +121,16 @@ export function ExamPage() {
         ) : timeUp ? (
           <TimeUpPanel />
         ) : view.state === 'PermissionPending' ? (
-          <PermissionPanel error={monitoring.error} requesting={monitoring.requesting} onRequest={() => void monitoring.requestPermission()} />
+          <div className="exam-veiled">
+            {/* Sorular çizilmiyor (S4); arkadaki bulanık kâğıt yalnızca süs, içinde soru metni yok. */}
+            <div className="exam-veil-paper" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <PermissionPanel error={monitoring.error} requesting={monitoring.requesting} onRequest={() => void monitoring.requestPermission()} />
+          </div>
         ) : (
           <>
             {view.state === 'Disconnected' ? (
@@ -127,19 +150,20 @@ export function ExamPage() {
             ) : null}
             {question && monitoring.ready ? (
               <div className="exam-layout">
-                <div className="exam-question-column">
-                  <QuestionCard
-                    question={question}
-                    index={index}
-                    total={questions.length}
-                    selected={selections.get(question.id)}
-                    disabled={!answering || exam.pending}
-                    marked={marked.has(question.id)}
-                    queued={exam.queued}
-                    lastSavedAt={exam.lastSavedAt}
-                    onChoose={(option) => exam.choose(question.id, option)}
-                    onToggleMark={() => toggleMark(question.id)}
-                  />
+                <QuestionCard
+                  question={question}
+                  index={index}
+                  total={questions.length}
+                  selected={selections.get(question.id)}
+                  disabled={!answering || exam.pending}
+                  marked={marked.has(question.id)}
+                  queued={exam.queued}
+                  lastSavedAt={exam.lastSavedAt}
+                  onChoose={(option) => exam.choose(question.id, option)}
+                  onToggleMark={() => toggleMark(question.id)}
+                />
+                <div className="exam-sheet-row">
+                  <QuestionNavigator questions={questions} current={index} selections={selections} marked={marked} onSelect={setQuestionIndex} />
                   <div className="exam-pager">
                     <Button variant="secondary" disabled={index === 0} onClick={() => setQuestionIndex(index - 1)} icon={<ArrowLeft size={18} aria-hidden="true" />}>
                       Önceki
@@ -154,7 +178,6 @@ export function ExamPage() {
                     </Button>
                   </div>
                 </div>
-                <QuestionNavigator questions={questions} current={index} selections={selections} marked={marked} onSelect={setQuestionIndex} />
               </div>
             ) : null}
           </>

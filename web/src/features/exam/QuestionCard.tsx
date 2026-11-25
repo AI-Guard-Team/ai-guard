@@ -1,8 +1,11 @@
-import { Bookmark, BookmarkCheck, CloudCheck, CloudOff } from 'lucide-react'
+import { Bookmark, BookmarkCheck, Check, CloudOff } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { SessionQuestion } from '../../api/sessions'
+import { OpticalBubble } from '../../components/OpticalBubble'
 
 const LETTERS = 'ABCDEFGHIJ'
-const TIME = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+/** Kaydedildi işaretinin ekranda kalma süresi. */
+const SAVED_FLASH_MS = 1200
 
 interface QuestionCardProps {
   question: SessionQuestion
@@ -17,57 +20,80 @@ interface QuestionCardProps {
   onToggleMark: () => void
 }
 
-/** Tek soru ve seçenekleri (Stitch ekran 14). Seçenekler radyo grubu; klavyeyle ok tuşlarıyla gezilir. */
+/**
+ * Optik form kâğıdı (K-38, Stitch 14): kenarda büyük soru numarası, harfli baloncuklu seçenekler.
+ * Seçenekler radyo grubu; klavyeyle ok tuşlarıyla gezilir. "Kaydedildi" işareti sunucu onayından sonra kısa süre görünür.
+ */
 export function QuestionCard({ question, index, total, selected, disabled, marked, queued, lastSavedAt, onChoose, onToggleMark }: QuestionCardProps) {
   const titleId = `question-${question.id}`
+  const savedAt = lastSavedAt?.getTime() ?? null
+  const [flashFor, setFlashFor] = useState<number | null>(null)
+
+  // Sunucu yeni bir cevabı onayladığında (lastSavedAt değişti) işaret kısa süre görünür.
+  const [seenSavedAt, setSeenSavedAt] = useState(savedAt)
+  if (savedAt !== seenSavedAt) {
+    setSeenSavedAt(savedAt)
+    if (savedAt !== null) setFlashFor(savedAt)
+  }
+  useEffect(() => {
+    if (flashFor === null) return
+    const timer = window.setTimeout(() => setFlashFor(null), SAVED_FLASH_MS)
+    return () => window.clearTimeout(timer)
+  }, [flashFor])
+
   return (
-    <section className="question-card" aria-labelledby={titleId}>
-      <header className="question-card-header">
-        <p className="question-card-count numeric">
-          Soru {index + 1} <span>/ {total}</span>
-        </p>
-        <button type="button" className={['question-mark', marked && 'is-marked'].filter(Boolean).join(' ')} aria-pressed={marked} onClick={onToggleMark}>
-          {marked ? <BookmarkCheck size={18} aria-hidden="true" /> : <Bookmark size={18} aria-hidden="true" />}
-          Daha sonra dön
-        </button>
-      </header>
-
-      <p id={titleId} className="question-text">
-        {question.text}
+    <section className="question-paper" aria-labelledby={titleId}>
+      <p className="question-number" aria-hidden="true">
+        {index + 1}
       </p>
-
-      <div className="question-options" role="radiogroup" aria-labelledby={titleId}>
-        {question.options.map((option, optionIndex) => (
-          <label key={optionIndex} className="question-option">
-            <input type="radio" name={question.id} checked={selected === optionIndex} disabled={disabled} onChange={() => onChoose(optionIndex)} />
-            <span className="question-option-letter" aria-hidden="true">
-              {LETTERS[optionIndex] ?? optionIndex + 1}
-            </span>
-            <span className="question-option-text">{option}</span>
-          </label>
-        ))}
-      </div>
-
-      <footer className="question-card-footer">
-        <p className="question-save" aria-live="polite">
-          {queued > 0 ? (
-            <>
-              <CloudOff size={16} aria-hidden="true" />
-              {queued} cevap gönderilmeyi bekliyor
-            </>
-          ) : lastSavedAt ? (
-            <>
-              <CloudCheck size={16} aria-hidden="true" />
-              Cevaplarınız kaydedildi · <time className="numeric">{TIME.format(lastSavedAt)}</time>
-            </>
-          ) : null}
-        </p>
-        {selected != null && !disabled ? (
-          <button type="button" className="question-clear" onClick={() => onChoose(null)}>
-            Seçimi temizle
+      <div className="question-body">
+        <header className="question-paper-header">
+          <p className="kicker numeric">
+            Soru {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+          </p>
+          <button type="button" className={['question-mark', marked && 'is-marked'].filter(Boolean).join(' ')} aria-pressed={marked} onClick={onToggleMark}>
+            {marked ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}
+            Daha sonra dön
           </button>
-        ) : null}
-      </footer>
+        </header>
+
+        <p id={titleId} className="question-text">
+          {question.text}
+        </p>
+
+        <div className="question-options" role="radiogroup" aria-labelledby={titleId}>
+          {question.options.map((option, optionIndex) => (
+            <label key={optionIndex} className="question-option">
+              <input type="radio" name={question.id} checked={selected === optionIndex} disabled={disabled} onChange={() => onChoose(optionIndex)} />
+              <OpticalBubble filled={selected === optionIndex}>{LETTERS[optionIndex] ?? optionIndex + 1}</OpticalBubble>
+              <span className="question-option-text">{option}</span>
+            </label>
+          ))}
+        </div>
+
+        <footer className="question-paper-footer">
+          <p className="question-save" aria-live="polite">
+            {queued > 0 ? (
+              <>
+                <CloudOff size={16} aria-hidden="true" />
+                {queued} cevap gönderilmeyi bekliyor
+              </>
+            ) : flashFor !== null ? (
+              <span className="question-saved" key={flashFor}>
+                <span className="question-saved-tick" aria-hidden="true">
+                  <Check size={12} strokeWidth={3} />
+                </span>
+                Kaydedildi
+              </span>
+            ) : null}
+          </p>
+          {selected != null && !disabled ? (
+            <button type="button" className="question-clear" onClick={() => onChoose(null)}>
+              Seçimi temizle
+            </button>
+          ) : null}
+        </footer>
+      </div>
     </section>
   )
 }
