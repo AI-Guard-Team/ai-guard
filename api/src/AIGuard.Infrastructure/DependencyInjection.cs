@@ -3,6 +3,7 @@ using AIGuard.Infrastructure.Email;
 using AIGuard.Infrastructure.Persistence;
 using AIGuard.Infrastructure.Persistence.Interceptors;
 using AIGuard.Infrastructure.Persistence.Seed;
+using AIGuard.Infrastructure.Reports;
 using AIGuard.Infrastructure.Security;
 using AIGuard.Infrastructure.Storage;
 using AIGuard.Infrastructure.Vision;
@@ -25,10 +26,10 @@ public static class DependencyInjection
                 "veya dotnet user-secrets ile ayarlayın (bkz. README).");
         }
 
-        services.AddSingleton<AppendOnlyAuditLogInterceptor>();
+        services.AddSingleton<AppendOnlyInterceptor>();
         services.AddDbContext<AppDbContext>((sp, options) =>
             ConfigureDbContext(options, connectionString)
-                .AddInterceptors(sp.GetRequiredService<AppendOnlyAuditLogInterceptor>()));
+                .AddInterceptors(sp.GetRequiredService<AppendOnlyInterceptor>()));
 
         // Servisler arayüzü istediğinde aynı scope'taki AppDbContext örneği dönüyor.
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -53,6 +54,10 @@ public static class DependencyInjection
 
         // S4: sınav sırası kare ve ses buraya geliyor. Görüntü servisine bağlayan uygulama D4/D5'te bunun yerine geçecek.
         services.AddSingleton<IMediaAnalyzer, PendingMediaAnalyzer>();
+
+        // A5 (FR-34): aday raporunun Excel ve PDF hâli. Durumsuz; rapor ucu istenen biçimi Format'a göre seçiyor.
+        services.AddSingleton<IReportExporter, ExcelReportExporter>();
+        services.AddSingleton<IReportExporter, PdfReportExporter>();
 
         services.AddScoped<DevDataSeeder>();
 

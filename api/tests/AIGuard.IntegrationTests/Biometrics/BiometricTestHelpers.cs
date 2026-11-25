@@ -92,7 +92,7 @@ internal static class BiometricTestHelpers
     }
 
     public static BiometricEnrollmentService Enrollment(AppDbContext db, IFaceService faces, TimeProvider? clock = null) =>
-        new(db, faces, Encryptor, Microsoft.Extensions.Options.Options.Create(Settings), clock ?? Clock());
+        new(db, faces, Encryptor, clock ?? Clock());
 
     public static SessionVerificationService Verification(
         AppDbContext db, IFaceService faces, IEvidenceStore store, FakeTimeProvider clock)
@@ -116,7 +116,7 @@ internal static class BiometricTestHelpers
         if (enrolled)
         {
             var result = await Enrollment(db, new FakeFaceService()).EnrollAsync(
-                candidate.Id, true, Settings.BiometricConsentTextVersion, Jpeg());
+                candidate.Id, true, ConsentText.InitialBiometricVersion, Jpeg());
             Assert.Equal(EnrollStatus.Enrolled, result.Status);
         }
 

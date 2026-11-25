@@ -15,7 +15,7 @@ public sealed record StartSessionResponse(Guid SessionId, SessionState State);
 /// kendi oturumu (K-20). Durum geçişleri SessionStateMachine'den; tablo dışı geçiş 409 (K-24).
 /// </summary>
 [ApiController]
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class SessionsController(SessionService sessions, SessionAccessService access, SessionIpGuard ipGuard) : ControllerBase
 {
     /// <summary>

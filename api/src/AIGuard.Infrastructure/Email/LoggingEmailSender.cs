@@ -25,4 +25,16 @@ public sealed class LoggingEmailSender(IConfiguration configuration, ILogger<Log
             fullName, email, link, expiresAt);
         return Task.CompletedTask;
     }
+
+    public Task SendPasswordResetAsync(string email, string fullName, string resetToken, DateTimeOffset expiresAt, CancellationToken ct = default)
+    {
+        var baseUrl = (configuration["Web:BaseUrl"] ?? DefaultWebBaseUrl).TrimEnd('/');
+        // Önyüzdeki şifre sıfırlama sayfası: /reset-password?token=
+        var link = $"{baseUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}";
+
+        logger.LogInformation(
+            "[Sahte e-posta] Şifre sıfırlama: {FullName} <{Email}> · bağlantı: {Link} · son geçerlilik: {ExpiresAt:u}",
+            fullName, email, link, expiresAt);
+        return Task.CompletedTask;
+    }
 }

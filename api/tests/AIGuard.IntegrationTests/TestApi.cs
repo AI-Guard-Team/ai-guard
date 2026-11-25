@@ -27,6 +27,8 @@ internal sealed class TestApi
             // Testler sabit tarihli oturumlar kullanıyor; arka plandaki otomatik teslim onları kapatmasın (E4).
             // Süre denetimi SessionTimekeeper testlerinde FakeTimeProvider ile ayrıca sınanıyor.
             b.UseSetting("Sessions:TimekeeperEnabled", "false");
+            // Aynı nedenle saklama süresi görevi de kapalı (A5); DataRetentionServiceTests ayrıca sınıyor.
+            b.UseSetting("Retention:Enabled", "false");
             // Sonra eklenen kayıt geçerli: sahte gönderici yerine davetleri biriktiren gönderici.
             b.ConfigureServices(s => s.AddSingleton<IEmailSender>(Emails));
             // Testin kendi sahte servisleri (ör. S4'te analizci); sonra eklendiği için geçerli olan bunlar.
@@ -66,4 +68,16 @@ internal sealed class CapturingEmailSender : IEmailSender
     }
 
     public string InviteTokenFor(string email) => _tokensByEmail[email];
+
+    private readonly ConcurrentDictionary<string, List<string>> _resetTokensByEmail = new(StringComparer.OrdinalIgnoreCase);
+
+    public Task SendPasswordResetAsync(string email, string fullName, string resetToken, DateTimeOffset expiresAt, CancellationToken ct = default)
+    {
+        _resetTokensByEmail.AddOrUpdate(email, _ => [resetToken], (_, list) => { lock (list) { list.Add(resetToken); } return list; });
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Bu adrese giden sıfırlama belirteçleri, gönderim sırasıyla.</summary>
+    public IReadOnlyList<string> ResetTokensFor(string email) =>
+        _resetTokensByEmail.TryGetValue(email, out var list) ? list.ToList() : [];
 }

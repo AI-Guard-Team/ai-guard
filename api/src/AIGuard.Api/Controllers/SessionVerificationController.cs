@@ -20,7 +20,7 @@ public sealed record SessionStateResponse(SessionState State);
 [Route("api/sessions/{sessionId:guid}")]
 // Aday yalnızca kendi oturumuna erişiyor; başkasının oturumu 404 (K-20). Diğer oturum uçları gibi
 // her istekte IP kontrolü yapılıyor (K-24, FR-22).
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class SessionVerificationController(
     SessionVerificationService verification, SessionAccessService access, SessionIpGuard ipGuard) : ControllerBase
 {

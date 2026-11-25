@@ -284,6 +284,73 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("AIGuard.Domain.Entities.ConsentText", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_consent_texts");
+
+                    b.HasIndex("Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_consent_texts_version");
+
+                    b.HasIndex("Type", "PublishedAt")
+                        .HasDatabaseName("ix_consent_texts_type_published_at");
+
+                    b.ToTable("consent_texts", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("6f1e2d0a-5b7c-4c39-9a51-0c2f6d8e1a01"),
+                            Body = "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında kayıt fotoğrafınızdan elde edilen biyometrik verinin nasıl işlendiğini açıklar.\n\nİşlenen veri: Yüklediğiniz kayıt fotoğrafından bir yüz vektörü (sayısal yüz şablonu) çıkarılır. Fotoğrafın kendisi saklanmaz; vektör çıkarıldıktan hemen sonra silinir. Yüz vektörü KVKK'ya göre özel nitelikli kişisel veridir.\n\nAmaç: Yüz vektörü yalnızca sınav başında ve sınav sırasında kimliğinizi doğrulamak, yani sınava sizin girdiğinizi kontrol etmek için kullanılır.\n\nHukuki sebep: Açık rızanız (KVKK madde 6).\n\nSaklama: Yüz vektörü şifreli olarak saklanır. Son sınavınızdan 30 gün sonra ya da rızanızı geri aldığınızda silinir.\n\nErişim: Yüz vektörünü hiçbir kullanıcı göremez ve indiremez; yalnızca sistem kimlik eşleştirmesi için kullanır.\n\nRızanızı geri alma: Rızanızı profil sayfanızdan istediğiniz zaman geri alabilirsiniz. Bu durumda yüz vektörünüz silinir ve süren sınav oturumunuz iptal edilir. Rıza vermemeniz ya da geri almanız durumunda sınavı biyometrik olmayan alternatif bir yöntemle yapmak için sınavı düzenleyen birime başvurabilirsiniz.\n\nHaklarınız: KVKK madde 11 kapsamındaki haklarınızı (bilgi talep etme, düzeltme, silme vb.) kullanmak için sınavı düzenleyen birime başvurabilirsiniz.\n\nYukarıdaki bilgileri okudum. Kayıt fotoğrafımdan elde edilecek yüz vektörünün kimlik doğrulama amacıyla işlenmesine açık rıza veriyorum.",
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 11, 23, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Title = "Biyometrik veri aydınlatma metni ve açık rıza",
+                            Type = "Biometric",
+                            Version = "kvkk-biometric-v1"
+                        },
+                        new
+                        {
+                            Id = new Guid("6f1e2d0a-5b7c-4c39-9a51-0c2f6d8e1a02"),
+                            Body = "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında sınav sırasında hangi verilerin işlendiğini açıklar.\n\nİşlenen veriler:\n- Kamera görüntüsü ve mikrofon sesi sınav sırasında anlık olarak analiz edilir (yüz, bakış yönü, telefon, konuşma). Sürekli video veya ses kaydı tutulmaz; analiz edilen kareler ve ses parçaları analizden hemen sonra silinir.\n- Kural dışı bir durum tespit edildiğinde (olay) o ana ait kamera karesi kanıt olarak şifreli saklanır.\n- Tarayıcı olayları (sekme değiştirme, tam ekrandan çıkma, kopyala-yapıştır), güvenlik ajanının bulduğu göstergeler (sanal makine, yasaklı uygulama, VPN) ve bağlantı bilgileri kaydedilir.\n- Sınav başında ve sınav sırasında yüz doğrulaması yapılır.\n\nAmaç: Sınavın kurallara uygun yapıldığını doğrulamak. Sistem kopya kararı vermez; tespit edilen olaylar ve risk skoru gözetmenin değerlendirmesine sunulur, nihai karar gözetmene aittir.\n\nHukuki sebep: Açık rızanız (KVKK madde 6).\n\nSaklama: Kanıt kareleri, olaylar ve cihaz göstergeleri sınavın saklama süresi (varsayılan 30 gün) sonunda otomatik olarak silinir. Sınav sonucunuz ve gözetmen kararı saklanmaya devam eder. Rıza ve denetim kayıtları ispat amacıyla 1 yıl saklanır.\n\nErişim: Kanıt karelerine ve olaylara yalnızca sınava atanmış gözetmen ve yönetici erişebilir.\n\nRıza vermezseniz: Sınav başlamaz ve sınav hakkınız kullanılmış sayılmaz. Sınavı alternatif bir yöntemle yapmak için sınavı düzenleyen birime başvurabilirsiniz.\n\nHaklarınız: KVKK madde 11 kapsamındaki haklarınızı kullanmak için sınavı düzenleyen birime başvurabilirsiniz.\n\nYukarıdaki bilgileri okudum. Bu sınav oturumu süresince kamera, mikrofon ve cihaz verilerimin yukarıdaki amaçla işlenmesine açık rıza veriyorum.",
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 11, 23, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Title = "Sınav izleme aydınlatma metni ve açık rıza",
+                            Type = "Session",
+                            Version = "kvkk-session-v1"
+                        });
+                });
+
             modelBuilder.Entity("AIGuard.Domain.Entities.Event", b =>
                 {
                     b.Property<Guid>("Id")
@@ -554,6 +621,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
+
+                    b.Property<DateTimeOffset?>("MonitoringDataDeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("monitoring_data_deleted_at");
 
                     b.Property<DateTimeOffset?>("PermissionRevokedAt")
                         .HasColumnType("timestamp with time zone")
@@ -931,6 +1002,15 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTimeOffset?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_reset_expires_at");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("password_reset_token_hash");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -947,6 +1027,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.HasIndex("NormalizedEmail")
                         .IsUnique()
                         .HasDatabaseName("ix_users_normalized_email");
+
+                    b.HasIndex("PasswordResetTokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_password_reset_token_hash");
 
                     b.ToTable("users", null, t =>
                         {

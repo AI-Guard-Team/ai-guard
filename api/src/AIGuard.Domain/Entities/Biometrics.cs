@@ -67,3 +67,27 @@ public class Verification : Entity
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
+
+/// <summary>
+/// KVKK aydınlatma ve açık rıza metni (A5, K-32). Yayımlanan metin değişmiyor ve silinmiyor; metin
+/// değişecekse aynı türde yeni sürüm ekleniyor. Güncel sürüm, türün en son yayımlanan kaydı.
+/// <see cref="ConsentRecord.TextVersion"/> adayın hangi metni kabul ettiğini bu tabloya bağlıyor.
+/// </summary>
+public class ConsentText : Entity, IAppendOnly
+{
+    /// <summary>İlk yayımlanan sürümler (göçle eklendi); önyüz bu adları gönderiyor.</summary>
+    public const string InitialBiometricVersion = "kvkk-biometric-v1";
+
+    public const string InitialSessionVersion = "kvkk-session-v1";
+
+    public ConsentType Type { get; init; }
+
+    /// <summary>Örn. "kvkk-biometric-v2". <see cref="ConsentRecord.TextVersion"/> ile aynı uzunluk sınırı.</summary>
+    public required string Version { get; init; }
+
+    public required string Title { get; init; }
+
+    public required string Body { get; init; }
+
+    public DateTimeOffset PublishedAt { get; init; }
+}

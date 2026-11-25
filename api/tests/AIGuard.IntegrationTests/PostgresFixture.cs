@@ -51,7 +51,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DependencyInjection.ConfigureDbContext(builder, ConnectionString!)
-            .AddInterceptors(new AppendOnlyAuditLogInterceptor());
+            .AddInterceptors(new AppendOnlyInterceptor());
         return new AppDbContext(builder.Options);
     }
 

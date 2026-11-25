@@ -9,7 +9,7 @@ namespace AIGuard.Application.Auth;
 /// Giriş, belirteç yenileme, çıkış, davetle şifre belirleme ve şifre değiştirme (E2, FR-01, FR-02).
 /// </summary>
 /// <remarks>Kararların gerekçeleri: MIMARI-KARARLAR K-20.</remarks>
-public sealed class AuthService(IAppDbContext db, IPasswordHasher hasher, ITokenService tokens, TimeProvider clock)
+public sealed class AuthService(IAppDbContext db, IPasswordHasher hasher, ITokenService tokens, IEmailSender email, TimeProvider clock)
 {
     // Var olmayan e-postayla gelen girişte de bir özet doğrulanıyor; yanıt süresinden
     // e-postanın kayıtlı olup olmadığı anlaşılmasın. Sınıf başına bir kez üretiliyor.
@@ -180,6 +180,78 @@ public sealed class AuthService(IAppDbContext db, IPasswordHasher hasher, IToken
         // Özet silinince aynı bağlantı ikinci kez kullanılamıyor.
         user.InviteTokenHash = null;
         Audit(user.Id, "user.invite_accept", user.Id, now);
+        await db.SaveChangesAsync(ct);
+        return AuthOperationResult.Ok;
+    }
+
+    /// <summary>
+    /// "Şifremi unuttum": hesap varsa ve şifresi belirlenmişse sıfırlama bağlantısı gönderir. Sonuç dışarıya
+    /// söylenmiyor; uç her durumda aynı yanıtı veriyor ki e-postanın kayıtlı olup olmadığı anlaşılmasın.
+    /// </summary>
+    public async Task RequestPasswordResetAsync(ForgotPasswordRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || request.Email.Length > 320)
+        {
+            return;
+        }
+
+        var now = clock.GetUtcNow();
+        var normalized = User.NormalizeEmail(request.Email);
+        var user = await db.Users.SingleOrDefaultAsync(u => u.NormalizedEmail == normalized, ct);
+
+        // Daveti kabul etmemiş kullanıcı davet bağlantısını kullanmalı; pasif kullanıcı giriş yapamaz.
+        if (user is null || !user.IsActive || user.PasswordHash is null)
+        {
+            return;
+        }
+
+        // Bekleme süresi dolmadan yeni bağlantı üretilmiyor; önceki bağlantı geçerli kalıyor.
+        var lastRequestedAt = user.PasswordResetExpiresAt - AuthPolicy.PasswordResetLifetime;
+        if (lastRequestedAt + AuthPolicy.PasswordResetCooldown > now)
+        {
+            return;
+        }
+
+        var token = SecureToken.Generate();
+        user.PasswordResetTokenHash = SecureToken.Hash(token);
+        user.PasswordResetExpiresAt = now + AuthPolicy.PasswordResetLifetime;
+        Audit(user.Id, "user.password_reset_request", user.Id, now);
+        await db.SaveChangesAsync(ct);
+
+        await email.SendPasswordResetAsync(user.Email, user.FullName, token, user.PasswordResetExpiresAt.Value, ct);
+    }
+
+    /// <summary>
+    /// Sıfırlama bağlantısındaki belirteçle yeni şifre belirler. Bağlantı tek kullanımlık; hesap kilidi
+    /// kalkıyor ve bütün yenileme belirteçleri iptal ediliyor (şifre değiştirmeyle aynı neden).
+    /// </summary>
+    public async Task<AuthOperationResult> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+    {
+        if (!SecureToken.IsWellFormed(request.Token))
+        {
+            return new(AuthOperationStatus.InvalidToken);
+        }
+
+        var now = clock.GetUtcNow();
+        var hash = SecureToken.Hash(request.Token!);
+        var user = await db.Users.SingleOrDefaultAsync(u => u.PasswordResetTokenHash == hash, ct);
+        if (user is null || !user.IsActive || !(user.PasswordResetExpiresAt > now))
+        {
+            return new(AuthOperationStatus.InvalidToken);
+        }
+
+        if (AuthPolicy.ValidatePassword(request.Password) is { } error)
+        {
+            return new(AuthOperationStatus.InvalidPassword, error);
+        }
+
+        user.PasswordHash = hasher.Hash(request.Password!);
+        // Özet silinince aynı bağlantı ikinci kez kullanılamıyor.
+        user.PasswordResetTokenHash = null;
+        user.FailedLoginCount = 0;
+        user.LockoutEndAt = null;
+        await RevokeAllAsync(user.Id, now, ct);
+        Audit(user.Id, "user.password_reset", user.Id, now);
         await db.SaveChangesAsync(ct);
         return AuthOperationResult.Ok;
     }

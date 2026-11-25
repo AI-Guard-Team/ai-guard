@@ -25,6 +25,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ReviewerDecision> ReviewerDecisions => Set<ReviewerDecision>();
     public DbSet<ReviewerNote> ReviewerNotes => Set<ReviewerNote>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ConsentText> ConsentTexts => Set<ConsentText>();
+
+    public Task<int> DeleteAuditLogsOlderThanAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default) =>
+        // ExecuteDelete interceptor'a uğramıyor; 1 yıldan yeni bir kayıt gelse tetikleyici yine reddeder (K-32).
+        AuditLogs.Where(a => a.OccurredAt < cutoff).ExecuteDeleteAsync(cancellationToken);
 
     public async Task LockExamSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {

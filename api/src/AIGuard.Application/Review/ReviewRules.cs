@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AIGuard.Application.Abstractions;
 using AIGuard.Application.Exams;
 using AIGuard.Application.Risk;
@@ -54,6 +55,25 @@ internal static class ReviewRules
 
     public static IReadOnlyList<ReviewNoteView> Notes(IEnumerable<ReviewerNote> notes) =>
         [.. notes.OrderBy(n => n.CreatedAt).Select(n => new ReviewNoteView(n.Id, n.Text, n.Author.FullName, n.CreatedAt))];
+
+    /// <summary>
+    /// Kişisel veri içeren ekranın açıldığını denetim kaydına yazar (A5, K-32): kim, hangi oturuma, ne zaman baktı.
+    /// Kanıt karesinin kendisi girişsiz imzalı bağlantıyla açıldığı için kayıt bağlantının verildiği bu anda tutuluyor.
+    /// </summary>
+    public static async Task AuditViewAsync(
+        IAppDbContext db, string action, Guid sessionId, ReviewActor actor, DateTimeOffset now, object? details, CancellationToken ct)
+    {
+        db.AuditLogs.Add(new AuditLog
+        {
+            ActorUserId = actor.UserId,
+            Action = action,
+            TargetType = nameof(ExamSession),
+            TargetId = sessionId,
+            NewValue = details is null ? null : JsonSerializer.Serialize(details),
+            OccurredAt = now,
+        });
+        await db.SaveChangesAsync(ct);
+    }
 
     /// <summary>Boşlukları kırpılmış metin; boşsa <c>null</c>.</summary>
     public static string? Clean(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();

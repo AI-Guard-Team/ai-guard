@@ -19,7 +19,7 @@ public sealed record PermissionRequest(bool? Granted);
 /// </remarks>
 [ApiController]
 [Route("api/sessions/{sessionId:guid}")]
-[Authorize(Roles = nameof(UserRole.Candidate))]
+[Authorize(Policy = AccessPolicies.TakeExam)]
 public sealed class SessionMonitoringController(
     SessionMediaService media, SessionService sessions, SessionAccessService access, SessionIpGuard ipGuard) : ControllerBase
 {
