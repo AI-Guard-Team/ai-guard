@@ -1,105 +1,84 @@
 .auth-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 5fr) 7fr;
+  grid-template-columns: 1fr 1fr;
   min-height: 100dvh;
 }
 
-/* ---------- Sol tanıtım paneli ---------- */
+/* ---------- Sol panel: lacivert, soluk optik form deseni, iki satır ve mühür ---------- */
 
 .auth-aside {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-10);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12);
   height: 100dvh;
-  padding: var(--space-10) clamp(var(--space-8), 4vw, var(--space-12));
-  background:
-    radial-gradient(120% 80% at 100% 100%, rgb(91 0 21 / 32%), transparent 60%),
-    var(--color-sidebar);
-  color: var(--color-sidebar-text);
+  padding: var(--space-12);
+  overflow: hidden;
+  background-color: var(--color-sidebar);
+  color: var(--color-sidebar-text-strong);
 }
 
-.auth-aside-body {
-  display: grid;
-  gap: var(--space-8);
-  max-width: 30rem;
+/* Optik form baloncuk ızgarası, %6 opaklık. */
+.auth-aside::before {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, transparent 7px, rgb(247 242 224 / 6%) 7.5px, rgb(247 242 224 / 6%) 8.75px, transparent 9.25px);
+  background-position: center;
+  background-size: 34px 30px;
+  content: '';
+  pointer-events: none;
 }
 
 .auth-aside-title {
-  font-family: var(--font-heading);
-  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  color: var(--color-sidebar-text-strong);
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 4.6vw, 4.25rem);
+  font-weight: 480;
+  font-variation-settings: 'opsz' 144;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
-.auth-principles {
-  display: grid;
-  gap: var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.auth-aside-title em {
+  font-style: italic;
+  font-weight: 400;
 }
 
-.auth-principles li {
-  display: flex;
-  gap: var(--space-4);
+.auth-aside-seal {
+  position: relative;
+  --seal-color: var(--palette-ivory);
 }
 
-.auth-principles li > span:last-child {
-  display: grid;
-  gap: var(--space-1);
-  font-size: var(--font-size-sm);
-  line-height: 1.55;
-}
+/* ---------- Sağ: krem zemin, beyaz form kartı ---------- */
 
-.auth-principles strong {
-  color: var(--color-sidebar-text-strong);
-  font-size: var(--font-size-md);
-  font-weight: 600;
-}
-
-.auth-principle-icon {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-sm);
-  background: rgb(255 255 255 / 8%);
-  color: var(--palette-sky);
-  flex-shrink: 0;
-}
-
-.auth-aside-foot {
-  font-size: var(--font-size-xs);
-  color: rgb(201 212 227 / 75%);
-}
-
-/* ---------- Sağ form alanı ---------- */
-
-/* Form dikeyde ortalanmaz, sabit üst boşluktan başlar: ekranlar arasında geçerken başlık yerinde kalır. */
+/* Kart dikeyde ortalanmaz, sabit üst boşluktan başlar: ekranlar arasında geçerken başlık yerinde kalır. */
 .auth-main {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding: clamp(var(--space-10), 18vh, 11rem) var(--space-6) var(--space-10);
+  padding: clamp(var(--space-10), 16vh, 10rem) var(--space-6) var(--space-10);
 }
 
 .auth-mobile-brand {
   display: none;
 }
 
-.auth-form {
+.auth-card {
   width: 100%;
-  max-width: 26rem;
+  max-width: 27rem;
   margin: 0 auto;
+  padding: var(--space-10) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
 }
 
-.auth-form h1 {
+.auth-card h1 {
+  margin-top: var(--space-2);
   font-size: var(--font-size-2xl);
 }
 
@@ -115,12 +94,52 @@
 .auth-form-footer {
   margin-top: var(--space-6);
   padding-top: var(--space-5);
-  border-top: 1px solid var(--color-divider);
+  border-top: 1.5px dashed var(--color-rule-dashed);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
 
-/* Form içindeki satırlar (ör. "Şifre" etiketi + "Şifremi unuttum"). */
+/* Editoryal alanlar: kutusuz, yalnızca alt çizgi; odakta çizgi bordoya döner ve kalınlaşır. */
+.auth-card .field > label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.auth-card .field-control input {
+  min-height: 2.75rem;
+  padding-left: 0;
+  border: 0;
+  border-bottom: 1.5px solid var(--color-border-strong);
+  border-radius: 0;
+  background: transparent;
+}
+
+.auth-card .field-control input:hover {
+  border-bottom-color: var(--color-text-muted);
+}
+
+.auth-card .field-control input:focus {
+  border-bottom: 2px solid var(--color-primary);
+  box-shadow: none;
+}
+
+.auth-card .field.has-error .field-control input {
+  border-bottom-color: var(--color-danger);
+}
+
+.auth-card .field-icon {
+  display: none;
+}
+
+.auth-card .field.has-icon input {
+  padding-left: 0;
+}
+
+/* Form içindeki satırlar (ör. "Şifremi unuttum"). */
 .auth-row {
   display: flex;
   align-items: center;
@@ -136,7 +155,7 @@
   gap: var(--space-2);
 }
 
-/* ---------- Tablet ve telefon: tanıtım paneli gizlenir, marka formun üstüne gelir ---------- */
+/* ---------- Tablet ve telefon: sol panel gizlenir, marka kartın üstüne gelir ---------- */
 
 @media (max-width: 959px) {
   .auth-layout {
@@ -148,14 +167,17 @@
   }
 
   .auth-main {
-    justify-content: flex-start;
     padding: var(--space-6) var(--space-4) var(--space-10);
   }
 
   .auth-mobile-brand {
     display: block;
     width: 100%;
-    max-width: 26rem;
-    margin: 0 auto var(--space-10);
+    max-width: 27rem;
+    margin: 0 auto var(--space-8);
+  }
+
+  .auth-card {
+    padding: var(--space-8) var(--space-5);
   }
 }

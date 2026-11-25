@@ -22,7 +22,7 @@ export function SetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthLayout title="Davet bağlantısı eksik">
+      <AuthLayout kicker="Hesap etkinleştirme" title="Davet bağlantısı eksik">
         <Alert tone="warning">
           E-postanızdaki bağlantıyı açın. Bağlantıda şifre belirleme kodu olmalıdır. Bağlantının süresi dolduysa yöneticinizden yeni davet isteyin.
         </Alert>
@@ -33,7 +33,7 @@ export function SetPasswordPage() {
 
   if (done) {
     return (
-      <AuthLayout title="Hesabınız etkinleştirildi" description="Şifreniz kaydedildi. Artık bu şifreyle giriş yapabilirsiniz.">
+      <AuthLayout kicker="Hesap etkinleştirme" title="Hesabınız etkinleştirildi" description="Şifreniz kaydedildi. Artık bu şifreyle giriş yapabilirsiniz.">
         <Link className="button button-primary button-lg button-block" to="/login">
           Giriş sayfasına git
           <ArrowRight size={18} aria-hidden="true" />
@@ -61,7 +61,7 @@ export function SetPasswordPage() {
   }
 
   return (
-    <AuthLayout
+    <AuthLayout kicker="Hesap etkinleştirme"
       title="Hesabınızı etkinleştirin"
       description="Davetiniz için bir şifre belirleyin. Bundan sonra bu şifreyle giriş yapacaksınız."
       footer={<p>Davet bağlantısı tek kullanımlıktır ve 72 saat geçerlidir.</p>}

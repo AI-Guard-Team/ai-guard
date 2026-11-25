@@ -1121,6 +1121,35 @@ K-34'teki sistemin üstüne Yağmur'un yeni tasarım yönü: diploma, optik form
 
 ---
 
+## K-39 · Ekip PR'larındaki dosyalarda yapılan değişiklikler (UI1, `feature/UI1-teslim-ve-degerlendirici`)
+
+Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #31, #32) üstüne kurulu ve `dev`'i (Şeyma'nın #26'sı dahil) içine alıyor. Açık PR'lara (#30–#33) hiçbir commit atılmadı; aşağıdakiler yalnızca bu dalda. #30 ve #31 önce birleşirse bu dalın farkında yalnızca aşağıdaki değişiklikler ve yeni ekranlar kalır; #32 ve #33'ün içeriği bu dalda olduğu için o iki PR kapatılabilir.
+
+### Birleştirme (`dev` → bu dal)
+
+| Kimin | Dosya | Ne değişti | Neden |
+|---|---|---|---|
+| Şeyma (#26, S4) | `web/src/pages/ExamPage.tsx` → Yağmur'un `web/src/features/exam/ExamPage.tsx` | Eski sayfadaki `monitoring.ready` kontrolü yeni sınav ekranına taşındı: kamera ve mikrofon açılmadan sorular çizilmiyor, yerine "Sorular kamera ve mikrofon açılınca görünür…" bilgisi | #33 eski sayfayı siliyordu; birleşince bu S4 kuralı sessizce kaybolurdu (aday izin vermeden soruları görürdü) |
+| Şeyma (#26, S4) | `web/src/features/exam/examPage.test.tsx` | Şeyma'nın 3 yeni testi yeni ekrana uyarlandı: `renderExam` artık `await` ile (K-34), kalan süre `timer` rolünden okunuyor. Test silinmedi, beklenen davranış değişmedi | Yağmur `renderApp`'i `async` yaptı ve süreyi ayrı bileşene aldı |
+| Şeyma (S2 düzeltmesi) | `web/src/api/profile.ts` | Çakışmada Yağmur'un sürümü alındı | Aynı alan adı düzeltmesini (`consent`, `consentTextVersion`) Yağmur #32'de zaten yapmıştı; ayrıca rıza sürümünü sunucudan alıyor |
+| Şeyma (S2 düzeltmesi) | `web/src/pages/profilePhoto.test.tsx` | Silindi | Yağmur #32'de sayfayı `features/biometric/ReferencePhotoPage`'e taşıdı; aynı kontroller (alan adları dahil) `referencePhoto.test.tsx`'te |
+
+### Tasarım yönü (K-38)
+
+| Kimin | Dosya | Ne değişti | Eski kullanım bozuldu mu? |
+|---|---|---|---|
+| Yağmur (#30) | `styles/theme.css` | Değerler: Manrope → Fraunces, kart beyaz, gölge yok, köşe 8px. Yeni adlar eklendi (`--font-mono`, `--color-seal`, `--texture-paper`…); eski adların hepsi duruyor | Hayır; hiçbir ad silinmedi |
+| Yağmur (#30) | `styles/global.css`, `package.json` | Fraunces ve IBM Plex Mono paketleri eklendi, `@fontsource-variable/manrope` kaldırıldı | Hayır |
+| Yağmur (#30) | `styles/base.css` | Zemin dokusu, başlık ağırlığı; yeni yardımcı sınıflar `.mono`, `.kicker`, `.perforation` | Hayır |
+| Yağmur (#30) | `components/Panel.css`, `Button.css`, `Table.css`, `StatusBadge.css`, `PageHeader.css` | Yalnızca görünüm (gölge, köşe, tablo başlığı mono) | Hayır; sınıf adları aynı |
+| Yağmur (#30) | `components/StatusBadge.tsx`, `PageHeader.tsx` | İsteğe bağlı yeni alanlar: `stamp`, `kicker`; `PageHeader.title` artık `ReactNode` | Hayır; eski çağrılar aynen çalışıyor |
+| Yağmur (#30) | `auth/roles.ts`, `layouts/AppShell.tsx` | `MenuItem.end` alanı ve yeni sayfaların ikonları. Menü içeriği değişmedi; yeni bağlantı sayfası yazıldıkça ekleniyor | Hayır |
+| Yağmur (#30) | `layouts/AuthLayout.tsx/.css` | Sol paneldeki üç ilke listesi yerine "Adil sınav, şeffaf karar." ve mühür (Yağmur'un Prompt B'si); form kartı ve alt çizgili alanlar. **`kicker` alanı zorunlu oldu**; dört giriş sayfasına eklendi | Evet, `AuthLayout` kullanan yeni sayfa `kicker` vermeli |
+| Yağmur (#30) | `pages/auth/LoginPage.tsx` ve diğer üç giriş sayfası | Girişte açıklama satırı kaldırıldı, alt not kısaltıldı (Prompt B: "yazı çok az") | Hayır; testler aynı |
+| Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralının yerine K-38 geçti | Yağmur'un yeni yönergesi bunu istiyor |
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.

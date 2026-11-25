@@ -30,7 +30,7 @@ export function ForgotPasswordPage() {
   if (sentTo) {
     // Sunucu hesap olsun olmasın aynı yanıtı veriyor; metin de "gönderildi" değil "gönderilir" diyor.
     return (
-      <AuthLayout title="E-postanızı kontrol edin" footer={<BackToLogin />}>
+      <AuthLayout kicker="Şifre yenileme" title="E-postanızı kontrol edin" footer={<BackToLogin />}>
         <Alert tone="info">
           <strong>{sentTo}</strong> adresiyle kayıtlı bir hesap varsa şifre sıfırlama bağlantısı birkaç dakika içinde gelir. Bağlantı 30 dakika geçerlidir ve
           tek kullanımlıktır.
@@ -60,7 +60,7 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout
+    <AuthLayout kicker="Şifre yenileme"
       title="Şifrenizi mi unuttunuz?"
       description="Kayıtlı e-posta adresinizi girin; şifrenizi yenilemeniz için bir bağlantı gönderelim."
       footer={<BackToLogin />}

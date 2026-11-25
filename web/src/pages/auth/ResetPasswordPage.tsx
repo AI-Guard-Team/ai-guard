@@ -22,7 +22,7 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthLayout title="Bağlantı eksik">
+      <AuthLayout kicker="Şifre yenileme" title="Bağlantı eksik">
         <Alert tone="warning">Bu sayfa e-postadaki sıfırlama bağlantısıyla açılır. Bağlantının süresi dolduysa yenisini isteyin.</Alert>
         <Link to="/forgot-password">Yeni bağlantı iste</Link>
       </AuthLayout>
@@ -31,7 +31,7 @@ export function ResetPasswordPage() {
 
   if (done) {
     return (
-      <AuthLayout
+      <AuthLayout kicker="Şifre yenileme"
         title="Şifreniz yenilendi"
         description="Güvenliğiniz için açık olan bütün oturumlarınız kapatıldı. Yeni şifrenizle giriş yapın."
       >
@@ -62,7 +62,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout
+    <AuthLayout kicker="Şifre yenileme"
       title="Yeni şifre belirleyin"
       description="Hesabınız için yeni bir şifre seçin."
       footer={<Link to="/forgot-password">Bağlantının süresi mi doldu? Yenisini isteyin</Link>}

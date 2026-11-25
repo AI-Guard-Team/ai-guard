@@ -75,10 +75,9 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout
+    <AuthLayout kicker="AI-Guard"
       title="Giriş yap"
-      description="Kurumunuzun size verdiği e-posta adresi ve şifrenizle oturum açın."
-      footer={<p>Hesaplar kurum yöneticisi tarafından açılır. Davet e-postanızı bulamıyorsanız yöneticinize başvurun.</p>}
+      footer={<p>Hesabınızı kurum yöneticisi açar. Davet e-postanız yoksa yöneticinize başvurun.</p>}
     >
       <form onSubmit={handleSubmit} noValidate>
         {message ? (
