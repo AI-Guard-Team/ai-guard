@@ -113,6 +113,50 @@ public class ExamApiTests(PostgresFixture fx) : IClassFixture<PostgresFixture>
     }
 
     [SkippableFact]
+    public async Task Candidate_list_carries_the_latest_own_session_and_others_do_not()
+    {
+        // UI1: "Sınavlarım" ekranı oturum durumunu (devam et / teslim edildi) listeden okuyor.
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var admin = Api.As(await UserAsync(UserRole.Admin));
+        var candidate = await UserAsync(UserRole.Candidate);
+        var otherCandidate = await UserAsync(UserRole.Candidate);
+        var reviewer = await UserAsync(UserRole.Reviewer);
+        var started = await ExamAsync(admin);
+        var fresh = await ExamAsync(admin);
+        foreach (var exam in new[] { started, fresh })
+        {
+            await admin.PostAsJsonAsync($"/api/exams/{exam}/assignments", new { userId = candidate.Id, role = "Candidate" });
+        }
+
+        await admin.PostAsJsonAsync($"/api/exams/{started}/assignments", new { userId = otherCandidate.Id, role = "Candidate" });
+        await admin.PostAsJsonAsync($"/api/exams/{started}/assignments", new { userId = reviewer.Id, role = "Reviewer" });
+        Guid latestId;
+        await using (var db = fx.CreateContext())
+        {
+            // Önce iptal edilen (rıza reddi), sonra açılan yeni oturum: liste en sonuncuyu göstermeli.
+            db.ExamSessions.Add(new ExamSession { ExamId = started, CandidateId = candidate.Id, State = SessionState.Cancelled, CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10) });
+            var latest = new ExamSession { ExamId = started, CandidateId = candidate.Id, State = SessionState.AgentPairing, CreatedAt = DateTimeOffset.UtcNow };
+            db.ExamSessions.Add(latest);
+            db.ExamSessions.Add(new ExamSession { ExamId = started, CandidateId = otherCandidate.Id, State = SessionState.Completed });
+            await db.SaveChangesAsync();
+            latestId = latest.Id;
+        }
+
+        var mine = await Api.As(candidate).GetFromJsonAsync<List<ExamSummary>>("/api/exams", Json);
+        var single = await Api.As(candidate).GetFromJsonAsync<ExamSummary>($"/api/exams/{started}", Json);
+        var asReviewer = await Api.As(reviewer).GetFromJsonAsync<List<ExamSummary>>("/api/exams", Json);
+        var asAdmin = await admin.GetFromJsonAsync<ExamSummary>($"/api/exams/{started}", Json);
+
+        var startedRow = mine!.Single(e => e.Id == started);
+        Assert.Equal(latestId, startedRow.MySession!.Id);
+        Assert.Equal(SessionState.AgentPairing, startedRow.MySession.State);
+        Assert.Null(mine!.Single(e => e.Id == fresh).MySession);
+        Assert.Equal(latestId, single!.MySession!.Id);
+        Assert.All(asReviewer!, e => Assert.Null(e.MySession)); // başka adayın oturumu sızmıyor
+        Assert.Null(asAdmin!.MySession);
+    }
+
+    [SkippableFact]
     public async Task Only_admin_can_create_or_change_exams()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");

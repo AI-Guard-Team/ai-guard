@@ -43,6 +43,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
+| Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-35) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
 ---
@@ -993,6 +994,22 @@ PDF'in yazı tipi kütüphanenin gömülü Lato'su (Türkçe karakterleri içeri
 - GAB'daki "itiraz süreci bitmişse" koşulu uygulanmadı: itiraz (FR-32) henüz yok, saklama süresi itirazı beklemiyor (S-26).
 - "Silinen veriler 7 gün içinde yedeklerden de çıkar" kuralı kodda değil, yedekleme düzeninde (S-25).
 - Reddedilen isteklerin (401/403) denetim kaydına yazılması (GAB 3.3.2) yapılmadı; bu istekler uygulama günlüğünde (S-27).
+
+---
+
+## K-35 · Aday listesi ve kayıt fotoğrafı durumu (UI1)
+
+Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekran 8) için. Kartlarda yok; ekip kararıyla ayrı API PR'ında.
+
+| Uç | Yetki | Yanıt |
+|---|---|---|
+| `GET /api/exams`, `GET /api/exams/{id}` | değişmedi | Mevcut alanlara ek: `mySession: { id, state, startedAt, endedAt } \| null` |
+| `GET /api/me/biometric` | `TakeExam` (aday) | `{ enrolled, enrolledAt, consentTextVersion }`; `Cache-Control: no-store` |
+
+- `mySession` yalnızca adaya dolu, değerlendirici ve yöneticide `null`; başka adayın oturumu dönmüyor.
+- En son oluşturulan oturum dönüyor, iptal edilmiş olsa da. Rızayı reddeden aday yeni oturum açabildiğini görsün (FR-10).
+- Liste tek ek sorguyla dolduruluyor (N+1 yok).
+- Biyometrik durum ucu vektörü ve fotoğrafı döndürmüyor. Rıza geri alınınca şablon silindiği için `enrolled: false` oluyor (K-27).
 
 ---
 

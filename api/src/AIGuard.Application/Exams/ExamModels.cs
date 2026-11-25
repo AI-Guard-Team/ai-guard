@@ -28,7 +28,14 @@ public sealed record ExamSummary(
     DateTimeOffset LatestStartAt,
     int RetentionDays,
     int QuestionCount,
-    bool? AttemptUsed);
+    bool? AttemptUsed,
+    CandidateSessionSummary? MySession = null);
+
+/// <summary>
+/// Adayın bu sınavdaki en son oturumu (UI1, "Sınavlarım" ekranı). Yalnızca adaya dolu; diğer rollerde null.
+/// İptal edilen oturum da dönüyor: rızayı reddeden aday yeni oturum açabildiğini görebilsin (FR-10).
+/// </summary>
+public sealed record CandidateSessionSummary(Guid Id, SessionState State, DateTimeOffset? StartedAt, DateTimeOffset? EndedAt);
 
 public sealed record QuestionRequest(string? Text, IReadOnlyList<string>? Options, int? CorrectOptionIndex, int? Order);
 

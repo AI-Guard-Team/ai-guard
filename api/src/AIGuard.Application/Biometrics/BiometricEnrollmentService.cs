@@ -37,6 +37,9 @@ public sealed record EnrollResult(EnrollStatus Status, string? FaceIssue = null)
 public sealed record WithdrawResult(bool UserFound, int CancelledSessions);
 
 /// <summary>Kayıt fotoğrafı ve biyometrik rıza (A3; FR-04, FR-05).</summary>
+/// <summary><c>GET /api/me/biometric</c> yanıtı (UI1).</summary>
+public sealed record BiometricStatus(bool Enrolled, DateTimeOffset? EnrolledAt, string? ConsentTextVersion);
+
 public sealed class BiometricEnrollmentService(
     IAppDbContext db,
     IFaceService faces,
@@ -49,6 +52,22 @@ public sealed class BiometricEnrollmentService(
         [SessionState.IdentityVerification, SessionState.InProgress, SessionState.PermissionPending, SessionState.Disconnected];
 
     private static readonly SessionState[] ClosedStates = [.. SessionStateMachine.Closed];
+
+    /// <summary>
+    /// Adayın kayıt fotoğrafı (yüz şablonu) var mı (UI1). Vektör ve fotoğraf dönmüyor; yalnızca durum,
+    /// oluşturulma zamanı ve kabul edilen rıza metninin sürümü.
+    /// </summary>
+    public async Task<BiometricStatus> GetStatusAsync(Guid userId, CancellationToken ct = default)
+    {
+        var template = await db.ReferenceFaceTemplates.AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .Select(t => new { t.CreatedAt, t.ConsentRecord.TextVersion })
+            .SingleOrDefaultAsync(ct);
+
+        return template is null
+            ? new BiometricStatus(false, null, null)
+            : new BiometricStatus(true, template.CreatedAt, template.TextVersion);
+    }
 
     /// <summary>Şifreli vektörü sahibine bağlayan bağlam (bkz. <see cref="IFieldEncryptor"/>).</summary>
     public static string TemplateContext(Guid userId) => $"face-template:{userId:N}";

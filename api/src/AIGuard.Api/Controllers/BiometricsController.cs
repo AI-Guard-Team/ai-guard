@@ -30,6 +30,18 @@ public sealed class BiometricsController(BiometricEnrollmentService enrollment) 
     // sınırının üzerinde tutuluyor: ham fotoğraf geçici dosyaya da yazılmasın.
     private const int MaxBody = ImageFile.MaxPhotoBytes + 64 * 1024;
 
+    /// <summary>
+    /// Kartta yok; "Sınavlarım" ve kayıt fotoğrafı ekranları için (UI1). Adayın yüz şablonu var mı,
+    /// ne zaman oluşturuldu, hangi rıza metniyle. Vektör dönmüyor.
+    /// </summary>
+    [HttpGet("biometric")]
+    [ProducesResponseType<BiometricStatus>(StatusCodes.Status200OK)]
+    public async Task<BiometricStatus> GetBiometricStatus(CancellationToken ct)
+    {
+        Response.Headers.CacheControl = "no-store";
+        return await enrollment.GetStatusAsync(User.GetUserId(), ct);
+    }
+
     [HttpPost("photo")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxBody)]
