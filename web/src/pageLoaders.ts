@@ -8,7 +8,7 @@ export const pageLoaders = {
   profilePhoto: () => import('./features/biometric/ReferencePhotoPage').then((m) => ({ default: m.ReferencePhotoPage })),
   examStart: () => import('./features/preflight/PreflightPage').then((m) => ({ default: m.PreflightPage })),
   myExams: () => import('./features/exams/MyExamsPage').then((m) => ({ default: m.MyExamsPage })),
-  exam: () => import('./pages/ExamPage').then((m) => ({ default: m.ExamPage })),
+  exam: () => import('./features/exam/ExamPage').then((m) => ({ default: m.ExamPage })),
   roleHome: () => import('./pages/RoleHomePage').then((m) => ({ default: m.RoleHomePage })),
 }
 

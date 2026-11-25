@@ -1,10 +1,10 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SESSION_POLL_MS } from '../api/sessions'
-import type { PendingAnswer } from '../exam/answerQueue'
-import { jsonResponse, mockFetch, type FetchHandler } from '../test/fetch'
-import { renderApp, signInAs } from '../test/renderApp'
+import { SESSION_POLL_MS } from '../../api/sessions'
+import type { PendingAnswer } from './answerQueue'
+import { jsonResponse, mockFetch, type FetchHandler } from '../../test/fetch'
+import { renderApp, signInAs } from '../../test/renderApp'
 
 const SESSION = '22222222-2222-2222-2222-222222222222'
 const QUESTION = '33333333-3333-3333-3333-333333333333'
@@ -12,8 +12,8 @@ const PATH = `/exams/${SESSION}`
 
 const queue = vi.hoisted(() => ({ items: [] as PendingAnswer[] }))
 
-vi.mock('../exam/answerQueue', async () => {
-  const actual = await vi.importActual<typeof import('../exam/answerQueue')>('../exam/answerQueue')
+vi.mock('./answerQueue', async () => {
+  const actual = await vi.importActual<typeof import('./answerQueue')>('./answerQueue')
   return {
     ...actual,
     listPending: vi.fn(async (sessionId: string) => queue.items.filter((item) => item.sessionId === sessionId)),
@@ -27,8 +27,8 @@ vi.mock('../exam/answerQueue', async () => {
 })
 
 // Kare jsdom'da canvas olmadığı için sahte; ses kaydı (MediaRecorder) jsdom'da yok, ayrı birim testinde.
-vi.mock('../exam/mediaCapture', async () => {
-  const actual = await vi.importActual<typeof import('../exam/mediaCapture')>('../exam/mediaCapture')
+vi.mock('./mediaCapture', async () => {
+  const actual = await vi.importActual<typeof import('./mediaCapture')>('./mediaCapture')
   return {
     ...actual,
     createBrowserCapture: () => ({
@@ -107,7 +107,7 @@ describe('sınav ekranı', () => {
     await renderExam(() => jsonResponse(200, session()))
 
     expect(await screen.findByRole('heading', { name: 'Genel Yetenek' })).toBeInTheDocument()
-    expect(screen.getByText('Kalan süre 12:30')).toBeInTheDocument()
+    expect(screen.getByRole('timer', { name: 'Kalan süre' })).toHaveTextContent('12:30')
     expect(await screen.findByText('Kamera Açık')).toBeInTheDocument()
     expect(screen.getByText('Bağlantı Bağlı')).toBeInTheDocument()
     expect(screen.getByText(/2 \+ 2 kaçtır/)).toBeInTheDocument()
@@ -151,7 +151,7 @@ describe('sınav ekranı', () => {
     expect(screen.getByText(/Başkent neresidir/)).toBeInTheDocument()
     expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '1' }))
+    await userEvent.click(screen.getByRole('button', { name: /^1\. soru/ }))
     expect(screen.getByText(/2 \+ 2 kaçtır/)).toBeInTheDocument()
   })
 
@@ -171,7 +171,7 @@ describe('sınav ekranı', () => {
     expect(body.clientTime).toEqual(expect.any(String))
     expect(screen.getByRole('radio', { name: '4' })).toBeChecked()
     expect(screen.queryByText(/sıra/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Gönderilmeyi bekleyen/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/gönderilmeyi bekliyor/)).not.toBeInTheDocument()
   })
 
   it('bağlantı varken bekleyen cevap yazısını göstermez', async () => {
@@ -190,10 +190,10 @@ describe('sınav ekranı', () => {
     await userEvent.click(await screen.findByRole('radio', { name: '4' }))
     await waitFor(() => expect(queue.items).toHaveLength(1))
     expect(screen.getByRole('radio', { name: '4' })).toBeChecked()
-    expect(screen.queryByText(/Gönderilmeyi bekleyen/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/gönderilmeyi bekliyor/)).not.toBeInTheDocument()
     release()
     await waitFor(() => expect(queue.items).toHaveLength(0))
-    expect(screen.queryByText(/Gönderilmeyi bekleyen/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/gönderilmeyi bekliyor/)).not.toBeInTheDocument()
   })
 
   it('gönderilemeyen cevabı bekliyor diye gösterir', async () => {
@@ -204,8 +204,9 @@ describe('sınav ekranı', () => {
 
     await userEvent.click(await screen.findByRole('radio', { name: '4' }))
 
-    expect(await screen.findByText('Cevap bu cihaza kaydedildi. Bağlantı gelince gönderilecek.')).toBeInTheDocument()
-    expect(screen.queryByText(/Gönderilmeyi bekleyen/)).not.toBeInTheDocument()
+    expect(await screen.findByText(/Cevap bu cihaza kaydedildi\. Bağlantı gelince gönderilecek\./)).toBeInTheDocument()
+    // Stitch 15: çevrimdışıyken bekleyen cevap sayısı görünür.
+    expect(await screen.findByText(/1 cevap gönderilmeyi bekliyor/)).toBeInTheDocument()
   })
 
   it('sunucu kapalıysa cevabı kuyrukta tutar', async () => {
@@ -213,8 +214,8 @@ describe('sınav ekranı', () => {
 
     await userEvent.click(await screen.findByRole('radio', { name: '4' }))
 
-    expect(await screen.findByText('Cevap bu cihaza kaydedildi. Bağlantı gelince gönderilecek.')).toBeInTheDocument()
-    expect(screen.queryByText(/Gönderilmeyi bekleyen/)).not.toBeInTheDocument()
+    expect(await screen.findByText(/Cevap bu cihaza kaydedildi\. Bağlantı gelince gönderilecek\./)).toBeInTheDocument()
+    expect(await screen.findByText(/1 cevap gönderilmeyi bekliyor/)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -239,6 +240,47 @@ describe('sınav ekranı', () => {
         .map(([, init]) => JSON.parse(init?.body as string).seq as number)
       expect(sequences).toEqual([5, 6])
     })
+  })
+
+  it('seçimi temizlemek boş cevabı (null) sıradaki seq ile gönderir', async () => {
+    const fetchMock = await renderExam((url) =>
+      url.endsWith('/answers') ? jsonResponse(201) : jsonResponse(200, session({ answers: [{ questionId: QUESTION, selectedOption: 1, seq: 4 }] })),
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Seçimi temizle' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/answers'))).toBe(true))
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/answers'))
+    expect(JSON.parse(call?.[1]?.body as string)).toMatchObject({ questionId: QUESTION, selectedOption: null, seq: 5 })
+    await waitFor(() => expect(screen.getByRole('radio', { name: '4' })).not.toBeChecked())
+  })
+
+  it('soruyu daha sonra dönmek için işaretler; teslim penceresi boş ve işaretli sayıları söyler', async () => {
+    await renderExam(() => jsonResponse(200, session()))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Daha sonra dön' }))
+
+    expect(screen.getByRole('button', { name: 'Daha sonra dön' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /^1\. soru, boş, daha sonra dönülecek/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Sınavı teslim et' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Cevaplanan0 / 1')
+    expect(dialog).toHaveTextContent('İşaretli1')
+    expect(dialog).toHaveTextContent('1 soru boş')
+  })
+
+  it('sınav ekranı yan menüsüz açılır', async () => {
+    await renderExam(() => jsonResponse(200, session()))
+    await screen.findByText(/2 \+ 2 kaçtır/)
+
+    expect(screen.queryByRole('navigation', { name: 'Ana menü' })).not.toBeInTheDocument()
+  })
+
+  it('süre dolunca soruları kapatır ve otomatik teslimi söyler', async () => {
+    await renderExam(() => jsonResponse(200, session({ endsAt: '2026-11-21T10:00:00.000Z' })))
+
+    expect(await screen.findByRole('heading', { name: 'Sınav süresi doldu' })).toBeInTheDocument()
+    expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
   })
 
   it('oturumu 10 saniyede bir yeniler', async () => {
@@ -379,7 +421,7 @@ describe('sınav ekranı', () => {
       expect(bodyOf(calls(fetchMock, '/permission')[0])).toEqual({ granted: false })
       expect(screen.queryByText(/2 \+ 2 kaçtır/)).not.toBeInTheDocument()
       expect(screen.getByText(/Süre işlemeye devam ediyor/)).toBeInTheDocument()
-      expect(screen.getByText(/Kalan süre 12:/)).toBeInTheDocument()
+      expect(screen.getByRole('timer', { name: 'Kalan süre' })).toHaveTextContent(/12:/)
       // İzin kalkınca kamera ışığı söner.
       expect(allStopped()).toBe(true)
 

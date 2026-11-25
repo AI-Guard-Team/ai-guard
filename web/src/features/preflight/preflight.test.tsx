@@ -258,7 +258,7 @@ describe('sınav öncesi sihirbazı', () => {
     await renderApp(PATH)
 
     // Sınav ekranı açılır: sihirbazın adım listesi hiç çizilmez.
-    await screen.findByRole('heading', { level: 1 })
+    await screen.findByRole('timer', { name: 'Kalan süre' })
     expect(screen.queryByRole('list', { name: 'Sınav öncesi adımlar' })).not.toBeInTheDocument()
   })
 })

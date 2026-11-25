@@ -1,4 +1,4 @@
-import type { BrowserEventType } from '../api/sessions'
+import type { BrowserEventType } from '../../api/sessions'
 
 /** Aynı türden olay en fazla bu sıklıkla gönderilir (kart: saniyede bir). Sunucu da ayrıca sınırlıyor (K-16). */
 export const EVENT_THROTTLE_MS = 1_000

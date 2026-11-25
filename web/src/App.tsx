@@ -43,9 +43,13 @@ export default function App() {
             <Route element={<RequireAuth roles={['Candidate']} />}>
               <Route path="/profile/photo" element={<ReferencePhotoPage />} />
               <Route path="/exams/:sessionId/start" element={<PreflightPage />} />
-              <Route path="/exams/:sessionId" element={<ExamPage />} />
               <Route path="/exams" element={<MyExamsPage />} />
             </Route>
+          </Route>
+
+          {/* Sınav ekranı kabuğun dışında: yan menü yok, aday yalnızca sınava odaklanır. */}
+          <Route element={<RequireAuth roles={['Candidate']} />}>
+            <Route path="/exams/:sessionId" element={<ExamPage />} />
           </Route>
         </Route>
 

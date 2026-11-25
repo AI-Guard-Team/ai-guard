@@ -1,9 +1,8 @@
 /*
- * Stil girişi. Sıra önemli: önce değişkenler, sonra temel kurallar, en son eski sayfa sınıfları.
+ * Stil girişi. Sıra önemli: önce değişkenler, sonra temel kurallar.
  * Her bileşenin kendi stili bileşenin yanındaki .css dosyasında (ör. components/Button.css).
  */
 @import '@fontsource-variable/inter/wght.css';
 @import '@fontsource-variable/manrope/wght.css';
 @import './theme.css';
 @import './base.css';
-@import './legacy.css';

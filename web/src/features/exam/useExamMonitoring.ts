@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError } from '../api/client'
-import { reportPermission, sendAudio, sendBrowserEvent, sendFrame } from '../api/sessions'
+import { ApiError } from '../../api/client'
+import { reportPermission, sendAudio, sendBrowserEvent, sendFrame } from '../../api/sessions'
 import { watchBrowserEvents } from './browserEvents'
 import { createBrowserCapture, isStreamLive, openExamStream, stopStream } from './mediaCapture'
 import { startMediaMonitor } from './mediaMonitor'

@@ -46,6 +46,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
 | Önyüz tasarımı | Renk, yazı, boşluk tek dosyada (`web/src/styles/theme.css`); bileşen stili bileşenin yanında; yazı tipleri pakette; nginx'te CSP ve güvenlik başlıkları; sayfalar tembel yükleniyor; yetkisiz rol 403 görüyor (K-34) |
 | Aday akışı ekranları | Sihirbaz sırası rıza → ajan → hazırlık → kimlik; süre kimlik doğrulanınca başladığı için kurallar ondan önce. Rıza metni ve sürümü sunucudan (K-36) |
+| Sınav ekranı | Yan menüsüz; mantık `useExamSession`'da, ekran bileşenleri yalnızca çizer; çevrimdışıyken cevaplama sürer, bekleyen sayısı görünür; "daha sonra dön" yalnızca istemcide (K-37) |
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-35) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
@@ -1028,7 +1029,7 @@ Kartlarda ve GAB'da yok. Stitch'teki "Şifremi unuttum ve sıfırlama akışı" 
 
 ## K-34 · Önyüz tasarım sistemi (UI1)
 
-Stitch tasarımı ve `DESIGN.md` (Sıcak Minimalizm: fildişi zemin, bordo ana eylem, lacivert menü) web'e taşındı. Ekranlar üç PR'da geliyor: 1–6 (tema, kabuk, giriş, profil, hata sayfaları), 7–13 (aday sınav öncesi akışı), 14–15 (sınav ve kesinti).
+Stitch tasarımı ve `DESIGN.md` (Sıcak Minimalizm: fildişi zemin, bordo ana eylem, lacivert menü) web'e taşındı. Ekranlar üç PR'da geliyor: 1–6 (tema, kabuk, giriş, profil, hata sayfaları), 7–13 (aday sınav öncesi akışı, K-36), 14–15 (sınav ve kesinti, K-37).
 
 | Kural | Gerekçe |
 |---|---|
@@ -1082,6 +1083,22 @@ Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekr
 | Ajan durumu sekme arka plandayken yoklanmıyor | Gereksiz istek ve pil tüketimi olmasın |
 
 Ortak parçalar: `hooks/useResource` (yükleme, iptal, yeniden deneme; geç gelen yanıt yenisinin üstüne yazmaz), `components/{Skeleton,EmptyState,Checkbox,Stepper}`, `features/camera/CameraView`, `features/consent/ConsentTextPanel`.
+
+---
+
+## K-37 · Sınav ekranı ve kesinti durumları (UI1, Stitch 14–15)
+
+| Karar | Gerekçe |
+|---|---|
+| Sınav ekranı uygulama kabuğunun dışında (`/exams/:sessionId`), yan menü yok | Aday yalnızca sınava odaklansın; yanlışlıkla başka sayfaya gidilmesin |
+| Oturum mantığı `features/exam/useExamSession.ts`'te (yenileme, IndexedDB kuyruğu, sıralı gönderim, kesintiden dönüş, teslim); ekran bileşenleri (`ExamTimer`, `QuestionCard`, `QuestionNavigator`, `ExamInterruptions`, `SubmitDialog`) yalnızca çizer | S3/S4'teki davranış aynen korundu; görünüm değişince mantık etkilenmesin |
+| "Seçimi temizle" `selectedOption: null` gönderiyor | Sunucu boş cevabı destekliyor (K-24); aday yanlış seçimi geri alabilsin |
+| "Daha sonra dön" işareti yalnızca istemcide, sunucuya gitmiyor | Sınav sonucuna etkisi yok; sunucu modeline alan eklemeye değmez. Sayfa yenilenince işaretler kaybolur |
+| Çevrimdışıyken aday cevaplamaya devam ediyor; üstte bant ve bekleyen cevap sayısı görünüyor | Stitch 15. Cevaplar IndexedDB'de bekliyor, bağlantı gelince sırayla gidiyor (S3) |
+| Teslim penceresi cevaplanan, boş ve işaretli soru sayısını söylüyor; bekleyen cevap varsa uyarıyor | Teslim geri alınamıyor; kuyruk gönderilemezse teslim tamamlanmıyor |
+| Süre son 5 dakikada kehribar, son dakikada kırmızı; süre dolunca sorular kapanıyor, "otomatik teslim ediliyor" yazıyor | Sunucu teslimi kendisi yapıyor (K-24 `SessionTimekeeper`) |
+| Teslimden sonra yalnızca "teslim edildi" ve cevaplanan sayısı; sonuç ve karar gösterilmiyor | Kararı değerlendirici veriyor |
+| Üst çubuğun yüksekliği sabit; teslim düğmesi durum belli olana kadar görünmez ama yer kaplıyor | Ölçülen CLS: masaüstü 0,005, telefon 0,0004 |
 
 ---
 
