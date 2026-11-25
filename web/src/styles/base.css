@@ -22,6 +22,8 @@ body {
   line-height: var(--line-height);
   color: var(--color-text);
   background-color: var(--color-bg);
+  background-image: var(--texture-paper);
+  background-size: var(--texture-paper-size);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-optical-sizing: auto;
@@ -33,9 +35,10 @@ h3,
 h4 {
   margin: 0;
   font-family: var(--font-heading);
-  font-weight: 700;
+  font-weight: 560;
+  font-optical-sizing: auto;
   line-height: var(--line-height-tight);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
   color: var(--color-text);
   text-wrap: balance;
 }
@@ -47,12 +50,10 @@ h1 {
 
 h2 {
   font-size: var(--font-size-xl);
-  font-weight: 600;
 }
 
 h3 {
   font-size: var(--font-size-lg);
-  font-weight: 600;
 }
 
 p {
@@ -91,6 +92,34 @@ time,
 .numeric,
 table {
   font-variant-numeric: tabular-nums;
+}
+
+/* Veri, saat, skor, kod: IBM Plex Mono. */
+.mono,
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95em;
+}
+
+/* Belge üst etiketi (ör. "OTURUM 2026-11-11 19:02"): mono, büyük harf, geniş aralık. */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Bilet/makbuz yırtma çizgisi. */
+.perforation {
+  height: 0;
+  margin: var(--space-6) 0;
+  border: 0;
+  border-top: 1.5px dashed var(--color-rule-dashed);
 }
 
 ::selection {

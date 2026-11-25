@@ -1,0 +1,124 @@
+.seal {
+  --seal-color: var(--color-seal);
+  position: relative;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--seal-color);
+  transform: rotate(var(--seal-tilt, -6deg));
+}
+
+.seal svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.seal-success {
+  --seal-color: var(--color-success);
+}
+
+.seal-warning {
+  --seal-color: var(--color-warning-text);
+}
+
+.seal-danger {
+  --seal-color: var(--color-danger);
+}
+
+.seal-outer {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 3;
+}
+
+.seal-inner {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.25;
+}
+
+.seal-ring {
+  fill: currentcolor;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.seal-center {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.15em;
+  max-width: 62%;
+  text-align: center;
+}
+
+.seal-icon {
+  display: grid;
+  place-items: center;
+}
+
+/* Yazı boyutu mühür boyutuna bağlı (Seal.tsx font-size = size / 8). */
+.seal-label {
+  font-family: var(--font-mono);
+  font-size: 1em;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* Basılı mühür: hafif mürekkep zemini. */
+.seal.is-stamped::before {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--seal-color) 7%, transparent);
+  content: '';
+}
+
+/* Boş yuva ve beklemede: kesikli çerçeve, eğim yok. */
+.seal.is-empty,
+.seal.is-pending {
+  transform: none;
+}
+
+.seal.is-empty {
+  color: var(--color-text-subtle);
+}
+
+.seal.is-empty .seal-outer,
+.seal.is-pending .seal-outer {
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+
+.seal.is-pending {
+  color: var(--color-warning-text);
+}
+
+/* "Basılma": büyükten iner, oturur. Hareket azaltma tercihinde base.css süreyi sıfırlıyor. */
+.seal.is-animated {
+  animation: seal-press var(--duration-stamp) var(--ease-stamp) both;
+}
+
+@keyframes seal-press {
+  0% {
+    opacity: 0;
+    transform: scale(1.45) rotate(calc(var(--seal-tilt, -6deg) - 14deg));
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(var(--seal-tilt, -6deg));
+  }
+}

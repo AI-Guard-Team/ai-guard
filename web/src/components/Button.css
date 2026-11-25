@@ -6,7 +6,7 @@
   min-height: 2.75rem;
   padding: 0 var(--space-5);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   font-weight: 600;
   line-height: 1;
@@ -56,7 +56,6 @@
 .button-primary {
   background: var(--color-primary);
   color: var(--color-on-primary);
-  box-shadow: 0 1px 2px rgb(91 0 21 / 20%);
 }
 
 .button-primary:hover:not(:disabled) {

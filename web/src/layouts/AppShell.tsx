@@ -1,4 +1,19 @@
-import { ClipboardCheck, ClipboardList, LayoutDashboard, LogOut, Menu, UserRound, X, type LucideIcon } from 'lucide-react'
+import {
+  BookOpenCheck,
+  ClipboardCheck,
+  ClipboardList,
+  FileBarChart,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  ScrollText,
+  Settings2,
+  UserRound,
+  UserSquare2,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { logout } from '../api/auth'
@@ -10,8 +25,14 @@ import './AppShell.css'
 
 const ICONS: Record<string, LucideIcon> = {
   '/admin': LayoutDashboard,
+  '/admin/exams': BookOpenCheck,
+  '/admin/users': Users,
+  '/admin/reports': FileBarChart,
+  '/admin/settings': Settings2,
+  '/admin/audit': ScrollText,
   '/review': ClipboardCheck,
   '/exams': ClipboardList,
+  '/profile/photo': UserSquare2,
   '/profile': UserRound,
 }
 
@@ -53,7 +74,7 @@ export function AppShell() {
   if (!user) return null
 
   const displayName = user.name ?? user.email ?? 'Kullanıcı'
-  const items = [...ROLE_MENU[user.role], { to: '/profile', label: 'Profil' }]
+  const items = [...ROLE_MENU[user.role], { to: '/profile', label: 'Profil', end: true }]
 
   const handleSignOut = () => {
     // Önce yönlendirilir; aksi hâlde RequireAuth mevcut sayfayı "girişten sonra dönülecek sayfa" olarak saklar.
@@ -86,7 +107,7 @@ export function AppShell() {
           {items.map((item) => {
             const Icon = ICONS[item.to] ?? LayoutDashboard
             return (
-              <NavLink key={item.to} to={item.to} className="app-nav-link">
+              <NavLink key={item.to} to={item.to} end={item.end} className="app-nav-link">
                 <Icon size={20} aria-hidden="true" />
                 <span>{item.label}</span>
               </NavLink>

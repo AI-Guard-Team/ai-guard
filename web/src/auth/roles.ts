@@ -22,6 +22,8 @@ export const ROLE_LABEL: Record<Role, string> = {
 export interface MenuItem {
   to: string
   label: string
+  /** true: yalnızca tam adreste etkin görünür (alt sayfalarda değil). */
+  end?: boolean
 }
 
 export const ROLE_MENU: Record<Role, MenuItem[]> = {

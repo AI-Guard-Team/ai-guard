@@ -1103,6 +1103,24 @@ Ortak parçalar: `hooks/useResource` (yükleme, iptal, yeniden deneme; geç gele
 
 ---
 
+## K-38 · "Resmî sınav evrakı" tasarım yönü (UI1)
+
+K-34'teki sistemin üstüne Yağmur'un yeni tasarım yönü: diploma, optik form ve mühür estetiği, modern ve sade. Renk paleti aynı; değişen yazı, şekil ve imza bileşenleri.
+
+| Kural | Gerekçe |
+|---|---|
+| Başlık Fraunces, gövde Inter, veri/saat/skor/kod IBM Plex Mono (`.mono`); hepsi `@fontsource` paketinden. Manrope kaldırıldı | Belge hissi; CSP `font-src 'self'` (K-34) |
+| Kartlar beyaz, gölge yerine 1px `#E2DACA` çizgi, köşeler 8px (düğmeler 4px); gölge yalnızca açılır katmanlarda | Resmî belge görünümü |
+| Zeminde %3 nokta dokusu (`--texture-paper`), görsel dosyası yok | Kâğıt hissi; ek istek yok |
+| Mono üst etiket `.kicker` (11px, büyük harf) ve `PageHeader`'ın `kicker` alanı; tablo başlıkları aynı stilde | Yeni yönde istendi (K-34'teki "başlık üstüne etiket konmaz" kuralının yerine) |
+| İmza bileşenleri: `Seal` (mühür; basılı, boş yuva, beklemede), `DocumentCard` (köşede belge numarası), `OpticalBubble` (optik form baloncuğu), `RiskScore`, `StatusBadge stamp` (damga çipi), `.perforation` (kesikli yırtma çizgisi) | Ekranlar aynı parçalardan kurulsun |
+| Belge numarası uydurma sayaç değil: `docNumber(id)` = `AG-<yıl>-<kimliğin ilk 4 karakteri>` | Ekranda gerçek olmayan bilgi yok (K-34) |
+| Risk düzeyi sunucunun `Risky` işaretinden ("Eşik üstü/altı"); önyüz eşik tahmin etmiyor | Eşik `riskconfig.json`'da, tek kaynak sunucu |
+| Mühür "basılma" hareketi yalnızca yeni basıldığında (`animate`); hareket azaltma tercihinde kapalı (`base.css`) | Sık tekrarlanan işlemde hareket yok |
+| Yağmur'un yönergesinde olup sunucuda verisi olmayan öğeler eklenmedi: inceleme listesinde satır başına sinyal şeridi ve "% yanlış alarm" (liste uçları bunları dönmüyor), J/K kısayolları (kartta yok); kanıt görüntülemesi tek tek denetime yazılmadığı için ekranda "oturumu açmanız denetim kaydına yazıldı" (`review.view`) deniyor | Ekranda gerçek olmayan iddia yok; kapsam dışı özellik yok |
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.

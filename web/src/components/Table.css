@@ -20,10 +20,13 @@
 }
 
 .table-wrap th {
-  background: var(--color-surface-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
+  white-space: nowrap;
 }
 
 .table-wrap tbody tr:last-child td {
@@ -31,7 +34,7 @@
 }
 
 .table-wrap tbody tr:hover {
-  background: rgb(128 174 232 / 10%);
+  background: var(--color-row-hover);
 }
 
 .table-empty {

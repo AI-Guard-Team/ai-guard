@@ -1,0 +1,46 @@
+.bubble {
+  position: relative;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1.5px solid var(--color-text);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.bubble-md {
+  width: 2rem;
+  height: 2rem;
+  font-size: var(--font-size-sm);
+}
+
+.bubble-sm {
+  width: 1.625rem;
+  height: 1.625rem;
+  font-size: var(--font-size-2xs);
+}
+
+.bubble.is-filled {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.bubble.is-flagged::after {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 0;
+  height: 0;
+  border-top: 7px solid var(--color-seal);
+  border-left: 7px solid transparent;
+  content: '';
+}

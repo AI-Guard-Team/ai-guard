@@ -1,0 +1,44 @@
+.risk-score {
+  display: inline-grid;
+  justify-items: end;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.risk-score-value {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.risk-score-label {
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.risk-score-sm .risk-score-value {
+  font-size: var(--font-size-lg);
+}
+
+.risk-score-md .risk-score-value {
+  font-size: var(--font-size-2xl);
+}
+
+.risk-score-xl .risk-score-value {
+  font-size: 4.5rem;
+  letter-spacing: -0.04em;
+}
+
+.risk-high {
+  color: var(--color-danger-text);
+}
+
+.risk-low {
+  color: var(--color-text);
+}
+
+.risk-none {
+  color: var(--color-success-text);
+}
