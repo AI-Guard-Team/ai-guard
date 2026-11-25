@@ -81,17 +81,64 @@ public class MachineDetectorTests
     }
 
     [Fact]
-    public void Hypervisor_without_a_known_product_is_only_hypervisor_info()
+    public void Apple_silicon_guest_without_a_product_name_is_a_vm()
     {
-        // UTM ve Apple Virtualization.framework de kern.hv_vmm_present=1 ve VirtualMac modeli veriyor.
+        // Parallels, UTM ve VMware Apple Silicon'da macOS konuğunu Apple'ın Virtualization çerçevesiyle çalıştırıyor;
+        // konuk "Apple Virtual Machine" / VirtualMac2,1 diyor, ürün adı yok.
         var probe = new FakeProbe
         {
             Hardware = new(
                 HypervisorPresent: true,
-                ModelName: "Apple Virtual Machine",
+                ModelName: "Apple Virtual Machine 1",
                 ModelIdentifier: "VirtualMac2,1",
                 IoManufacturer: "Apple Inc.",
                 IoModel: "VirtualMac2,1"),
+        };
+
+        var indicator = Assert.Single(MachineDetector.Detect(probe));
+
+        Assert.Equal(("VM_DETECTED", "Apple Sanal Makine"), (indicator.Type, indicator.Name));
+        Assert.Equal("sysctl:kern.hv_vmm_present, system_profiler:model, ioreg:model", indicator.Detail);
+    }
+
+    [Fact]
+    public void Apple_silicon_guest_is_a_vm_even_when_sysctl_is_unreadable()
+    {
+        // Gerçek Parallels macOS konuğunda sysctl okunamadı; model alanları yetiyor.
+        var probe = new FakeProbe
+        {
+            Hardware = new(ModelName: "Apple Virtual Machine 1", ModelIdentifier: "VirtualMac2,1"),
+        };
+
+        var indicator = Assert.Single(MachineDetector.Detect(probe));
+
+        Assert.Equal(("VM_DETECTED", "Apple Sanal Makine", "system_profiler:model"), (indicator.Type, indicator.Name, indicator.Detail));
+    }
+
+    [Fact]
+    public void Named_product_wins_over_the_generic_apple_vm_name()
+    {
+        var probe = new FakeProbe
+        {
+            Hardware = new(
+                HypervisorPresent: true,
+                ModelName: "Parallels ARM Virtual Machine",
+                ModelIdentifier: "VirtualMac2,1",
+                IoModel: "VirtualMac2,1"),
+        };
+
+        var indicator = Assert.Single(MachineDetector.Detect(probe));
+
+        Assert.Equal("Parallels", indicator.Name);
+    }
+
+    [Fact]
+    public void Hypervisor_flag_alone_without_any_vm_model_is_only_hypervisor_info()
+    {
+        // Fiziksel Mac modeli, ama çekirdek hipervizör bildiriyor: sanal makine değil, yalnızca bilgi.
+        var probe = new FakeProbe
+        {
+            Hardware = new(HypervisorPresent: true, ModelName: "MacBook Air", ModelIdentifier: "Mac14,2", IoModel: "Mac14,2"),
         };
 
         var indicator = Assert.Single(MachineDetector.Detect(probe));
