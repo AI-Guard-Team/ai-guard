@@ -42,6 +42,7 @@ public class AccessMatrixTests
         ["GET api/consent-texts/{type}/{version}"] = SignedIn,
 
         // Atandığı sınavı çözme, kendi rızasını verme ve geri alma: Aday.
+        ["GET api/me/biometric"] = AccessPolicies.TakeExam,
         ["POST api/me/photo"] = AccessPolicies.TakeExam,
         ["DELETE api/me/biometric-consent"] = AccessPolicies.TakeExam,
         ["POST api/exams/{examId:guid}/sessions"] = AccessPolicies.TakeExam,

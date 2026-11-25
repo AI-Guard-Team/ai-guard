@@ -93,6 +93,41 @@ public class BiometricsApiTests(PostgresFixture fx) : IClassFixture<PostgresFixt
     }
 
     [SkippableFact]
+    public async Task Biometric_status_follows_upload_and_withdrawal()
+    {
+        // UI1: "Sınavlarım" uyarısı ve kayıt fotoğrafı ekranı bu uçtan okuyor; vektör dönmemeli.
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var (_, candidate) = await PendingAsync();
+        var factory = Factory();
+        var client = As(factory, candidate);
+        User reviewer;
+        await using (var db = fx.CreateContext())
+        {
+            reviewer = TestData.UserWithRole(UserRole.Reviewer);
+            db.Users.Add(reviewer);
+            await db.SaveChangesAsync();
+        }
+
+        var before = await client.GetFromJsonAsync<Application.Biometrics.BiometricStatus>("/api/me/biometric");
+        await client.PostAsync("/api/me/photo", PhotoForm(Jpeg()));
+        var afterResponse = await client.GetAsync("/api/me/biometric");
+        var afterJson = await afterResponse.Content.ReadAsStringAsync();
+        var after = await afterResponse.Content.ReadFromJsonAsync<Application.Biometrics.BiometricStatus>();
+        await client.DeleteAsync("/api/me/biometric-consent");
+        var withdrawn = await client.GetFromJsonAsync<Application.Biometrics.BiometricStatus>("/api/me/biometric");
+        var asReviewer = await As(factory, reviewer).GetAsync("/api/me/biometric");
+
+        Assert.False(before!.Enrolled);
+        Assert.True(after!.Enrolled);
+        Assert.NotNull(after.EnrolledAt);
+        Assert.Equal(ConsentText.InitialBiometricVersion, after.ConsentTextVersion);
+        Assert.Equal("no-store", afterResponse.Headers.CacheControl?.ToString());
+        Assert.DoesNotContain("vector", afterJson, StringComparison.OrdinalIgnoreCase);
+        Assert.False(withdrawn!.Enrolled);
+        Assert.Equal(HttpStatusCode.Forbidden, asReviewer.StatusCode);
+    }
+
+    [SkippableFact]
     public async Task Requests_without_consent_or_with_bad_input_are_rejected()
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");

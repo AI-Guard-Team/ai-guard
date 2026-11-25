@@ -45,6 +45,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
 | Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
 | Önyüz tasarımı | Renk, yazı, boşluk tek dosyada (`web/src/styles/theme.css`); bileşen stili bileşenin yanında; yazı tipleri pakette; nginx'te CSP ve güvenlik başlıkları; sayfalar tembel yükleniyor; yetkisiz rol 403 görüyor (K-34) |
+| Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-35) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
 ---
@@ -1046,6 +1047,19 @@ Stitch tasarımı ve `DESIGN.md` (Sıcak Minimalizm: fildişi zemin, bordo ana e
 **nginx güvenlik başlıkları** (`web/docker/nginx.conf`): `Content-Security-Policy` (yalnızca kendi kaynakları; `connect-src`'de ajanın yerel ucu `http://127.0.0.1:47321`, K-19), `Referrer-Policy: no-referrer` (davet ve sıfırlama bağlantısındaki belirteç başka siteye gitmesin), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` (kamera ve mikrofon yalnızca bu site), `Cross-Origin-Opener-Policy`. `/assets/` bir yıl önbellekte, `index.html` önbelleğe alınmıyor. Derlenmiş uygulama bu CSP ile denendi; ihlal yok.
 
 **Testlerde:** `renderApp` artık `async`; sayfa parçalarını önceden yükleyip `act` içinde çiziyor. Testte `await renderApp(...)` yazın. Windows'ta testleri `C:\` (büyük harf) yolundan çalıştırın; `c:\` ile vitest modülleri iki kez yükleyip "failed to find the current suite" hatası veriyor.
+## K-35 · Aday listesi ve kayıt fotoğrafı durumu (UI1)
+
+Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekran 8) için. Kartlarda yok; ekip kararıyla ayrı API PR'ında.
+
+| Uç | Yetki | Yanıt |
+|---|---|---|
+| `GET /api/exams`, `GET /api/exams/{id}` | değişmedi | Mevcut alanlara ek: `mySession: { id, state, startedAt, endedAt } \| null` |
+| `GET /api/me/biometric` | `TakeExam` (aday) | `{ enrolled, enrolledAt, consentTextVersion }`; `Cache-Control: no-store` |
+
+- `mySession` yalnızca adaya dolu, değerlendirici ve yöneticide `null`; başka adayın oturumu dönmüyor.
+- En son oluşturulan oturum dönüyor, iptal edilmiş olsa da. Rızayı reddeden aday yeni oturum açabildiğini görsün (FR-10).
+- Liste tek ek sorguyla dolduruluyor (N+1 yok).
+- Biyometrik durum ucu vektörü ve fotoğrafı döndürmüyor. Rıza geri alınınca şablon silindiği için `enrolled: false` oluyor (K-27).
 
 ---
 
