@@ -35,6 +35,11 @@
   color: #fff;
 }
 
+:root[data-theme='dark'] .chip-tab[aria-pressed='true'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
 .chip-tab:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);

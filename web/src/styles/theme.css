@@ -146,3 +146,55 @@
   --z-modal: 50;
   --z-toast: 60;
 }
+
+/*
+ * Koyu tema (K-41): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
+ * Lacivert yan menü ve tanıtım panelleri iki temada da aynı kalır.
+ */
+:root[data-theme='dark'] {
+  --palette-mist: #0b1226;
+  --palette-paper: #121b33;
+  --palette-line: #253255;
+  --palette-sky-soft: #16224a;
+
+  --color-bg: #0b1226;
+  --color-surface: #121b33;
+  --color-surface-accent: #16224a;
+  --color-surface-muted: #19244a;
+
+  --color-text: #e8ecf8;
+  --color-text-muted: #aab5d0;
+  --color-text-subtle: #8c98b8;
+
+  --color-border: #253255;
+  --color-border-strong: #364470;
+  --color-divider: #1f2a4a;
+  --color-rule-dashed: #364470;
+
+  --color-primary: #5570f6;
+  --color-primary-hover: #6a83ff;
+  --color-primary-soft: rgb(110 134 255 / 16%);
+  --color-secondary-hover: rgb(232 236 248 / 6%);
+  --color-row-hover: #162043;
+  --color-focus: #8aa0ff;
+  --color-selected: rgb(110 134 255 / 18%);
+  --color-link: #9db0ff;
+  --color-seal: #8aa0ff;
+
+  --color-success-text: #5fd6ad;
+  --color-success-bg: rgb(15 157 115 / 20%);
+  --color-warning-text: #f2c35e;
+  --color-warning-bg: rgb(224 154 26 / 20%);
+  --color-danger-text: #ff8f93;
+  --color-danger-bg: rgb(229 72 77 / 18%);
+  --color-info-text: #a8b8ff;
+  --color-info-bg: rgb(110 134 255 / 18%);
+  --color-neutral-bg: rgb(140 152 184 / 16%);
+
+  --gradient-navy: radial-gradient(120% 90% at 100% 0%, #22337d 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #33256e 0%, transparent 60%), #0e1838;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px -1px rgb(0 0 0 / 25%);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 25%), 0 10px 28px -6px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 6px 12px rgb(0 0 0 / 30%), 0 28px 56px -12px rgb(0 0 0 / 60%);
+  --focus-ring: 0 0 0 3px rgb(138 160 255 / 40%);
+}

@@ -23,6 +23,7 @@ import { ROLE_LABEL, ROLE_MENU, type Role } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
 import { BrandMark } from '../components/BrandMark'
 import { RouteFallback } from '../components/RouteFallback'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { OnboardingDialog } from './OnboardingDialog'
 import './AppShell.css'
 
@@ -144,6 +145,7 @@ export function AppShell() {
         </nav>
 
         <div className="app-sidebar-foot">
+          <ThemeToggle />
           <button type="button" className="app-help" onClick={() => setOnboardingOpen(true)}>
             <CircleHelp size={18} aria-hidden="true" />
             Tanıtımı yeniden göster

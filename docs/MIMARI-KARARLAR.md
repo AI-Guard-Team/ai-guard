@@ -1156,6 +1156,7 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 | Yağmur (#30) | `App.test.tsx` | İki beklenti güncellendi: yöneticinin kökten düştüğü başlık "Yönetim" yerine "Sınavlar"; çıkış testinde `/api/auth/logout` ilk istek değil (ana sayfa önce sınavları istiyor), istekler arasında aranıyor | Davranış aynı, yalnızca ana sayfa gerçek |
 | Yağmur (#32) | `features/preflight/PreflightPage.tsx`, `preflight.css` | Yol çubuğu ve "Neden bu adımlar?" bilgi kutusu; sağda "Sınava giriş kartı" (Prompt C'nin modern hâli): sınav adı, aday, süre ve adımlar. Adım göstergesi (`Stepper`) kartın içine dikey taşındı; adlar ve sıra aynı. Adım bileşenleri ve akış mantığı değişmedi | Hayır; sihirbaz testlerinin hepsi geçiyor |
 | Yağmur (#33) | `features/exam/QuestionCard.tsx`, `ExamPage.css` | Kart içindeki "Soru 01 / 03" üst çubuktakini tekrarladığı için "3 sorudan 1." oldu; kenardaki soru numarası kalın | Hayır |
+| Yağmur (#30) | `styles/base.css`, `layouts/AppShell.*`, `layouts/AuthLayout.*`, `main.tsx` | Koyu tema (K-41): `color-scheme`, mobil üst çubuk zemini tokenla, tema düğmesi, açılışta tema uygulanması | Hayır |
 | Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-38, modern yön) | Hayır |
 
 ---
@@ -1176,6 +1177,15 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 - Yeni sınav yalnızca "Genel bilgiler" adımıyla açılıyor; kaydedilince sınavın adresine ve "Sorular" adımına geçiliyor. Adımların yanında ilerleme (soru sayısı, aday/değerlendirici sayısı).
 - Kullanıcı kendi rolünü değiştiremez ve kendini pasife alamaz (ekranda "Siz"). Pasife alma yenileme belirteçlerini iptal ediyor; ekranda "oturumu en geç 15 dakika içinde kapanır" deniyor (erişim belirteci ömrü, K-20).
 - Ortak desenler (filtre çipleri, arama, veri tablosu, seçim kutusu, form ızgarası) `web/src/styles/patterns.css`'te.
+
+---
+
+## K-41 · Koyu tema (UI1)
+
+- Aynı token adları, koyu değerler: `theme.css`'te `:root[data-theme='dark']`. Bileşenler renk kodu yazmadığı için ek iş yok; lacivert yan menü ve tanıtım panelleri iki temada aynı.
+- Tercih `lib/theme.ts`'te: açık, koyu ya da sistem (varsayılan). Tarayıcıda `aiguard.theme` anahtarıyla saklanıyor; "sistem"de işletim sistemi teması değişince sayfa da değişiyor.
+- Tema `main.tsx`'te ilk çizimden önce uygulanıyor (CSP `script-src 'self'` satır içi betiğe izin vermediği için `index.html`'de değil); sayfa yanlış renkte açılıp sonra değişmiyor.
+- Geçiş düğmesi (`ThemeToggle`) yan menünün altında ve giriş ekranının sağ üst köşesinde.
 
 ---
 

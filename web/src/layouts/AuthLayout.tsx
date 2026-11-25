@@ -2,6 +2,7 @@ import { FileCheck2, ShieldCheck, UserCheck } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { BrandMark } from '../components/BrandMark'
+import { ThemeToggle } from '../components/ThemeToggle'
 import './AuthLayout.css'
 
 // Sol paneldeki ilkeler platformun gerçek davranışını anlatır; her biri bir karara dayanır (K-26, K-30, K-31, K-32).
@@ -63,6 +64,9 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
       </aside>
 
       <main className="auth-main">
+        <div className="auth-theme">
+          <ThemeToggle tone="light" />
+        </div>
         <div className="auth-mobile-brand">
           <BrandMark tone="light" />
         </div>

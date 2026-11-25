@@ -95,6 +95,16 @@
   padding: clamp(var(--space-10), 15vh, 9rem) var(--space-6) var(--space-10);
 }
 
+.auth-main {
+  position: relative;
+}
+
+.auth-theme {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+}
+
 .auth-mobile-brand {
   display: none;
 }
@@ -161,6 +171,11 @@
 
   .auth-main {
     padding: var(--space-6) var(--space-4) var(--space-10);
+  }
+
+  .auth-theme {
+    top: var(--space-5);
+    right: var(--space-4);
   }
 
   .auth-mobile-brand {
