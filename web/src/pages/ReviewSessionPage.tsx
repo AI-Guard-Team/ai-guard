@@ -158,7 +158,7 @@ export function ReviewSessionPage() {
       <h1>{detail.candidateName}</h1>
       <p>
         {/* Aday rapor ekranı E6 kartında (Esma); o sayfanın adresi bu rotaya bağlanacak. */}
-        <Link to={`/review/exams/${detail.examId}/sessions/${detail.sessionId}/report`}>Aday raporu</Link>
+        <Link to={`/review/reports/${detail.sessionId}`}>Aday raporu</Link>
       </p>
       <p className="review-summary">
         <StatusBadge tone={STATUS_TONE[detail.status]}>{STATUS_LABEL[detail.status]}</StatusBadge>

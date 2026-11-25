@@ -216,7 +216,7 @@ describe('oturum incelemesi', () => {
     renderDetail()
 
     expect(await screen.findByRole('heading', { name: 'Ayşe Aday' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Aday raporu' })).toHaveAttribute('href', `/review/exams/${EXAM}/sessions/${SESSION}/report`)
+    expect(screen.getByRole('link', { name: 'Aday raporu' })).toHaveAttribute('href', `/review/reports/${SESSION}`)
     expect(screen.getAllByText('Birden fazla yüz').length).toBeGreaterThan(0)
     expect(screen.getByText('Kadrajda iki yüz var')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /Birden fazla yüz kanıt karesi/ })).toHaveAttribute('src', '/api/evidence/abc?exp=1&sig=x')
