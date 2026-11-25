@@ -29,6 +29,8 @@ public class AccessMatrixTests
         ["POST api/auth/refresh"] = Anonymous,
         ["POST api/auth/logout"] = Anonymous,
         ["POST api/auth/set-password"] = Anonymous,
+        ["POST api/auth/forgot-password"] = Anonymous,
+        ["POST api/auth/reset-password"] = Anonymous,
         ["POST api/agent/pair"] = Anonymous,
         ["POST api/agent/signal"] = Anonymous,
         ["GET api/evidence/{id:guid}"] = Anonymous,

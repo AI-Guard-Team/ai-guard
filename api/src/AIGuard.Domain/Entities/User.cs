@@ -34,6 +34,11 @@ public class User : Entity
 
     public DateTimeOffset? InviteAcceptedAt { get; set; }
 
+    // Şifre sıfırlama bağlantısı; davette olduğu gibi yalnızca SHA-256 özeti tutuluyor.
+    public string? PasswordResetTokenHash { get; set; }
+
+    public DateTimeOffset? PasswordResetExpiresAt { get; set; }
+
     // Art arda hatalı girişte geçici kilit (E2).
     public int FailedLoginCount { get; set; }
 

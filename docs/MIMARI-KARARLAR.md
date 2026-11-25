@@ -43,6 +43,7 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Görüntü/ses modelleri | Model listesi GAB 3.3.5 ile aynı; ArcFace, MiniFASNet (V2 + V1SE), YOLO11n ve Silero VAD ONNX olarak onnxruntime ile, yüz noktaları MediaPipe'tan; torch ve ultralytics serviste yok (K-28) |
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
+| Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
 ---
@@ -422,6 +423,8 @@ FR-01–FR-03. Önyüzle sözleşme `web/src/api/auth.ts` ve `client.ts` ile bir
 | `POST /api/auth/refresh` | açık | `{refreshToken}` → `200` yeni çift · 401 |
 | `POST /api/auth/logout` | açık | `{refreshToken}` → `204` (belirteç yoksa da 204) |
 | `POST /api/auth/set-password` | açık | `{token, password}` → `204` · 400 |
+| `POST /api/auth/forgot-password` | açık | `{email}` → her durumda `202` (K-33) |
+| `POST /api/auth/reset-password` | açık | `{token, password}` → `204` · 400 (K-33) |
 | `POST /api/auth/change-password` | giriş yapmış | `{currentPassword, newPassword}` → `204` · 400 |
 | `POST /api/users` | Admin | `{fullName, email, role}` → `201 {id}` · 400 · 409; davet e-postası gider |
 | `GET /api/users?role=` | Admin | → `[{id, fullName, email, role, isActive, inviteStatus, createdAt}]` |
@@ -453,7 +456,7 @@ FR-01–FR-03. Önyüzle sözleşme `web/src/api/auth.ts` ve `client.ts` ile bir
 
 **Hata yanıtları.** ProblemDetails; kullanıcıya gösterilecek Türkçe metin `detail` alanında (önyüz bunu gösteriyor). Giriş hatasında e-postanın var olup olmadığı veya hesabın pasif olup olmadığı ayrılmıyor; var olmayan e-postada da sahte bir özet doğrulanıyor ki yanıt süresinden anlaşılmasın. `change-password`'da yanlış mevcut şifre 401 değil 400: 401 önyüzde belirteç yenilemeyi tetikleyip kullanıcıyı çıkarırdı.
 
-**Denetim kaydı (FR-35).** `user.login`, `user.lockout`, `user.create`, `user.invite_accept`, `user.password_change`, `user.role_change`, `user.activate`, `user.deactivate`, `auth.refresh_reuse`. Eski ve yeni değere yalnızca rol ve durum yazılıyor (K-10).
+**Denetim kaydı (FR-35).** `user.login`, `user.lockout`, `user.create`, `user.invite_accept`, `user.password_change`, `user.password_reset_request`, `user.password_reset` (K-33), `user.role_change`, `user.activate`, `user.deactivate`, `auth.refresh_reuse`. Eski ve yeni değere yalnızca rol ve durum yazılıyor (K-10).
 
 **E-posta.** Kartta istendiği gibi sahte gönderici (`Infrastructure/Email/LoggingEmailSender`) davet bağlantısını loga yazıyor. Bağlantı `Web:BaseUrl` ayarı (varsayılan `http://localhost:5173`) + `/set-password?token=`. Bağlantı bir kimlik bilgisi olduğu için gerçek kullanımda SMTP gibi bir gönderici gerekir (S-15).
 
@@ -993,6 +996,30 @@ PDF'in yazı tipi kütüphanenin gömülü Lato'su (Türkçe karakterleri içeri
 - GAB'daki "itiraz süreci bitmişse" koşulu uygulanmadı: itiraz (FR-32) henüz yok, saklama süresi itirazı beklemiyor (S-26).
 - "Silinen veriler 7 gün içinde yedeklerden de çıkar" kuralı kodda değil, yedekleme düzeninde (S-25).
 - Reddedilen isteklerin (401/403) denetim kaydına yazılması (GAB 3.3.2) yapılmadı; bu istekler uygulama günlüğünde (S-27).
+
+---
+
+## K-33 · Şifre sıfırlama (UI1)
+
+Kartlarda ve GAB'da yok. Stitch'teki "Şifremi unuttum ve sıfırlama akışı" ekranı için eklendi; ekip kararıyla ayrı PR'da.
+
+| Uç | Yetki | Gövde → Yanıt |
+|---|---|---|
+| `POST /api/auth/forgot-password` | açık | `{email}` → her durumda `202` |
+| `POST /api/auth/reset-password` | açık | `{token, password}` → `204` · 400 |
+
+| Kural | Değer | Gerekçe |
+|---|---|---|
+| Belirteç | 256 bit rastgele, 30 dk, tek kullanımlık; `users.password_reset_token_hash`'te SHA-256 özeti (K-08) | Davetle aynı yöntem; e-postadaki bağlantı bir kimlik bilgisi olduğu için ömür kısa |
+| Yanıt | Hesap yok, pasif ya da daveti kabul edilmemiş olsa da `202` | E-postanın kayıtlı olup olmadığı sızmasın (K-20'deki giriş kuralıyla aynı) |
+| Daveti kabul edilmemiş hesap | Sıfırlama gönderilmiyor | Bu kullanıcı davet bağlantısını kullanmalı; iki ayrı kanıt yolu açılmasın |
+| Bekleme | Aynı hesaba 2 dk'da en fazla bir e-posta; yeni bağlantı eskisini geçersiz kılıyor | Başkasının adresine e-posta yağdırılamasın |
+| Sıfırlama sonrası | Şifre kuralı (K-20), hesap kilidi kalkıyor, bütün yenileme belirteçleri iptal | Kilitlenen gerçek kullanıcı şifresini sıfırlayınca hemen girebilsin; çalınmış oturum kapansın |
+| Denetim kaydı | `user.password_reset_request`, `user.password_reset` | FR-35 |
+
+- Kurala uymayan şifre bağlantıyı harcamıyor; kullanıcı aynı bağlantıyla tekrar deneyebiliyor.
+- Bağlantı `Web:BaseUrl` + `/reset-password?token=`. Davette olduğu gibi sahte gönderici loga yazıyor (S-15).
+- Sınırlılık: hesap varken e-posta gönderildiği için yanıt süresi biraz uzayabiliyor. Sahte gönderici beklemediği için şu an fark yok; gerçek SMTP gelirse gönderim kuyruğa alınmalı.
 
 ---
 
