@@ -16,15 +16,13 @@ describe('yönlendirme', () => {
     expect(screen.getByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument()
   })
 
-  it.each([
-    ['Admin', 'Sınavlar'],
-    ['Reviewer', 'İncelemeler'],
-    ['Candidate', 'Sınavlarım'],
-  ] as const)('%s kökten kendi ana sayfasına yönlenir', async (role, heading) => {
+  it.each(['Admin', 'Reviewer', 'Candidate'] as const)('%s kökten kendi genel bakışına yönlenir', async (role) => {
     signInAs(role)
     await renderApp('/')
 
-    expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument()
+    // Her rolün ana sayfası genel bakış paneli (K-42); karşılama başlığı adıyla.
+    expect(screen.getByRole('heading', { level: 1, name: /Merhaba, Test/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Genel bakış' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('başka rolün sayfasında 403 gösterir ve menüyü korur', async () => {
@@ -34,7 +32,7 @@ describe('yönlendirme', () => {
     expect(screen.getByRole('heading', { name: 'Bu sayfaya erişim yetkiniz yok' })).toBeInTheDocument()
     expect(screen.getByText('403')).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ana sayfaya dön' })).toHaveAttribute('href', '/exams')
+    expect(screen.getByRole('link', { name: 'Ana sayfaya dön' })).toHaveAttribute('href', '/overview')
   })
 
   it('menüde yalnızca kullanıcının rolüne ait bağlantılar görünür', async () => {

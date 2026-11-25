@@ -1,4 +1,4 @@
-import { BookOpen, Camera, ChartColumn, Clock3, FolderOpen, Gavel, ListChecks, Settings2, ShieldCheck, Users, X } from 'lucide-react'
+import { BookOpen, Camera, ChartColumn, Clock3, FolderOpen, Gavel, Info, ListChecks, Scale, Settings2, ShieldCheck, Sparkles, Users, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { Role } from '../auth/roles'
@@ -17,6 +17,9 @@ const ICONS: Record<OnboardingStep['icon'], typeof ListChecks> = {
   users: Users,
   settings: Settings2,
   book: BookOpen,
+  spark: Sparkles,
+  scale: Scale,
+  info: Info,
 }
 
 const ROLE_TITLE: Record<Role, string> = {

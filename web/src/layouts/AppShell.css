@@ -2,6 +2,50 @@
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100dvh;
+  transition: grid-template-columns var(--duration) var(--ease-out);
+}
+
+/* Daraltılmış menü (yalnızca masaüstü): renkli simgeler kalır; adlar ipucunda. */
+@media (min-width: 1024px) {
+  /* Daraltılmış menü: yalnızca renkli simgeler; adlar ipucunda. */
+  .app-shell[data-collapsed] {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+  }
+
+  .app-shell[data-collapsed] .app-nav-label,
+  .app-shell[data-collapsed] .app-nav-title,
+  .app-shell[data-collapsed] .brand-text,
+  .app-shell[data-collapsed] .app-user-text,
+  .app-shell[data-collapsed] .theme-toggle span,
+  .app-shell[data-collapsed] .app-signout {
+    display: none;
+  }
+
+  .app-shell[data-collapsed] .app-nav-link,
+  .app-shell[data-collapsed] .app-help,
+  .app-shell[data-collapsed] .theme-toggle,
+  .app-shell[data-collapsed] .app-user {
+    justify-content: center;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .app-shell[data-collapsed] .app-sidebar {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .app-shell[data-collapsed] .app-sidebar-brand {
+    display: flex;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+.app-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- Yan menü: lacivert ---------- */
@@ -40,7 +84,7 @@
   align-items: center;
   gap: var(--space-3);
   min-height: 2.75rem;
-  padding: 0 var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-md);
   color: var(--color-sidebar-text);
   font-size: var(--font-size-sm);
@@ -62,9 +106,7 @@
   box-shadow: 0 6px 18px -8px rgb(0 0 0 / 45%);
 }
 
-.app-nav-link[aria-current='page'] svg {
-  color: var(--color-primary);
-}
+
 
 .app-nav-link:focus-visible,
 .app-signout:focus-visible,
@@ -213,6 +255,14 @@
     background: var(--color-surface);
     color: var(--color-text);
     cursor: pointer;
+  }
+
+  .app-shell[data-collapsed] {
+    grid-template-columns: 1fr;
+  }
+
+  .app-collapse {
+    display: none;
   }
 
   .app-sidebar {

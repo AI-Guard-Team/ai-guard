@@ -4,15 +4,37 @@ export interface OnboardingStep {
   title: string
   text: string
   /** lucide ikon adı; Lottie animasyonları gelince bu alanın yerine geçecek. */
-  icon: 'list' | 'camera' | 'shield' | 'clock' | 'folder' | 'chart' | 'gavel' | 'users' | 'settings' | 'book'
+  icon: 'list' | 'camera' | 'shield' | 'clock' | 'folder' | 'chart' | 'gavel' | 'users' | 'settings' | 'book' | 'spark' | 'scale' | 'info'
 }
 
 /**
  * İlk girişte rol bazlı tanıtım (PRODUCT.md, yön bulma). Metinler platformun gerçek davranışını anlatır; her biri bir
  * karara dayanır (K-24, K-27, K-30, K-31, K-32). Yeni ekran gelince ilgili rolün adımları güncellenir.
  */
+/** Her rolün tanıtımı platformun ne olduğuyla başlar: kullanıcı sitenin amacını ilk ekranda öğrensin. */
+const INTRO: OnboardingStep[] = [
+  {
+    icon: 'spark',
+    title: 'AI-Guard nedir?',
+    text: 'Çevrim içi sınavlar için açıklanabilir bir kopya tespit platformu. Kamera, mikrofon, tarayıcı, cihaz ve ağdan gelen sinyalleri bir risk skoruna çevirir ve her skorun gerekçesini gösterir.',
+  },
+  {
+    icon: 'scale',
+    title: 'Kararı insan verir',
+    text: 'Sistem kimseyi suçlamaz. Riskli bulunan oturumu yetkili bir değerlendirici inceler; olaylar kopya kanıtı sayılmaz, kararı değerlendirici verir. Sürekli kayıt tutulmaz, yalnızca şüpheli anların kanıtı saklanır.',
+  },
+]
+
+const OUTRO: OnboardingStep = {
+  icon: 'info',
+  title: 'Her zaman buradayız',
+  text: 'Her sayfanın başlığındaki "i" düğmesi o sayfayı kısaca anlatır. Platformun nasıl çalıştığını "Platform hakkında" sayfasında bulabilir, bu tanıtımı yan menüden yeniden açabilirsiniz.',
+}
+
+const withIntro = (steps: OnboardingStep[]) => [...INTRO, ...steps, OUTRO]
+
 export const ONBOARDING: Record<Role, OnboardingStep[]> = {
-  Candidate: [
+  Candidate: withIntro([
     {
       icon: 'list',
       title: 'Sınavlarınız tek yerde',
@@ -33,8 +55,8 @@ export const ONBOARDING: Record<Role, OnboardingStep[]> = {
       title: 'Sınav sırasında',
       text: 'Kamera ve mikrofon açık kalır, cevaplarınız her seçimde kaydedilir. Bağlantınız koparsa cevaplar cihazda bekler. Kararı sistem değil, değerlendirici verir.',
     },
-  ],
-  Reviewer: [
+  ]),
+  Reviewer: withIntro([
     {
       icon: 'list',
       title: 'Atandığınız sınavlar',
@@ -55,8 +77,8 @@ export const ONBOARDING: Record<Role, OnboardingStep[]> = {
       title: 'Kararı siz verirsiniz',
       text: 'Temiz, Şüpheli ya da İhlal: karar bir kez verilir ve değiştirilemez. Notlarınız ve kararınız aday raporunda yer alır.',
     },
-  ],
-  Admin: [
+  ]),
+  Admin: withIntro([
     {
       icon: 'book',
       title: 'Sınavları kurun',
@@ -77,5 +99,5 @@ export const ONBOARDING: Record<Role, OnboardingStep[]> = {
       title: 'Kayıt ve gizlilik',
       text: 'Kim neyi ne zaman yaptı, denetim kaydında; kayıt değiştirilemez. Saklama süresi dolan kanıtlar kendiliğinden silinir.',
     },
-  ],
+  ]),
 }

@@ -1,0 +1,431 @@
+/* Genel bakış panelleri ve "Platform hakkında" (K-42). */
+
+.overview {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* Karşılama bandı: lacivert, marka ışığı. */
+.hero {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-10) var(--space-10);
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-navy);
+  box-shadow: var(--shadow-md);
+  color: var(--color-sidebar-text);
+}
+
+.hero::after {
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  background: var(--gradient-brand);
+  content: '';
+  filter: blur(70px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.hero-text {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  max-width: 44rem;
+}
+
+.hero h1 {
+  color: #fff;
+  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.hero p {
+  font-size: var(--font-size-lg);
+  line-height: 1.55;
+}
+
+.hero-aside {
+  position: relative;
+}
+
+.hero-button {
+  background: #fff;
+  color: var(--palette-navy);
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 50%);
+}
+
+.hero-button:hover {
+  background: var(--palette-sky-soft);
+}
+
+/* Ölçü kutuları. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 100%;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  font-weight: 400;
+  text-decoration: none;
+  transition:
+    transform var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out);
+}
+
+.stat-tile.is-link:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.stat-tile-text {
+  display: grid;
+  min-width: 0;
+}
+
+.stat-tile-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.stat-tile-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.stat-tile-hint {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+/* Kartlar. */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.overview-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.overview-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.overview-card-title {
+  font-size: var(--font-size-lg);
+}
+
+.overview-link,
+.overview-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.overview-inline-link {
+  margin-right: var(--space-3);
+}
+
+.overview-sub {
+  display: block;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.overview-empty {
+  color: var(--color-text-muted);
+}
+
+/* Sıradaki sınav. */
+.next-exam-body {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+}
+
+.next-exam-type {
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.next-exam-body h3 {
+  font-size: var(--font-size-xl);
+}
+
+.next-exam-when,
+.next-exam-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Hazırlık listesi. */
+.checklist {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-text-subtle);
+}
+
+.checklist li:last-child {
+  border-bottom: 0;
+}
+
+.checklist li > span {
+  display: grid;
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.checklist strong {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+}
+
+.checklist li.is-done > svg {
+  color: var(--color-success);
+}
+
+/* Süreç şeridi. */
+.flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: flow;
+}
+
+.flow li {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-row-hover);
+}
+
+.flow li > span:last-child {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.flow-index {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  color: var(--color-border-strong);
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Listeler. */
+.overview-list,
+.quick-actions,
+.activity {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-list a,
+.quick-actions a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: inherit;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.overview-list a > span:first-child,
+.quick-actions a > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.overview-list a:hover,
+.quick-actions a:hover {
+  background: var(--color-row-hover);
+}
+
+.activity li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+}
+
+/* Platform hakkında. */
+.pipeline {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.pipeline-sources {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pipeline-sources li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-row-hover);
+}
+
+.pipeline-sources li > span {
+  display: grid;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.pipeline-sources strong {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.pipeline-arrow {
+  color: var(--color-border-strong);
+}
+
+.pipeline-step {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-soft);
+  text-align: center;
+}
+
+.pipeline-step > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-grid li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-row-hover);
+}
+
+.feature-grid li > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.about-project {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.about-project p {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 1023px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .hero {
+    padding: var(--space-8) var(--space-5);
+  }
+
+  .overview-card {
+    padding: var(--space-5) var(--space-4);
+  }
+}

@@ -1,0 +1,63 @@
+.icon-tile {
+  --tile-from: #4361ee;
+  --tile-to: #7f9bff;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: linear-gradient(140deg, var(--tile-from), var(--tile-to));
+  color: #fff;
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--tile-from) 70%, transparent), inset 0 1px 0 rgb(255 255 255 / 25%);
+}
+
+.icon-tile-sm {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+}
+
+.icon-tile-md {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 14px;
+}
+
+.icon-tile-lg {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 20px;
+}
+
+.icon-tile-indigo {
+  --tile-from: #4361ee;
+  --tile-to: #7f9bff;
+}
+
+.icon-tile-sky {
+  --tile-from: #1d8fe0;
+  --tile-to: #6cc4ff;
+}
+
+.icon-tile-lilac {
+  --tile-from: #7c5cf0;
+  --tile-to: #b39dfa;
+}
+
+.icon-tile-rose {
+  --tile-from: #e0457f;
+  --tile-to: #f589b4;
+}
+
+.icon-tile-mint {
+  --tile-from: #0f9d73;
+  --tile-to: #4fd3a4;
+}
+
+.icon-tile-amber {
+  --tile-from: #d98a0b;
+  --tile-to: #f5c04f;
+}
+
+.icon-tile-slate {
+  --tile-from: #5d6b8c;
+  --tile-to: #99a6c4;
+}

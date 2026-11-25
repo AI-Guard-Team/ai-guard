@@ -18,6 +18,8 @@ const ReferencePhotoPage = lazy(loaders.profilePhoto)
 const PreflightPage = lazy(loaders.examStart)
 const MyExamsPage = lazy(loaders.myExams)
 const ExamPage = lazy(loaders.exam)
+const OverviewPage = lazy(loaders.overview)
+const AboutPage = lazy(loaders.about)
 const AdminExamsPage = lazy(loaders.adminExams)
 const ExamEditorPage = lazy(loaders.examEditor)
 const UsersPage = lazy(loaders.users)
@@ -45,6 +47,8 @@ export default function App() {
             <Route element={<AppShell />}>
               <Route index element={<HomeRedirect />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/overview" element={<OverviewPage />} />
+              <Route path="/about" element={<AboutPage />} />
 
               <Route element={<RequireAuth roles={['Admin']} />}>
                 <Route path="/admin" element={<Navigate to="/admin/exams" replace />} />

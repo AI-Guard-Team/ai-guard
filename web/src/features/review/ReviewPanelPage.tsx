@@ -1,4 +1,4 @@
-import { ChevronRight, FolderOpen } from 'lucide-react'
+import { ClipboardCheck, Files, FolderOpen, Gavel } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { getExam } from '../../api/exams'
@@ -6,7 +6,7 @@ import { getReviewSessions, type ReviewListFilter, type ReviewSessionRow, type R
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
-import { InfoTip } from '../../components/InfoTip'
+import { PageHeader } from '../../components/PageHeader'
 import { RiskScore } from '../../components/RiskScore'
 import { Seal } from '../../components/Seal'
 import { Skeleton } from '../../components/Skeleton'
@@ -15,6 +15,8 @@ import { useToast } from '../../components/useToast'
 import { useResource } from '../../hooks/useResource'
 import { DECISION_LABEL, DECISION_TONE, FLAG_LABEL, FLAG_TONE, STATUS_LABEL, STATUS_TONE } from '../../lib/eventCatalog'
 import { docNumber, formatStamp, formatTimeRange } from '../../lib/format'
+import { StatTile } from '../overview/OverviewParts'
+import '../overview/overview.css'
 import { useReviewHub } from './useReviewHub'
 import './review.css'
 
@@ -73,57 +75,31 @@ export function ReviewPanelPage() {
 
   return (
     <div className="review-page">
-      <header className="review-panel-header">
-        <div>
-          <nav aria-label="Konumunuz" className="breadcrumbs">
-            <ol>
-              <li>
-                <Link to="/review">İncelemeler</Link>
-              </li>
-              <li aria-hidden="true" className="breadcrumbs-sep">
-                <ChevronRight size={14} />
-              </li>
-              <li aria-current="page" className="breadcrumbs-current">
-                {data?.exam?.name ?? 'Sınav'}
-              </li>
-            </ol>
-          </nav>
-          <div className="page-header-title">
-            <h1>{data?.exam ? data.exam.name : 'İnceleme paneli'}</h1>
-            <InfoTip title="İnceleme paneli">
-              <ul>
-                <li>Bu sınavda tamamlanan oturumların dosyaları burada. Karar bekleyenler varsayılan olarak en üstte.</li>
-                <li>Filtrelerle yalnızca riskli ya da belirli işaretli dosyaları görebilirsiniz.</li>
-                <li>Bir dosyaya tıklayınca olaylar, skor gerekçesi ve karar ekranı açılır.</li>
-              </ul>
-            </InfoTip>
-          </div>
-          <p className="page-header-description">Dosyayı açıp olaylara bakın, yanlış alarmları ayıklayın ve karar verin.</p>
-        </div>
-        <p className="review-pending" aria-live="polite">
-          <span className="review-pending-count numeric">{data ? pending : '–'}</span>
-          <span>dosya bekliyor</span>
-        </p>
-      </header>
+      <PageHeader
+        breadcrumbs={[{ label: 'İncelemeler', to: '/review' }]}
+        title={data?.exam?.name ?? 'İnceleme paneli'}
+        description="Dosyayı açıp olaylara bakın, yanlış alarmları ayıklayın ve karar verin."
+        info={
+          <ul>
+            <li>Bu sınavda tamamlanan oturumların dosyaları burada. Karar bekleyenler varsayılan olarak en üstte.</li>
+            <li>Filtrelerle yalnızca riskli ya da belirli işaretli dosyaları görebilirsiniz.</li>
+            <li>Bir dosyaya tıklayınca olaylar, skor gerekçesi ve karar ekranı açılır.</li>
+          </ul>
+        }
+        actions={
+          <p className="review-pending" aria-live="polite">
+            <span className="review-pending-count numeric">{data ? pending : '–'}</span>
+            <span>dosya kararınızı bekliyor</span>
+          </p>
+        }
+      />
 
-      <dl className="stat-strip stat-strip-wide" aria-label="Bu görünümdeki dosyalar">
-        <div>
-          <dt>Tamamlanan</dt>
-          <dd>{data ? completed : '–'}</dd>
-        </div>
-        <div>
-          <dt>Bekleyen</dt>
-          <dd className={pending > 0 ? 'is-accent' : undefined}>{data ? pending : '–'}</dd>
-        </div>
-        <div>
-          <dt>Karara bağlanan</dt>
-          <dd>{data ? decided : '–'}</dd>
-        </div>
-        <div>
-          <dt>Toplam dosya</dt>
-          <dd>{data ? rows.length : '–'}</dd>
-        </div>
-      </dl>
+      <ul className="stat-grid">
+        <StatTile icon={ClipboardCheck} tone="sky" value={data ? completed : '–'} label="Tamamlanan" />
+        <StatTile icon={FolderOpen} tone="amber" value={data ? pending : '–'} label="Karar bekleyen" index={1} />
+        <StatTile icon={Gavel} tone="mint" value={data ? decided : '–'} label="Karara bağlanan" index={2} />
+        <StatTile icon={Files} tone="lilac" value={data ? rows.length : '–'} label="Toplam dosya" index={3} />
+      </ul>
 
       <div className="review-toolbar">
         <div className="chip-tabs" role="group" aria-label="Filtre">

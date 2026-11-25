@@ -1157,6 +1157,9 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 | Yağmur (#32) | `features/preflight/PreflightPage.tsx`, `preflight.css` | Yol çubuğu ve "Neden bu adımlar?" bilgi kutusu; sağda "Sınava giriş kartı" (Prompt C'nin modern hâli): sınav adı, aday, süre ve adımlar. Adım göstergesi (`Stepper`) kartın içine dikey taşındı; adlar ve sıra aynı. Adım bileşenleri ve akış mantığı değişmedi | Hayır; sihirbaz testlerinin hepsi geçiyor |
 | Yağmur (#33) | `features/exam/QuestionCard.tsx`, `ExamPage.css` | Kart içindeki "Soru 01 / 03" üst çubuktakini tekrarladığı için "3 sorudan 1." oldu; kenardaki soru numarası kalın | Hayır |
 | Yağmur (#30) | `styles/base.css`, `layouts/AppShell.*`, `layouts/AuthLayout.*`, `main.tsx` | Koyu tema (K-41): `color-scheme`, mobil üst çubuk zemini tokenla, tema düğmesi, açılışta tema uygulanması | Hayır |
+| Yağmur (#30) | `auth/roles.ts` | Bütün rollerin ana sayfası `/overview`; menülere "Genel bakış" ve "Platform hakkında", adaya "Kayıt fotoğrafı" eklendi | Hayır |
+| Yağmur (#30) | `layouts/AppShell.*`, `components/PageHeader.*` | Renkli simge kutuları, daraltılabilir menü, sayfa başlığı bandı, hata sınırı (K-42) | Hayır |
+| Yağmur (#30) | `App.test.tsx`, `pages/authPages.test.tsx` | Kökten ve girişten sonra beklenen başlık artık genel bakışın karşılaması ("Merhaba, Ayşe 👋", adı olmayan kullanıcıda "Hoş geldiniz 👋"); 403 ekranındaki "Ana sayfaya dön" `/overview`'e gidiyor | Davranış aynı, yalnızca ana sayfa değişti |
 | Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-38, modern yön) | Hayır |
 
 ---
@@ -1186,6 +1189,21 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 - Tercih `lib/theme.ts`'te: açık, koyu ya da sistem (varsayılan). Tarayıcıda `aiguard.theme` anahtarıyla saklanıyor; "sistem"de işletim sistemi teması değişince sayfa da değişiyor.
 - Tema `main.tsx`'te ilk çizimden önce uygulanıyor (CSP `script-src 'self'` satır içi betiğe izin vermediği için `index.html`'de değil); sayfa yanlış renkte açılıp sonra değişmiyor.
 - Geçiş düğmesi (`ThemeToggle`) yan menünün altında ve giriş ekranının sağ üst köşesinde.
+
+---
+
+## K-42 · Genel bakış panelleri, platform hakkında ve yön bulma (UI1)
+
+Kullanıcı geri bildirimi: "sitenin amacı belli değil", "nerede olduğumu anlamıyorum", "sayfalar şablon havasında ve dashboard olmalı".
+
+| Karar | Ayrıntı |
+|---|---|
+| Her rolün ana sayfası `/overview` (genel bakış) | Aday: karşılama, sıradaki sınav ve açılışa kalan süre, hazırlık listesi (kayıt fotoğrafı gerçek durumdan), "sınav nasıl ilerler" adımları. Değerlendirici: bekleyen/karara bağlanan/tamamlanan sayıları, sınav bazında kuyruk, "incelemeye başla" (en çok bekleyen sınavın ilk dosyası). Yönetici: erişime açık ve planlanan sınav, aktif kullanıcı, karar bekleyen dosya, hızlı eylemler, sorusu olmayan sınav uyarısı, son 6 denetim kaydı. Bütün sayılar mevcut uçlardan; yeni uç yok |
+| `/about` "Platform hakkında" (bütün roller) | Amaç, sinyal → açıklanabilir skor → insan kararı akışı, ilkeler (kararı insan verir, sürekli kayıt yok, açık rıza, saklama süresi, denetlenebilirlik, sıfır güven), roller, araştırma projesi. Metinler K-24…K-32 kararlarına dayanıyor; iddia yok |
+| Sayfa başlığı şablonu (`PageHeader`) | Yumuşak geçişli bant, solda bölümün renkli simgesi (`IconTile`, `layouts/sections.ts`), yol çubuğu, başlık + "i", tek cümle açıklama, eylemler. Bölüm simgesi menüyle aynı; adres verilmezse yoldan bulunuyor. Değerlendirici paneli, dosya ve sihirbaz başlıkları da aynı bantta |
+| Yan menü | Her bölüm kendi renginde simge kutusuyla; masaüstünde "Menüyü daralt" ile yalnızca simgeler kalır (adlar ipucunda), tercih `aiguard.sidebar.collapsed`. Telefonda çekmece |
+| Tanıtım | Her rolde önce "AI-Guard nedir?" ve "Kararı insan verir", sonra role özel dört adım, sonunda "i" düğmesi ve Platform hakkında. Anahtar `aiguard.onboarding.<rol>.v2` (önceki tanıtımı görmüş kullanıcı yenisini bir kez görür) |
+| Hata sınırı (`RouteErrorBoundary`) | Sayfa çizilirken ya da sayfa parçası yüklenemezken boş ekran yerine "Sayfa yüklenemedi / Sayfayı yenile". Yeni sürüm yayımlanınca eski parçanın bulunamaması da buraya düşer (yerelde, çalışırken paket kurulunca görülen boş sayfa hatası) |
 
 ---
 

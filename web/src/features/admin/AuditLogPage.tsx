@@ -9,41 +9,10 @@ import { PageHeader } from '../../components/PageHeader'
 import { Skeleton } from '../../components/Skeleton'
 import { useResource } from '../../hooks/useResource'
 import { formatDateTime } from '../../lib/format'
+import { ACTION_LABEL } from './auditLabels'
 import './admin.css'
 
 const PAGE_SIZE = 25
-
-// İşlem adları sunucudaki denetim kayıtlarıyla aynı (K-32); ekranda Türkçe karşılıkları.
-const ACTION_LABEL: Record<string, string> = {
-  'user.login': 'Giriş yaptı',
-  'user.lockout': 'Hesap geçici kilitlendi',
-  'user.create': 'Kullanıcı oluşturdu',
-  'user.invite_accept': 'Daveti kabul etti',
-  'user.role_change': 'Rol değiştirdi',
-  'user.activate': 'Hesabı etkinleştirdi',
-  'user.deactivate': 'Hesabı pasife aldı',
-  'user.password_change': 'Şifresini değiştirdi',
-  'user.password_reset': 'Şifresini sıfırladı',
-  'user.password_reset_request': 'Şifre sıfırlama istedi',
-  'auth.refresh_reuse': 'Yenileme belirteci yeniden kullanıldı',
-  'consent.grant': 'Rıza verdi',
-  'consent.refuse': 'Rızayı reddetti',
-  'consent.withdraw': 'Rızasını geri aldı',
-  'biometric.enroll': 'Kayıt fotoğrafı yükledi',
-  'verification.attempt': 'Kimlik doğrulama denemesi',
-  'session.cancel': 'Oturum iptal edildi',
-  'session.continue_indicated': 'Göstergeyle devam etti',
-  'session.continue_no_agent': 'Ajansız devam etti',
-  'event.false_alarm': 'Yanlış alarm işaretledi',
-  'review.view': 'Dosyayı açtı',
-  'review.note': 'Not ekledi',
-  'review.decision': 'Karar verdi',
-  'report.view': 'Raporu görüntüledi',
-  'report.export': 'Raporu indirdi',
-  'retention.cleanup': 'Saklama temizliği',
-  'retention.session_purged': 'Oturum verisi silindi',
-  'retention.face_template_deleted': 'Yüz şablonu silindi',
-}
 
 const TARGET_LABEL: Record<string, string> = {
   User: 'Kullanıcı',

@@ -1,6 +1,8 @@
 import { ChevronRight } from 'lucide-react'
 import { Fragment, type ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
+import { SECTION_ICON } from '../layouts/sections'
+import { IconTile } from './IconTile'
 import { InfoTip } from './InfoTip'
 import './PageHeader.css'
 
@@ -20,13 +22,28 @@ interface PageHeaderProps {
   /** "i" düğmesinde açılan ayrıntılı açıklama. */
   info?: ReactNode
   actions?: ReactNode
+  /** Simgesi gösterilecek bölümün menü adresi; verilmezse adresten bulunur (ör. /admin/exams/... → Sınavlar). */
+  section?: string
 }
 
-/** Her sayfanın başlığı: yol çubuğu, başlık + bilgi düğmesi, tek cümle açıklama ve eylemler. Sayfa başına tek h1. */
-export function PageHeader({ title, breadcrumbs, kicker, description, info, actions }: PageHeaderProps) {
+function sectionOf(pathname: string): string | undefined {
+  return Object.keys(SECTION_ICON)
+    .filter((key) => pathname === key || pathname.startsWith(`${key}/`))
+    .sort((a, b) => b.length - a.length)[0]
+}
+
+/**
+ * Her sayfanın başlık şablonu (K-38): bölümün renkli simgesi, yol çubuğu, başlık + bilgi düğmesi, tek cümle açıklama
+ * ve eylemler. Bütün sayfalar aynı düzende başlar; kullanıcı bölümü rengiyle de tanır. Sayfa başına tek h1.
+ */
+export function PageHeader({ title, breadcrumbs, kicker, description, info, actions, section }: PageHeaderProps) {
+  const { pathname } = useLocation()
   const crumbs = breadcrumbs ?? (kicker ? [{ label: kicker }] : [])
+  const icon = SECTION_ICON[section ?? sectionOf(pathname) ?? '']
+
   return (
     <header className="page-header">
+      {icon ? <IconTile icon={icon.icon} tone={icon.tone} size="lg" /> : null}
       <div className="page-header-text">
         {crumbs.length ? (
           <nav aria-label="Konumunuz" className="breadcrumbs">

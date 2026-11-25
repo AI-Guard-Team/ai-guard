@@ -13,6 +13,8 @@ export const pageLoaders = {
   reviewPanel: () => import('./features/review/ReviewPanelPage').then((m) => ({ default: m.ReviewPanelPage })),
   reviewSession: () => import('./features/review/SessionDetailPage').then((m) => ({ default: m.SessionDetailPage })),
   candidateReport: () => import('./features/review/CandidateReportPage').then((m) => ({ default: m.CandidateReportPage })),
+  overview: () => import('./features/overview/OverviewPage').then((m) => ({ default: m.OverviewPage })),
+  about: () => import('./features/overview/AboutPage').then((m) => ({ default: m.AboutPage })),
   adminExams: () => import('./features/admin/AdminExamsPage').then((m) => ({ default: m.AdminExamsPage })),
   examEditor: () => import('./features/admin/ExamEditorPage').then((m) => ({ default: m.ExamEditorPage })),
   users: () => import('./features/admin/UsersPage').then((m) => ({ default: m.UsersPage })),

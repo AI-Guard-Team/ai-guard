@@ -1,20 +1,4 @@
-import {
-  BookOpenCheck,
-  ClipboardCheck,
-  ClipboardList,
-  CircleHelp,
-  FileBarChart,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  ScrollText,
-  Settings2,
-  UserRound,
-  UserSquare2,
-  Users,
-  X,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronsLeft, ChevronsRight, CircleHelp, LogOut, Menu, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
@@ -22,27 +6,18 @@ import { logout } from '../api/auth'
 import { ROLE_LABEL, ROLE_MENU, type Role } from '../auth/roles'
 import { useAuth } from '../auth/useAuth'
 import { BrandMark } from '../components/BrandMark'
+import { IconTile } from '../components/IconTile'
+import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 import { RouteFallback } from '../components/RouteFallback'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { OnboardingDialog } from './OnboardingDialog'
+import { SECTION_ICON } from './sections'
 import './AppShell.css'
-
-const ICONS: Record<string, LucideIcon> = {
-  '/admin': LayoutDashboard,
-  '/admin/exams': BookOpenCheck,
-  '/admin/users': Users,
-  '/admin/reports': FileBarChart,
-  '/admin/settings': Settings2,
-  '/admin/audit': ScrollText,
-  '/review': ClipboardCheck,
-  '/exams': ClipboardList,
-  '/profile/photo': UserSquare2,
-  '/profile': UserRound,
-}
 
 const PORTAL_LABEL: Record<Role, string> = { Admin: 'Yönetim paneli', Reviewer: 'Değerlendirici paneli', Candidate: 'Aday portalı' }
 
-const onboardingKey = (role: Role) => `aiguard.onboarding.${role}.v1`
+const onboardingKey = (role: Role) => `aiguard.onboarding.${role}.v2`
+const COLLAPSE_KEY = 'aiguard.sidebar.collapsed'
 
 function initials(name: string): string {
   // Yalnızca harfle başlayan sözcükler: "Örnek Aday 1" → "ÖA".
@@ -51,25 +26,35 @@ function initials(name: string): string {
   return letters.toLocaleUpperCase('tr-TR')
 }
 
-/** İlk girişte tanıtım bir kez açılır; testlerde açılmaz (sayfa testlerini örtmesin). */
-function shouldShowOnboarding(role: Role): boolean {
-  if (import.meta.env.MODE === 'test') return false
+function stored(key: string): string | null {
   try {
-    return localStorage.getItem(onboardingKey(role)) === null
+    return localStorage.getItem(key)
   } catch {
-    return false
+    return null
   }
 }
 
+function store(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Gizli sekmede depolama kapalı olabilir; tercih yalnızca bu sekmede geçerli.
+  }
+}
+
+/** İlk girişte tanıtım bir kez açılır; testlerde açılmaz (sayfa testlerini örtmesin). */
+const shouldShowOnboarding = (role: Role) => import.meta.env.MODE !== 'test' && stored(onboardingKey(role)) === null
+
 /**
- * Giriş yapılmış ekranların kabuğu. Menü rolden gelir (auth/roles.ts); sayfada olmayan bir bölüm menüye eklenmez.
- * Kullanıcı nerede olduğunu her an görsün: rol adı, etkin menü öğesi ve sayfa başlığındaki yol çubuğu.
+ * Giriş yapılmış ekranların kabuğu. Menü rolden gelir (auth/roles.ts). Masaüstünde menü daraltılabilir: daraltınca
+ * yalnızca renkli simgeler kalır, adlar ipucunda. Telefonda menü çekmece olur.
  */
 export function AppShell() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => stored(COLLAPSE_KEY) === '1')
   const [onboardingOpen, setOnboardingOpen] = useState(() => (user ? shouldShowOnboarding(user.role) : false))
 
   // Telefonda menüden bir sayfa seçilince menü kapanır.
@@ -91,13 +76,14 @@ export function AppShell() {
   const role = user?.role
   const closeOnboarding = useCallback(() => {
     setOnboardingOpen(false)
-    if (!role) return
-    try {
-      localStorage.setItem(onboardingKey(role), new Date().toISOString())
-    } catch {
-      // Gizli sekmede depolama kapalı olabilir; tanıtım bir sonraki girişte yine açılır.
-    }
+    if (role) store(onboardingKey(role), new Date().toISOString())
   }, [role])
+
+  const toggleCollapsed = () =>
+    setCollapsed((value) => {
+      store(COLLAPSE_KEY, value ? '0' : '1')
+      return !value
+    })
 
   if (!user) return null
 
@@ -111,7 +97,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-shell" data-menu-open={menuOpen || undefined}>
+    <div className="app-shell" data-menu-open={menuOpen || undefined} data-collapsed={collapsed || undefined}>
       <header className="app-topbar">
         <button
           type="button"
@@ -134,11 +120,11 @@ export function AppShell() {
         <nav className="app-nav" aria-label="Ana menü">
           <p className="app-nav-title">Menü</p>
           {items.map((item) => {
-            const Icon = ICONS[item.to] ?? LayoutDashboard
+            const section = SECTION_ICON[item.to] ?? SECTION_ICON['/overview']
             return (
-              <NavLink key={item.to} to={item.to} end={item.end} className="app-nav-link">
-                <Icon size={19} aria-hidden="true" />
-                <span>{item.label}</span>
+              <NavLink key={item.to} to={item.to} end={item.end} className="app-nav-link" title={collapsed ? item.label : undefined}>
+                <IconTile icon={section.icon} tone={section.tone} size="sm" />
+                <span className="app-nav-label">{item.label}</span>
               </NavLink>
             )
           })}
@@ -146,9 +132,13 @@ export function AppShell() {
 
         <div className="app-sidebar-foot">
           <ThemeToggle />
-          <button type="button" className="app-help" onClick={() => setOnboardingOpen(true)}>
+          <button type="button" className="app-help" onClick={() => setOnboardingOpen(true)} title={collapsed ? 'Tanıtımı yeniden göster' : undefined}>
             <CircleHelp size={18} aria-hidden="true" />
-            Tanıtımı yeniden göster
+            <span className="app-nav-label">Tanıtımı yeniden göster</span>
+          </button>
+          <button type="button" className="app-help app-collapse" onClick={toggleCollapsed} aria-pressed={collapsed} title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}>
+            {collapsed ? <ChevronsRight size={18} aria-hidden="true" /> : <ChevronsLeft size={18} aria-hidden="true" />}
+            <span className="app-nav-label">Menüyü daralt</span>
           </button>
           <div className="app-user">
             <span className="app-user-avatar" aria-hidden="true">
@@ -169,17 +159,19 @@ export function AppShell() {
 
       <main className="app-content" id="main">
         {/* Sayfa parçası inerken yalnızca içerik alanı bekler; yan menü yerinde kalır. Sayfa değişince yumuşak giriş. */}
-        <Suspense fallback={<RouteFallback />}>
-          <motion.div
-            key={location.pathname}
-            className="app-page"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Outlet />
-          </motion.div>
-        </Suspense>
+        <RouteErrorBoundary resetKey={location.pathname}>
+          <Suspense fallback={<RouteFallback />}>
+            <motion.div
+              key={location.pathname}
+              className="app-page"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Outlet />
+            </motion.div>
+          </Suspense>
+        </RouteErrorBoundary>
       </main>
 
       <OnboardingDialog role={user.role} open={onboardingOpen} onClose={closeOnboarding} />
