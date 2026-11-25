@@ -64,8 +64,8 @@ describe('kayıt fotoğrafı', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('/api/me/photo')
     expect(init.method).toBe('POST')
     const body = init.body as FormData
-    expect(body.get('biometricConsent')).toBe('true')
-    expect(body.get('textVersion')).toBe('kvkk-biometric-v1')
+    expect(body.get('consent')).toBe('true')
+    expect(body.get('consentTextVersion')).toBe('kvkk-biometric-v1')
     expect(body.get('photo')).toBeInstanceOf(File)
   })
 
