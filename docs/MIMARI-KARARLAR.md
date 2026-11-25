@@ -1103,21 +1103,23 @@ Ortak parçalar: `hooks/useResource` (yükleme, iptal, yeniden deneme; geç gele
 
 ---
 
-## K-38 · "Resmî sınav evrakı" tasarım yönü (UI1)
+## K-38 · Modern kurumsal İK tasarım yönü (UI1)
 
-K-34'teki sistemin üstüne Yağmur'un yeni tasarım yönü: diploma, optik form ve mühür estetiği, modern ve sade. Renk paleti aynı; değişen yazı, şekil ve imza bileşenleri.
+İlk denenen "resmî sınav evrakı" yönü (Fraunces, daktilo yazısı, kâğıt dokusu, mühür) ekipte eski nesil bulundu; yerine kullanıcının verdiği referansla (hiringcycle.ai) modern, kurumsal bir İK platformu yönü geçti. Ürün bilgisi ve tasarım ilkeleri `PRODUCT.md`'de.
 
 | Kural | Gerekçe |
 |---|---|
-| Başlık Fraunces, gövde Inter, veri/saat/skor/kod IBM Plex Mono (`.mono`); hepsi `@fontsource` paketinden. Manrope kaldırıldı | Belge hissi; CSP `font-src 'self'` (K-34) |
-| Kartlar beyaz, gölge yerine 1px `#E2DACA` çizgi, köşeler 8px (düğmeler 4px); gölge yalnızca açılır katmanlarda | Resmî belge görünümü |
-| Zeminde %3 nokta dokusu (`--texture-paper`), görsel dosyası yok | Kâğıt hissi; ek istek yok |
-| Mono üst etiket `.kicker` (11px, büyük harf) ve `PageHeader`'ın `kicker` alanı; tablo başlıkları aynı stilde | Yeni yönde istendi (K-34'teki "başlık üstüne etiket konmaz" kuralının yerine) |
-| İmza bileşenleri: `Seal` (mühür; basılı, boş yuva, beklemede), `DocumentCard` (köşede belge numarası), `OpticalBubble` (optik form baloncuğu), `RiskScore`, `StatusBadge stamp` (damga çipi), `.perforation` (kesikli yırtma çizgisi) | Ekranlar aynı parçalardan kurulsun |
+| Yazı Plus Jakarta Sans (başlık 750–800, gövde), `@fontsource` paketinden; IBM Plex Mono yalnızca kod/kimlik için (`.mono`). Inter, Manrope, Fraunces kaldırıldı | Referanstaki geometrik ve dostane karakter; Türkçe karakter desteği; CSP `font-src 'self'` |
+| Renk: lacivert yan menü ve tanıtım panelleri (`--gradient-navy`), açık gök mavisi zemin, indigo `#4361EE` ana eylem; marka geçişi (gök mavisi → lila → gül) yalnızca giriş başlığında ve logoda | Kurumsal İK havası; geçişli yazı tek bir marka anında |
+| Kartlar beyaz, 18px köşe, yumuşak lacivert gölge; düğmeler hap biçimli; rozetler yumuşak renkli hap | Modern ve okunaklı |
+| Başlık üstüne küçük etiket konmaz; kartın kenarına renkli şerit konmaz | impeccable craft floor yasakları; vurgu tam çerçeve ya da zemin rengiyle |
+| Yön bulma: her sayfada yol çubuğu (`PageHeader.breadcrumbs`), başlığın yanında "i" bilgi düğmesi (`InfoTip`), başlığın altında tek cümle açıklama. Uzun açıklama sayfada değil, bilgi kutusunda | Kullanıcı nerede olduğunu ve ne yapacağını bilsin; sayfa metinle dolmasın |
+| İlk girişte rol bazlı 4 adımlık tanıtım (`OnboardingDialog`, `layouts/onboardingSteps.ts`), yan menüde "Tanıtımı yeniden göster". Görülme bilgisi tarayıcıda (`localStorage`); testlerde açılmaz | Kullanıcı isteği; metinler platformun gerçek davranışını anlatır. Lottie animasyonları sonra sol görsel alana gelecek |
+| Hareket: `motion` kütüphanesi; sayfa geçişi, tanıtım adımları, bilgi kutusu. `MotionConfig reducedMotion="user"` ile hareket azaltma tercihine uyuluyor | Tek tek dağınık efekt yerine birkaç anlamlı an |
+| Karar rozeti (`Seal`): yumuşak renkli daire, ikon ve yazı; eğim ve kenar yazısı yok. `ring`/`tilt` alanları geriye uyumluluk için duruyor | Eski mühür görünümü kaldırıldı, bileşen adı aynı |
 | Belge numarası uydurma sayaç değil: `docNumber(id)` = `AG-<yıl>-<kimliğin ilk 4 karakteri>` | Ekranda gerçek olmayan bilgi yok (K-34) |
 | Risk düzeyi sunucunun `Risky` işaretinden ("Eşik üstü/altı"); önyüz eşik tahmin etmiyor | Eşik `riskconfig.json`'da, tek kaynak sunucu |
-| Mühür "basılma" hareketi yalnızca yeni basıldığında (`animate`); hareket azaltma tercihinde kapalı (`base.css`) | Sık tekrarlanan işlemde hareket yok |
-| Yağmur'un yönergesinde olup sunucuda verisi olmayan öğeler eklenmedi: inceleme listesinde satır başına sinyal şeridi ve "% yanlış alarm" (liste uçları bunları dönmüyor), J/K kısayolları (kartta yok); kanıt görüntülemesi tek tek denetime yazılmadığı için ekranda "oturumu açmanız denetim kaydına yazıldı" (`review.view`) deniyor | Ekranda gerçek olmayan iddia yok; kapsam dışı özellik yok |
+| Verisi olmayan öğe eklenmedi: inceleme listesinde satır başına sinyal şeridi ve "% yanlış alarm" (liste uçları dönmüyor), J/K kısayolları (kartta yok), risk eğrisinde eşik çizgisi (eşik API'den dönmüyor), karar seçeneklerinin tanım metinleri (kartta/GAB'da yok). Kanıt görüntülemesi tek tek denetime yazılmadığı için ekranda "dosyayı açmanız denetim kaydına yazıldı" (`review.view`) deniyor | Ekranda gerçek olmayan iddia yok; kapsam dışı özellik yok |
 
 ---
 
@@ -1147,7 +1149,10 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 | Yağmur (#30) | `layouts/AuthLayout.tsx/.css` | Sol paneldeki üç ilke listesi yerine "Adil sınav, şeffaf karar." ve mühür (Yağmur'un Prompt B'si); form kartı ve alt çizgili alanlar. **`kicker` alanı zorunlu oldu**; dört giriş sayfasına eklendi | Evet, `AuthLayout` kullanan yeni sayfa `kicker` vermeli |
 | Yağmur (#30) | `pages/auth/LoginPage.tsx` ve diğer üç giriş sayfası | Girişte açıklama satırı kaldırıldı, alt not kısaltıldı (Prompt B: "yazı çok az") | Hayır; testler aynı |
 | Yağmur (#33) | `features/exam/QuestionCard.tsx`, `QuestionNavigator.tsx`, `ExamTimer.tsx`, `ExamStatusChips.tsx`, `ExamPage.tsx/.css` | Yalnızca görünüm (Prompt D, optik form): kenarda büyük soru numarası, harfli baloncuk seçenekler, altta minyatür cevap kâğıdı (yan sütun yerine), üstte 3px süre çizgisi (`ExamTimeLine`), durum noktaları, "Kaydedildi" bilgisi sunucu onayından sonra 1,2 sn görünüp sönüyor (eski sürekli "kaydedildi · saat" satırı yerine; bekleyen cevap sayısı yine sürekli görünüyor). "Tam ekrana geç" yalnızca ikon (adı ekran okuyucuda ve ipucunda). İzin kaldırılınca bulanık boş kâğıt üstünde izin kartı; **soru metni çizilmiyor** (S4 kuralı korunuyor). `useExamSession`, `useExamMonitoring` ve cevap kuyruğu değişmedi | Hayır; Yağmur'un ve Şeyma'nın sınav testlerinin hepsi değişmeden geçiyor |
-| Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralının yerine K-38 geçti | Yağmur'un yeni yönergesi bunu istiyor |
+| Yağmur (#30) | `layouts/AppShell.tsx/.css`, `components/BrandMark.css` | Yeni görünüm (K-38): lacivert geçişli yan menü, "Menü" başlığı, beyaz etkin öğe, "Tanıtımı yeniden göster", ilk girişte tanıtım penceresi, sayfa geçiş hareketi. Menü içeriği ve rol mantığı değişmedi | Hayır; kabuk testleri geçiyor |
+| Yağmur (#30) | `components/PageHeader.tsx` | Yeni alanlar `breadcrumbs`, `info`; `kicker` artık tek öğeli yol çubuğu olarak gösteriliyor | Hayır |
+| Yağmur (#30) | `layouts/AuthLayout.tsx` | `kicker` yeniden isteğe bağlı ve gösterilmiyor; sol panel yeniden üç ilke + başlık (Yağmur'un ilk sürümündeki ilkeler geri geldi) | Hayır |
+| Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-38, modern yön) | Hayır |
 
 ---
 

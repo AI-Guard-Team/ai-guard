@@ -1,58 +1,46 @@
-import { useId, type CSSProperties, type ReactNode } from 'react'
+import { CircleAlert, CircleCheck, CircleX, ShieldCheck } from 'lucide-react'
+import type { CSSProperties, ReactNode } from 'react'
 import './Seal.css'
 
 export type SealTone = 'seal' | 'success' | 'warning' | 'danger'
 
 interface SealProps {
-  /** Ortadaki kısa yazı (ör. "RIZA", "TEMİZ"). */
+  /** Ortadaki kısa yazı (ör. "Rıza", "Temiz"). */
   label: string
-  /** Kenardaki yazı halkası; çevreyi dolduracak kadar tekrar eder. */
+  /** Eski sürümde kenar yazısıydı; yeni görünümde kullanılmıyor (geriye uyumluluk). */
   ring?: string
   tone?: SealTone
-  /** stamped: basılı mühür. empty: boş yuva (kesikli). pending: beklemede (kehribar kesikli). */
+  /** stamped: tamamlandı/verildi. empty: boş yuva (kesikli). pending: beklemede. */
   state?: 'stamped' | 'empty' | 'pending'
-  /** true iken mühür "basılır" (ölçek + dönme); yalnızca yeni basıldığında verilir. */
+  /** true iken rozet yumuşak bir "yerine oturma" hareketiyle belirir; yalnızca yeni verildiğinde. */
   animate?: boolean
   size?: number
-  /** Hafif eğim (derece). */
+  /** Eski sürümde eğimdi; yeni görünümde kullanılmıyor. */
   tilt?: number
-  /** Ortada yazının üstünde küçük ikon. */
+  /** Varsayılan ikonun yerine. */
   icon?: ReactNode
   /** Ekran okuyucu metni; verilmezse `label`. */
   title?: string
   className?: string
 }
 
+const ICONS = { seal: ShieldCheck, success: CircleCheck, warning: CircleAlert, danger: CircleX } as const
+
 /**
- * Dijital mühür (K-38): daire, kenarında yazı halkası. Tamamlanan adımlarda ve kararlarda basılır.
- * Renk tek başına anlam taşımaz; ortadaki yazı her zaman okunur.
+ * Karar ve tamamlanma rozeti (K-38): yumuşak renkli daire, ortada ikon ve kısa yazı. Karar (Temiz/Şüpheli/İhlal) ve
+ * sihirbaz adımlarında kullanılır. Renk tek başına anlam taşımaz; yazı her zaman görünür.
  */
-export function Seal({ label, ring, tone = 'seal', state = 'stamped', animate = false, size = 96, tilt = -6, icon, title, className }: SealProps) {
-  const pathId = `seal-ring-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`
-  const ringText = ring ? `${ring} • `.repeat(Math.max(1, Math.ceil(34 / (ring.length + 3)))) : ''
+export function Seal({ label, tone = 'seal', state = 'stamped', animate = false, size = 96, icon, title, className }: SealProps) {
+  const Icon = ICONS[tone]
   const classes = ['seal', `seal-${tone}`, `is-${state}`, animate && state === 'stamped' && 'is-animated', className]
     .filter(Boolean)
     .join(' ')
-  const style = { width: size, height: size, '--seal-tilt': `${tilt}deg`, fontSize: size / 8 } as CSSProperties
+  const style = { width: size, height: size, fontSize: Math.max(11, size / 8) } as CSSProperties
 
   return (
     <span className={classes} style={style} role="img" aria-label={title ?? label}>
-      <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
-        <circle className="seal-outer" cx="60" cy="60" r="56" />
-        {state === 'stamped' ? <circle className="seal-inner" cx="60" cy="60" r="40" /> : null}
-        {state === 'stamped' && ringText ? (
-          <>
-            <path id={pathId} d="M60,60 m-48,0 a48,48 0 1,1 96,0 a48,48 0 1,1 -96,0" fill="none" />
-            <text className="seal-ring">
-              <textPath href={`#${pathId}`} textLength="296" lengthAdjust="spacingAndGlyphs">
-                {ringText}
-              </textPath>
-            </text>
-          </>
-        ) : null}
-      </svg>
       <span className="seal-center" aria-hidden="true">
-        {icon && state === 'stamped' ? <span className="seal-icon">{icon}</span> : null}
+        {state === 'stamped' ? <span className="seal-icon">{icon ?? <Icon size={Math.round(size / 3.6)} strokeWidth={2} />}</span> : null}
         <span className="seal-label">{label}</span>
       </span>
     </span>

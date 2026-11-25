@@ -3,12 +3,11 @@
   display: inline-grid;
   flex-shrink: 0;
   place-items: center;
-  border: 1.5px solid var(--color-text);
+  border: 1.5px solid var(--color-border-strong);
   border-radius: 50%;
   background: var(--color-surface);
   color: var(--color-text);
-  font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1;
   transition:
     background-color var(--duration-fast) var(--ease-out),

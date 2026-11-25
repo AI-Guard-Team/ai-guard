@@ -2,20 +2,19 @@
   display: inline-grid;
   justify-items: end;
   gap: var(--space-1);
-  font-family: var(--font-mono);
   line-height: 1;
 }
 
 .risk-score-value {
-  font-weight: 500;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 
 .risk-score-label {
-  font-size: var(--font-size-2xs);
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: 650;
   letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 
 .risk-score-sm .risk-score-value {
@@ -27,7 +26,7 @@
 }
 
 .risk-score-xl .risk-score-value {
-  font-size: 4.5rem;
+  font-size: 4rem;
   letter-spacing: -0.04em;
 }
 

@@ -9,6 +9,10 @@ export const pageLoaders = {
   examStart: () => import('./features/preflight/PreflightPage').then((m) => ({ default: m.PreflightPage })),
   myExams: () => import('./features/exams/MyExamsPage').then((m) => ({ default: m.MyExamsPage })),
   exam: () => import('./features/exam/ExamPage').then((m) => ({ default: m.ExamPage })),
+  reviewerExams: () => import('./features/review/ReviewerExamsPage').then((m) => ({ default: m.ReviewerExamsPage })),
+  reviewPanel: () => import('./features/review/ReviewPanelPage').then((m) => ({ default: m.ReviewPanelPage })),
+  reviewSession: () => import('./features/review/SessionDetailPage').then((m) => ({ default: m.SessionDetailPage })),
+  candidateReport: () => import('./features/review/CandidateReportPage').then((m) => ({ default: m.CandidateReportPage })),
   roleHome: () => import('./pages/RoleHomePage').then((m) => ({ default: m.RoleHomePage })),
 }
 

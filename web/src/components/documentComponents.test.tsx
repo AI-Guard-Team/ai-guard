@@ -9,14 +9,14 @@ import { Seal } from './Seal'
 import { StatusBadge } from './StatusBadge'
 
 describe('belge bileşenleri (K-38)', () => {
-  it('mühür yazısını ekran okuyucuya söyler; boş yuvada eğim ve halka yok', () => {
-    const { container, rerender } = render(<Seal label="Rıza" ring="AI-GUARD" />)
+  it('rozet yazısını ekran okuyucuya söyler; boş yuvada ikon yok', () => {
+    const { container, rerender } = render(<Seal label="Rıza" />)
     expect(screen.getByRole('img', { name: 'Rıza' })).toHaveClass('is-stamped')
-    expect(container.querySelector('textPath')).not.toBeNull()
+    expect(container.querySelector('.seal-icon')).not.toBeNull()
 
-    rerender(<Seal label="Rıza" ring="AI-GUARD" state="empty" title="Rıza: bekliyor" />)
+    rerender(<Seal label="Rıza" state="empty" title="Rıza: bekliyor" />)
     expect(screen.getByRole('img', { name: 'Rıza: bekliyor' })).toHaveClass('is-empty')
-    expect(container.querySelector('textPath')).toBeNull()
+    expect(container.querySelector('.seal-icon')).toBeNull()
   })
 
   it('mühür yalnızca istenince basılma hareketini alır', () => {

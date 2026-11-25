@@ -5,19 +5,20 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .doc-card.is-emphasis {
-  border-left: 3px solid var(--color-seal);
+  border-color: rgb(67 97 238 / 35%);
+  box-shadow: 0 0 0 4px var(--color-primary-soft), var(--shadow-sm);
 }
 
 .doc-card-warning {
-  border-color: rgb(201 138 43 / 55%);
-  border-style: dashed;
+  border-color: rgb(224 154 26 / 45%);
 }
 
 .doc-card-danger {
-  border-color: rgb(179 38 30 / 45%);
+  border-color: rgb(229 72 77 / 40%);
 }
 
 .doc-card-header {
@@ -41,11 +42,12 @@
 }
 
 .doc-card-no {
-  color: var(--color-primary);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .doc-card-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
 }
 
 .doc-card-aside {

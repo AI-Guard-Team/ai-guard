@@ -2,99 +2,107 @@
  * Renk, yazı, boşluk ve hareket değişkenlerinin TEK kaynağı.
  * Bileşenler yalnızca bu adları kullanır; başka bir dosyada renk kodu yazılmaz.
  *
- * Konsept "dijital resmî sınav evrakı" (K-38): krem kâğıt zemin, beyaz belge kartları, gölge yerine ince çizgi,
- * bordo mühür, Fraunces başlık, Inter gövde, IBM Plex Mono veri. Ham renkler --palette-*, bileşenler --color-*.
+ * Yön (K-38, PRODUCT.md): modern, kurumsal İK platformu. Lacivert ana renk, açık gök mavisi zemin, canlı indigo eylem,
+ * yumuşak köşeli beyaz kartlar, Plus Jakarta Sans. Ham renkler --palette-*, bileşenler --color-*.
  */
 :root {
   /* ---------- Ham palet ---------- */
-  --palette-bordeaux: #5b0015;
-  --palette-bordeaux-deep: #490b1a;
-  --palette-navy: #142841;
-  --palette-navy-deep: #0d1c30;
-  --palette-ivory: #f7f2e0;
+  --palette-navy: #14214d;
+  --palette-navy-deep: #0d1636;
+  --palette-ink: #111a38;
+  --palette-indigo: #4361ee;
+  --palette-indigo-deep: #3451d1;
+  --palette-sky: #7fb3f5;
+  --palette-sky-soft: #eaf2ff;
+  --palette-lilac: #a78bfa;
+  --palette-rose: #ec6a9c;
+  --palette-mist: #f4f7fc;
   --palette-paper: #ffffff;
-  --palette-rule: #e2daca;
-  --palette-sand: #fbebd3;
-  --palette-slate: #798da6;
-  --palette-sky: #80aee8;
-  --palette-sage: #4f7a63;
-  --palette-amber: #c98a2b;
-  --palette-alarm: #b3261e;
+  --palette-slate: #8a97b1;
+  --palette-line: #e3e9f4;
+  --palette-mint: #0f9d73;
+  --palette-amber: #e09a1a;
+  --palette-coral: #e5484d;
+  /* Eski adlar (Yağmur'un ekranları kullanıyor): yeni paletle eşleşiyor. */
+  --palette-ivory: var(--palette-mist);
+  --palette-bordeaux: var(--palette-indigo);
+
+  /* Marka geçişi: gök mavisi → lila → gül. Yalnızca marka anlarında (giriş, tanıtım). */
+  --gradient-brand: linear-gradient(115deg, var(--palette-sky) 0%, var(--palette-lilac) 52%, var(--palette-rose) 100%);
+  --gradient-navy: radial-gradient(120% 90% at 100% 0%, #26388a 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #3b2a7a 0%, transparent 60%), var(--palette-navy);
 
   /* ---------- Yüzeyler ---------- */
-  --color-bg: var(--palette-ivory);
+  --color-bg: var(--palette-mist);
   --color-surface: var(--palette-paper);
-  --color-surface-accent: var(--palette-sand);
-  --color-surface-muted: #f3eddb;
+  --color-surface-accent: var(--palette-sky-soft);
+  --color-surface-muted: #eef2f9;
   --color-sidebar: var(--palette-navy);
-  --color-sidebar-hover: #1d3654;
-  --color-sidebar-active: #243f61;
-  --color-sidebar-text: #c9d4e3;
+  --color-sidebar-hover: rgb(255 255 255 / 7%);
+  --color-sidebar-active: rgb(255 255 255 / 12%);
+  --color-sidebar-text: #b9c4e0;
   --color-sidebar-text-strong: #ffffff;
-  /* Kâğıt dokusu: çok ince nokta deseni (%3 opaklık). */
-  --texture-paper: radial-gradient(rgb(20 40 65 / 3.5%) 0.6px, transparent 0.8px);
-  --texture-paper-size: 4px 4px;
+  --texture-paper: none;
+  --texture-paper-size: auto;
 
   /* ---------- Metin ---------- */
-  --color-text: var(--palette-navy);
-  /* #798DA6 krem zeminde 3:1 kalıyor; okunur metin için aynı tonun koyusu (≈ 6:1). */
-  --color-text-muted: #4b5b72;
-  --color-text-subtle: #5f6f86;
-  --color-text-on-dark: var(--palette-ivory);
+  --color-text: var(--palette-ink);
+  --color-text-muted: #4e5b78;
+  --color-text-subtle: #66728d;
+  --color-text-on-dark: #ffffff;
 
   /* ---------- Çizgiler ---------- */
-  --color-border: var(--palette-rule);
-  --color-border-strong: rgb(121 141 166 / 60%);
-  --color-divider: var(--palette-rule);
-  --color-rule-dashed: rgb(121 141 166 / 55%);
+  --color-border: var(--palette-line);
+  --color-border-strong: #c9d3e6;
+  --color-divider: var(--palette-line);
+  --color-rule-dashed: #c9d3e6;
 
   /* ---------- Eylem ---------- */
-  --color-primary: var(--palette-bordeaux);
-  --color-primary-hover: var(--palette-bordeaux-deep);
-  --color-on-primary: var(--palette-ivory);
-  --color-secondary-hover: rgb(20 40 65 / 5%);
-  --color-row-hover: var(--palette-ivory);
-  --color-focus: var(--palette-sky);
-  --color-selected: rgb(128 174 232 / 22%);
-  --color-link: var(--palette-bordeaux);
-  --color-seal: var(--palette-bordeaux);
-  --color-on-seal: var(--palette-ivory);
+  --color-primary: var(--palette-indigo);
+  --color-primary-hover: var(--palette-indigo-deep);
+  --color-on-primary: #ffffff;
+  --color-primary-soft: rgb(67 97 238 / 10%);
+  --color-secondary-hover: rgb(17 26 56 / 4%);
+  --color-row-hover: #f7f9fd;
+  --color-focus: var(--palette-indigo);
+  --color-selected: rgb(67 97 238 / 9%);
+  --color-link: var(--palette-indigo);
+  --color-seal: var(--palette-indigo);
+  --color-on-seal: #ffffff;
 
   /* ---------- Durum (metin + açık zemin) ---------- */
-  --color-success: var(--palette-sage);
-  --color-success-text: #3a5c4a;
-  --color-success-bg: rgb(79 122 99 / 12%);
+  --color-success: var(--palette-mint);
+  --color-success-text: #0a7354;
+  --color-success-bg: rgb(15 157 115 / 11%);
   --color-warning: var(--palette-amber);
-  /* Kehribar açık zeminde 2.6:1; metin için koyusu. */
-  --color-warning-text: #7f5512;
-  --color-warning-bg: rgb(201 138 43 / 14%);
-  --color-danger: var(--palette-alarm);
-  --color-danger-hover: #93201a;
-  --color-danger-text: #9c2019;
-  --color-danger-bg: rgb(179 38 30 / 10%);
-  --color-info: var(--palette-sky);
-  --color-info-text: #24476f;
-  --color-info-bg: rgb(128 174 232 / 18%);
+  --color-warning-text: #8a5800;
+  --color-warning-bg: rgb(224 154 26 / 14%);
+  --color-danger: var(--palette-coral);
+  --color-danger-hover: #c93a3f;
+  --color-danger-text: #b42328;
+  --color-danger-bg: rgb(229 72 77 / 10%);
+  --color-info: var(--palette-indigo);
+  --color-info-text: #2c44b8;
+  --color-info-bg: rgb(67 97 238 / 10%);
   --color-neutral-text: var(--color-text-muted);
-  --color-neutral-bg: rgb(121 141 166 / 12%);
+  --color-neutral-bg: rgb(138 151 177 / 14%);
 
   /* ---------- Yazı ---------- */
-  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Segoe UI', system-ui, sans-serif;
   --font-heading: var(--font-display);
-  --font-body: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans Variable', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  --font-size-2xs: 0.6875rem; /* 11: mono üst etiketler */
-  --font-size-xs: 0.75rem; /* 12 */
+  --font-size-2xs: 0.75rem; /* 12 */
+  --font-size-xs: 0.8125rem; /* 13 */
   --font-size-sm: 0.875rem; /* 14 */
   --font-size-md: 1rem; /* 16 */
   --font-size-lg: 1.125rem; /* 18 */
-  --font-size-xl: 1.375rem; /* 22 */
+  --font-size-xl: 1.3125rem; /* 21 */
   --font-size-2xl: 1.75rem; /* 28 */
-  --font-size-3xl: 2.5rem; /* 40: sayfa başlığı */
-  --font-size-4xl: 3.5rem; /* 56: giriş ve büyük rakamlar */
-  --line-height-tight: 1.15;
-  --line-height: 1.5;
-  --tracking-label: 0.12em;
+  --font-size-3xl: 2.125rem; /* 34: sayfa başlığı */
+  --font-size-4xl: 3rem; /* 48: giriş ve büyük rakamlar */
+  --line-height-tight: 1.2;
+  --line-height: 1.55;
+  --tracking-label: 0.02em;
 
   /* ---------- Boşluk ---------- */
   --space-1: 0.25rem;
@@ -108,30 +116,31 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* ---------- Şekil: resmî belge, küçük köşeler ---------- */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 8px;
+  /* ---------- Şekil: yumuşak köşeler ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
   --radius-pill: 999px;
 
-  /* ---------- Derinlik: kartlarda gölge yok, yalnızca açılır katmanlarda ---------- */
-  --shadow-sm: none;
-  --shadow-md: 0 6px 18px rgb(20 40 65 / 8%);
-  --shadow-lg: 0 16px 40px rgb(20 40 65 / 14%);
+  /* ---------- Derinlik: lacivert tabanlı yumuşak gölgeler ---------- */
+  --shadow-sm: 0 1px 2px rgb(17 26 56 / 5%), 0 2px 6px -1px rgb(17 26 56 / 5%);
+  --shadow-md: 0 2px 4px rgb(17 26 56 / 4%), 0 10px 28px -6px rgb(17 26 56 / 12%);
+  --shadow-lg: 0 6px 12px rgb(17 26 56 / 6%), 0 28px 56px -12px rgb(17 26 56 / 24%);
 
   /* ---------- Hareket ---------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-stamp: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-fast: 150ms;
-  --duration: 200ms;
+  --duration: 220ms;
   --duration-stamp: 420ms;
 
   /* ---------- Yerleşim ---------- */
-  --sidebar-width: 256px;
-  --topbar-height: 64px;
-  --content-max: 1200px;
-  --focus-ring: 0 0 0 3px rgb(128 174 232 / 55%);
+  --sidebar-width: 264px;
+  --topbar-height: 68px;
+  --content-max: 1240px;
+  --focus-ring: 0 0 0 3px rgb(67 97 238 / 30%);
   --z-sidebar: 30;
   --z-overlay: 40;
   --z-modal: 50;

@@ -13,20 +13,61 @@
   max-width: 68ch;
 }
 
+.page-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .page-header h1 {
   font-size: var(--font-size-3xl);
-  font-weight: 520;
-  letter-spacing: -0.025em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .page-header-description {
   color: var(--color-text-muted);
+  font-size: var(--font-size-md);
 }
 
 .page-header-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+/* Yol çubuğu. */
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-subtle);
+}
+
+.breadcrumbs a {
+  color: var(--color-text-subtle);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.breadcrumbs-sep {
+  display: flex;
+  color: var(--color-border-strong);
+}
+
+.breadcrumbs-current {
+  color: var(--color-text);
 }
 
 @media (max-width: 767px) {

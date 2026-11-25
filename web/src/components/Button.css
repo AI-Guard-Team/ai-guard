@@ -6,9 +6,9 @@
   min-height: 2.75rem;
   padding: 0 var(--space-5);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
@@ -30,12 +30,12 @@
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: scale(0.98);
 }
 
 .button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .button[aria-busy='true'] {
@@ -45,7 +45,7 @@
 
 .button-lg {
   min-height: 3.25rem;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-8);
   font-size: var(--font-size-md);
 }
 
@@ -56,10 +56,12 @@
 .button-primary {
   background: var(--color-primary);
   color: var(--color-on-primary);
+  box-shadow: 0 1px 2px rgb(52 81 209 / 30%), 0 6px 16px -6px rgb(67 97 238 / 55%);
 }
 
 .button-primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  box-shadow: 0 1px 2px rgb(52 81 209 / 30%), 0 10px 22px -8px rgb(67 97 238 / 65%);
 }
 
 .button-secondary {
@@ -69,7 +71,8 @@
 }
 
 .button-secondary:hover:not(:disabled) {
-  background: var(--color-secondary-hover);
+  border-color: var(--palette-slate);
+  background: var(--color-row-hover);
 }
 
 .button-danger {

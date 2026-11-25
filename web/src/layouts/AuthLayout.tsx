@@ -1,11 +1,19 @@
+import { FileCheck2, ShieldCheck, UserCheck } from 'lucide-react'
+import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { BrandMark } from '../components/BrandMark'
-import { Seal } from '../components/Seal'
 import './AuthLayout.css'
 
+// Sol paneldeki ilkeler platformun gerçek davranışını anlatır; her biri bir karara dayanır (K-26, K-30, K-31, K-32).
+const PRINCIPLES = [
+  { icon: UserCheck, title: 'Kararı insan verir', text: 'Sistem kopya kararı vermez; şüpheli oturumu yetkili değerlendirici inceler.' },
+  { icon: ShieldCheck, title: 'Sürekli kayıt yok', text: 'Kamera ve ses anlık analiz edilir; yalnızca şüpheli anların kanıtı saklanır.' },
+  { icon: FileCheck2, title: 'Verileriniz korunur', text: 'Kanıtlar şifreli tutulur, saklama süresi dolunca silinir. Biyometri yalnızca açık rızayla.' },
+] as const
+
 interface AuthLayoutProps {
-  /** Kartın üstündeki mono etiket (ör. "Giriş"). */
-  kicker: string
+  /** @deprecated Eski başlık üstü etiket; yeni tasarımda gösterilmiyor. */
+  kicker?: string
   title: string
   description?: ReactNode
   children: ReactNode
@@ -13,19 +21,45 @@ interface AuthLayoutProps {
 }
 
 /**
- * Giriş yapılmadan açılan ekranların ortak düzeni (K-38): solda lacivert panelde iki satırlık ilke ve mühür,
- * sağda krem zemin üzerinde beyaz form kartı. Bütün giriş ekranları aynı yerleşimi kullanır; geçişte kayma olmaz.
+ * Giriş yapılmadan açılan ekranların ortak düzeni (K-38): solda lacivert tanıtım paneli, sağda beyaz form kartı.
+ * Bütün giriş ekranları aynı yerleşimi kullanır; geçişte kayma olmaz.
  */
-export function AuthLayout({ kicker, title, description, children, footer }: AuthLayoutProps) {
+export function AuthLayout({ title, description, children, footer }: AuthLayoutProps) {
   return (
     <div className="auth-layout">
       <aside className="auth-aside">
-        <p className="auth-aside-title">
-          Adil sınav,
-          <br />
-          <em>şeffaf karar.</em>
-        </p>
-        <Seal label="AI‑Guard" ring="AI-GUARD" size={104} className="auth-aside-seal" title="AI-Guard mührü" />
+        <BrandMark subtitle="Çevrim içi sınav güvenliği" />
+        <div className="auth-aside-body">
+          <motion.h2
+            className="auth-aside-title"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            Adil sınav,
+            <br />
+            <span className="auth-aside-accent">şeffaf karar.</span>
+          </motion.h2>
+          <ul className="auth-principles">
+            {PRINCIPLES.map(({ icon: Icon, title: itemTitle, text }, index) => (
+              <motion.li
+                key={itemTitle}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.15 + index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <span className="auth-principle-icon" aria-hidden="true">
+                  <Icon size={20} />
+                </span>
+                <span>
+                  <strong>{itemTitle}</strong>
+                  <span>{text}</span>
+                </span>
+              </motion.li>
+            ))}
+          </ul>
+        </div>
+        <p className="auth-aside-foot">Doğuş Üniversitesi · YM 491 Araştırma Projesi</p>
       </aside>
 
       <main className="auth-main">
@@ -33,7 +67,6 @@ export function AuthLayout({ kicker, title, description, children, footer }: Aut
           <BrandMark tone="light" />
         </div>
         <div className="auth-card">
-          <p className="kicker">{kicker}</p>
           <h1>{title}</h1>
           {description ? <p className="auth-form-description">{description}</p> : null}
           <div className="auth-form-body">{children}</div>

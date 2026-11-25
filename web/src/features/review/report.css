@@ -1,0 +1,212 @@
+/* Aday raporu: A4 oranında resmî belge (Stitch 22). Yazdırınca yalnızca belge çıkar. */
+
+.report-page {
+  display: grid;
+  gap: var(--space-5);
+  justify-items: center;
+}
+
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 210mm;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.report-sheet {
+  display: grid;
+  align-content: start;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  padding: 18mm 16mm;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.report-head h1 {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-3xl);
+  font-weight: 480;
+}
+
+.report-sub,
+.report-muted {
+  color: var(--color-text-muted);
+}
+
+.report-sheet .perforation {
+  margin: 0;
+}
+
+.report-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-6);
+  margin: 0;
+}
+
+.report-facts dt,
+.report-result dt {
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-muted);
+}
+
+.report-facts dd {
+  margin: var(--space-1) 0 0;
+}
+
+.report-section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.report-section h2 {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-xl);
+}
+
+.report-result {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.report-result > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0 var(--space-6);
+  border-left: 1px solid var(--color-border-strong);
+}
+
+.report-result > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.report-result dd {
+  order: -1;
+  margin: 0;
+  font-size: var(--font-size-2xl);
+}
+
+.report-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.report-score .numeric {
+  font-size: var(--font-size-3xl);
+}
+
+.report-reasons {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.report-table th {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border-strong);
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-align: left;
+  color: var(--color-text-muted);
+}
+
+.report-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.report-quote {
+  display: block;
+  margin-top: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--color-border-strong);
+  font-family: var(--font-display);
+  font-style: italic;
+}
+
+.report-notes {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-foot {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1.5px dashed var(--color-rule-dashed);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 767px) {
+  .report-sheet {
+    min-height: 0;
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .report-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .report-head {
+    flex-direction: column;
+  }
+}
+
+/* Yazdırma: kabuk ve araç çubuğu gizli, belge sayfayı doldurur. */
+@media print {
+  .app-sidebar,
+  .app-topbar,
+  .report-toolbar,
+  .alert {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .app-content {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .report-sheet {
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+  }
+}

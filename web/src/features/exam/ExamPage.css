@@ -110,7 +110,6 @@
 }
 
 .exam-timer-value {
-  font-family: var(--font-mono);
   font-size: var(--font-size-2xl);
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -139,10 +138,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-family: var(--font-mono);
   font-size: var(--font-size-2xs);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
@@ -232,7 +229,6 @@
   padding-top: var(--space-1);
   font-family: var(--font-display);
   font-size: var(--font-size-4xl);
-  font-variation-settings: 'opsz' 144;
   font-weight: 400;
   line-height: 1;
   text-align: center;
@@ -356,10 +352,8 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--color-success-text);
-  font-family: var(--font-mono);
   font-size: var(--font-size-2xs);
   letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
   animation: saved-fade 1200ms var(--ease-out) both;
 }
 
@@ -580,16 +574,13 @@
 }
 
 .submit-summary dt {
-  font-family: var(--font-mono);
   font-size: var(--font-size-2xs);
   letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
 .submit-summary dd {
   margin: 0;
-  font-family: var(--font-mono);
   font-size: var(--font-size-xl);
 }
 

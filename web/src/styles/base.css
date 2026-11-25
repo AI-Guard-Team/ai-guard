@@ -22,8 +22,6 @@ body {
   line-height: var(--line-height);
   color: var(--color-text);
   background-color: var(--color-bg);
-  background-image: var(--texture-paper);
-  background-size: var(--texture-paper-size);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-optical-sizing: auto;
@@ -35,10 +33,9 @@ h3,
 h4 {
   margin: 0;
   font-family: var(--font-heading);
-  font-weight: 560;
-  font-optical-sizing: auto;
+  font-weight: 750;
   line-height: var(--line-height-tight);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.022em;
   color: var(--color-text);
   text-wrap: balance;
 }
@@ -94,7 +91,7 @@ table {
   font-variant-numeric: tabular-nums;
 }
 
-/* Veri, saat, skor, kod: IBM Plex Mono. */
+/* Yalnızca kod ve kimlik (ör. eşleştirme kodu): IBM Plex Mono. */
 .mono,
 code,
 kbd {
@@ -103,15 +100,12 @@ kbd {
   font-size: 0.95em;
 }
 
-/* Belge üst etiketi (ör. "OTURUM 2026-11-11 19:02"): mono, büyük harf, geniş aralık. */
+/* Küçük yardımcı bilgi satırı (tarih, belge numarası, sayaç). Başlık üstü etiket olarak kullanılmaz. */
 .kicker {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--color-text-subtle);
 }
 
 /* Bilet/makbuz yırtma çizgisi. */
@@ -119,11 +113,11 @@ kbd {
   height: 0;
   margin: var(--space-6) 0;
   border: 0;
-  border-top: 1.5px dashed var(--color-rule-dashed);
+  border-top: 1px solid var(--color-divider);
 }
 
 ::selection {
-  background: rgb(91 0 21 / 18%);
+  background: rgb(67 97 238 / 20%);
   color: var(--color-text);
 }
 
@@ -141,7 +135,7 @@ select {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(121 141 166 / 55%) transparent;
+  scrollbar-color: rgb(138 151 177 / 55%) transparent;
 }
 
 .visually-hidden {

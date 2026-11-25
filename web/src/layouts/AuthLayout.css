@@ -1,66 +1,98 @@
 .auth-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(380px, 5fr) 6fr;
   min-height: 100dvh;
 }
 
-/* ---------- Sol panel: lacivert, soluk optik form deseni, iki satır ve mühür ---------- */
+/* ---------- Sol tanıtım paneli: lacivert, yumuşak ışık ---------- */
 
 .auth-aside {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-12);
+  justify-content: space-between;
+  gap: var(--space-10);
   height: 100dvh;
-  padding: var(--space-12);
+  padding: var(--space-10) clamp(var(--space-8), 4vw, var(--space-16));
   overflow: hidden;
-  background-color: var(--color-sidebar);
-  color: var(--color-sidebar-text-strong);
+  background: var(--gradient-navy);
+  color: var(--color-sidebar-text);
 }
 
-/* Optik form baloncuk ızgarası, %6 opaklık. */
-.auth-aside::before {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, transparent 7px, rgb(247 242 224 / 6%) 7.5px, rgb(247 242 224 / 6%) 8.75px, transparent 9.25px);
-  background-position: center;
-  background-size: 34px 30px;
-  content: '';
-  pointer-events: none;
+.auth-aside-body {
+  display: grid;
+  gap: var(--space-10);
+  max-width: 30rem;
 }
 
 .auth-aside-title {
-  position: relative;
-  font-family: var(--font-display);
-  font-size: clamp(2.75rem, 4.6vw, 4.25rem);
-  font-weight: 480;
-  font-variation-settings: 'opsz' 144;
-  line-height: 1.04;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
+  color: #fff;
+  font-size: clamp(2.5rem, 3.8vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
 }
 
-.auth-aside-title em {
-  font-style: italic;
-  font-weight: 400;
+/* Tek marka anı: ikinci satır marka geçişiyle (PRODUCT.md referansı). */
+.auth-aside-accent {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-.auth-aside-seal {
-  position: relative;
-  --seal-color: var(--palette-ivory);
+.auth-principles {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* ---------- Sağ: krem zemin, beyaz form kartı ---------- */
+.auth-principles li {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.auth-principles li > span:last-child {
+  display: grid;
+  gap: 2px;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.auth-principles strong {
+  color: #fff;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+}
+
+.auth-principle-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 9%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+  color: var(--palette-sky);
+  flex-shrink: 0;
+}
+
+.auth-aside-foot {
+  color: rgb(185 196 224 / 70%);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------- Sağ: form kartı ---------- */
 
 /* Kart dikeyde ortalanmaz, sabit üst boşluktan başlar: ekranlar arasında geçerken başlık yerinde kalır. */
 .auth-main {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding: clamp(var(--space-10), 16vh, 10rem) var(--space-6) var(--space-10);
+  padding: clamp(var(--space-10), 15vh, 9rem) var(--space-6) var(--space-10);
 }
 
 .auth-mobile-brand {
@@ -71,15 +103,16 @@
   width: 100%;
   max-width: 27rem;
   margin: 0 auto;
-  padding: var(--space-10) var(--space-8);
+  padding: var(--space-10) var(--space-8) var(--space-8);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--color-surface);
+  box-shadow: var(--shadow-md);
 }
 
 .auth-card h1 {
-  margin-top: var(--space-2);
   font-size: var(--font-size-2xl);
+  font-weight: 800;
 }
 
 .auth-form-description {
@@ -94,49 +127,9 @@
 .auth-form-footer {
   margin-top: var(--space-6);
   padding-top: var(--space-5);
-  border-top: 1.5px dashed var(--color-rule-dashed);
+  border-top: 1px solid var(--color-divider);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-}
-
-/* Editoryal alanlar: kutusuz, yalnızca alt çizgi; odakta çizgi bordoya döner ve kalınlaşır. */
-.auth-card .field > label {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  font-weight: 500;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.auth-card .field-control input {
-  min-height: 2.75rem;
-  padding-left: 0;
-  border: 0;
-  border-bottom: 1.5px solid var(--color-border-strong);
-  border-radius: 0;
-  background: transparent;
-}
-
-.auth-card .field-control input:hover {
-  border-bottom-color: var(--color-text-muted);
-}
-
-.auth-card .field-control input:focus {
-  border-bottom: 2px solid var(--color-primary);
-  box-shadow: none;
-}
-
-.auth-card .field.has-error .field-control input {
-  border-bottom-color: var(--color-danger);
-}
-
-.auth-card .field-icon {
-  display: none;
-}
-
-.auth-card .field.has-icon input {
-  padding-left: 0;
 }
 
 /* Form içindeki satırlar (ör. "Şifremi unuttum"). */
@@ -155,7 +148,7 @@
   gap: var(--space-2);
 }
 
-/* ---------- Tablet ve telefon: sol panel gizlenir, marka kartın üstüne gelir ---------- */
+/* ---------- Tablet ve telefon: tanıtım paneli gizlenir, marka kartın üstüne gelir ---------- */
 
 @media (max-width: 959px) {
   .auth-layout {

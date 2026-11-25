@@ -18,7 +18,7 @@ interface DocumentCardProps {
   children?: ReactNode
 }
 
-/** Resmî belge kartı (K-38): beyaz kâğıt, ince çizgi, köşede belge numarası. */
+/** Kart (K-38): başlık, altında kısa bilgi satırı (ör. dosya numarası) ve içerik. */
 export function DocumentCard({
   docNo,
   kicker,
@@ -40,13 +40,13 @@ export function DocumentCard({
       {hasHeader ? (
         <header className="doc-card-header">
           <div className="doc-card-heading">
+            {title ? <Heading className="doc-card-title">{title}</Heading> : null}
             {docNo || kicker ? (
               <p className="kicker doc-card-meta">
-                {docNo ? <span className="doc-card-no">{docNo}</span> : null}
                 {kicker ? <span>{kicker}</span> : null}
+                {docNo ? <span className="doc-card-no">{docNo}</span> : null}
               </p>
             ) : null}
-            {title ? <Heading className="doc-card-title">{title}</Heading> : null}
           </div>
           {aside ? <div className="doc-card-aside">{aside}</div> : null}
         </header>
