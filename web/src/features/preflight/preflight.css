@@ -1,34 +1,186 @@
 .preflight {
   display: grid;
   gap: var(--space-6);
-  max-width: 64rem;
+  max-width: 76rem;
   margin: 0 auto;
 }
 
-.preflight-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  justify-self: start;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  text-decoration: none;
-}
-
-.preflight-back:hover {
-  color: var(--color-text);
-}
-
 .preflight-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-4);
-  min-height: 2.75rem;
+  display: grid;
+  gap: var(--space-2);
 }
 
 .preflight-header h1 {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-3xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.preflight-header .page-header-description {
+  color: var(--color-text-muted);
+}
+
+.preflight-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  align-items: start;
+  gap: var(--space-6);
+}
+
+/* Sınava giriş kartı: biniş kartı gibi; yırtma çizgisinin altında adımlar. */
+.entry-pass {
+  position: sticky;
+  top: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-navy);
+  box-shadow: var(--shadow-md);
+  color: var(--color-sidebar-text);
+}
+
+.entry-pass-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.entry-pass-head > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.entry-pass-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  background: var(--gradient-brand);
+  color: var(--palette-navy-deep);
+  flex-shrink: 0;
+}
+
+.entry-pass-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.entry-pass-exam {
+  overflow: hidden;
+  color: #fff;
+  font-size: var(--font-size-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-pass-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.entry-pass-facts dt {
+  font-size: var(--font-size-xs);
+}
+
+.entry-pass-facts dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: #fff;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Yırtma çizgisi ve iki yanında bilet çentikleri. */
+.entry-pass-tear {
+  position: relative;
+  height: 0;
+  margin: var(--space-1) calc(var(--space-6) * -1);
+  border: 0;
+  border-top: 1.5px dashed rgb(255 255 255 / 25%);
+  overflow: visible;
+}
+
+.entry-pass-tear::before,
+.entry-pass-tear::after {
+  position: absolute;
+  top: -0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-bg);
+  content: '';
+}
+
+.entry-pass-tear::before {
+  left: -0.75rem;
+}
+
+.entry-pass-tear::after {
+  right: -0.75rem;
+}
+
+/* Kartın içinde adımlar dikey. */
+.entry-pass .stepper {
+  grid-auto-flow: row;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.entry-pass .stepper-item {
+  color: var(--color-sidebar-text);
+}
+
+.entry-pass .stepper-marker {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+
+.entry-pass .stepper-item.is-current {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+
+.entry-pass .stepper-item.is-current .stepper-marker {
+  background: #fff;
+  color: var(--palette-navy);
+}
+
+.entry-pass .stepper-item.is-done {
+  color: #fff;
+}
+
+.entry-pass .stepper-item.is-done .stepper-marker {
+  background: var(--palette-mint);
+  color: #fff;
+}
+
+.entry-pass-note {
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 1023px) {
+  .preflight-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .entry-pass {
+    position: static;
+    order: -1;
+  }
+
+  .entry-pass .stepper {
+    grid-auto-flow: column;
+  }
 }
 
 /* Adımlar arasında geçerken içerik alanı en az bu yükseklikte: alt kısım zıplamaz. */

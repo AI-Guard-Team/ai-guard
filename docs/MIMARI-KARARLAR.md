@@ -1154,6 +1154,8 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 | Yağmur (#30) | `layouts/AuthLayout.tsx` | `kicker` yeniden isteğe bağlı ve gösterilmiyor; sol panel yeniden üç ilke + başlık (Yağmur'un ilk sürümündeki ilkeler geri geldi) | Hayır |
 | Yağmur (#30) | `pages/RoleHomePage.tsx` | Silindi; yerine gerçek ana sayfalar (yönetici: Sınavlar, değerlendirici: İncelemeler). `auth/roles.ts`'te yöneticinin ana sayfası `/admin/exams`, menüye beş yönetici sayfası eklendi | Hayır; yer tutucuydu |
 | Yağmur (#30) | `App.test.tsx` | İki beklenti güncellendi: yöneticinin kökten düştüğü başlık "Yönetim" yerine "Sınavlar"; çıkış testinde `/api/auth/logout` ilk istek değil (ana sayfa önce sınavları istiyor), istekler arasında aranıyor | Davranış aynı, yalnızca ana sayfa gerçek |
+| Yağmur (#32) | `features/preflight/PreflightPage.tsx`, `preflight.css` | Yol çubuğu ve "Neden bu adımlar?" bilgi kutusu; sağda "Sınava giriş kartı" (Prompt C'nin modern hâli): sınav adı, aday, süre ve adımlar. Adım göstergesi (`Stepper`) kartın içine dikey taşındı; adlar ve sıra aynı. Adım bileşenleri ve akış mantığı değişmedi | Hayır; sihirbaz testlerinin hepsi geçiyor |
+| Yağmur (#33) | `features/exam/QuestionCard.tsx`, `ExamPage.css` | Kart içindeki "Soru 01 / 03" üst çubuktakini tekrarladığı için "3 sorudan 1." oldu; kenardaki soru numarası kalın | Hayır |
 | Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-38, modern yön) | Hayır |
 
 ---

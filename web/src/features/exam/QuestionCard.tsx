@@ -48,8 +48,8 @@ export function QuestionCard({ question, index, total, selected, disabled, marke
       </p>
       <div className="question-body">
         <header className="question-paper-header">
-          <p className="kicker numeric">
-            Soru {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+          <p className="question-count numeric">
+            {total} sorudan {index + 1}.
           </p>
           <button type="button" className={['question-mark', marked && 'is-marked'].filter(Boolean).join(' ')} aria-pressed={marked} onClick={onToggleMark}>
             {marked ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}
