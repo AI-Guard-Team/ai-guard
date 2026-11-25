@@ -7,6 +7,9 @@ import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { ProfilePhotoPage } from './pages/ProfilePhotoPage'
+import { ReviewExamsPage } from './pages/ReviewExamsPage'
+import { ReviewSessionPage } from './pages/ReviewSessionPage'
+import { ReviewSessionsPage } from './pages/ReviewSessionsPage'
 import { RoleHomePage } from './pages/RoleHomePage'
 import { SetPasswordPage } from './pages/SetPasswordPage'
 
@@ -25,6 +28,9 @@ export default function App() {
             <Route path="/admin/*" element={<RoleHomePage title="Yönetim" />} />
           </Route>
           <Route element={<RequireAuth roles={['Reviewer']} />}>
+            <Route path="/review" element={<ReviewExamsPage />} />
+            <Route path="/review/exams/:examId" element={<ReviewSessionsPage />} />
+            <Route path="/review/sessions/:sessionId" element={<ReviewSessionPage />} />
             <Route path="/review/*" element={<RoleHomePage title="İncelemeler" />} />
           </Route>
           <Route element={<RequireAuth roles={['Candidate']} />}>

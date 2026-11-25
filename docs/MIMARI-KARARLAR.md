@@ -1023,6 +1023,25 @@ Kartlarda ve GAB'da yok. Stitch'teki "Şifremi unuttum ve sıfırlama akışı" 
 
 ---
 
+## K-34 · Değerlendirici paneli önyüzü (S5)
+
+K-31'deki uçların ekranı (FR-27–FR-33). Kod: `web/src/pages/Review*Page.tsx`, `web/src/api/review.ts`, `web/src/review/`.
+
+| Adres | Ne gösterir |
+|---|---|
+| `/review` | Atandığı sınavlar (`GET /api/exams`, değerlendiriciye yalnızca atandıkları döner) |
+| `/review/exams/:examId` | Oturum listesi: karar bekleyen sayısı, işaret rozetleri, risk/işaret süzgeci, sıralama, kısa gerekçe |
+| `/review/sessions/:sessionId` | Solda risk grafiği ve olay zaman çizelgesi; sağda kanıt kareleri, karar, notlar |
+
+- **Roller.** Sayfalar yalnızca `Reviewer`'a açık. Karar, not ve yanlış alarm düğmeleri zaten yalnızca değerlendiriciye çıkıyor (K-31); Admin okuma ekranı E6'daki rapor sayfası.
+- **Karar düğmeleri** yalnızca `status = AwaitingReview` oturumda görünür. Karar ve yanlış alarm geri alınamadığı için önce onay penceresi açılıyor.
+- **Bildirim.** Liste sayfası açıkken `/hubs/review`'e bağlanır; kendi sınavının `SessionReadyForReview` mesajında toast gösterir ve listeyi yeniden çeker. Bağlanamazsa liste yine çalışır (bildirim yalnızca kolaylık). Belirteç süresi dolmak üzereyse bağlanmadan önce yenilenir (`accessTokenFactory`).
+- **Kanıt bağlantıları 5 dakika geçerli.** Kare açılmazsa (süre dolmuş) detay yeniden çekilir; bu en sık 30 saniyede bir yapılır.
+- **Saklama süresi dolmuş oturum** (`monitoringDataDeletedAt`): grafik yerine açıklama gösterilir (K-32).
+- Yeni bağımlılıklar (kartta adı geçiyor): `@microsoft/signalr` (MIT), `recharts` (MIT).
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
