@@ -121,7 +121,11 @@ export function ExamPage() {
                 onVerify={() => void exam.verifyAgain()}
               />
             ) : null}
-            {question ? (
+            {/* S4: izin istemi yanıtlanana ya da kamera/mikrofon açılana kadar sorular gösterilmiyor; süre işliyor. */}
+            {view.state === 'InProgress' && !monitoring.ready && !monitoring.error ? (
+              <Alert>Sorular kamera ve mikrofon açılınca görünür. Tarayıcı izin isterse "İzin ver"i seçin.</Alert>
+            ) : null}
+            {question && monitoring.ready ? (
               <div className="exam-layout">
                 <div className="exam-question-column">
                   <QuestionCard
