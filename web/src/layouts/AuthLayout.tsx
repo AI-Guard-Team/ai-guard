@@ -60,7 +60,6 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
             ))}
           </ul>
         </div>
-        <p className="auth-aside-foot">Doğuş Üniversitesi · YM 491 Araştırma Projesi</p>
       </aside>
 
       <main className="auth-main">

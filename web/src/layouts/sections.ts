@@ -4,7 +4,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileBarChart,
-  Info,
   LayoutDashboard,
   ScrollText,
   Settings2,
@@ -25,6 +24,5 @@ export const SECTION_ICON: Record<string, { icon: LucideIcon; tone: TileTone }> 
   '/review': { icon: ClipboardCheck, tone: 'sky' },
   '/exams': { icon: ClipboardList, tone: 'sky' },
   '/profile/photo': { icon: Camera, tone: 'rose' },
-  '/about': { icon: Info, tone: 'lilac' },
   '/profile': { icon: UserRound, tone: 'slate' },
 }

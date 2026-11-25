@@ -49,36 +49,35 @@ export function ExamCard({ exam, status }: ExamCardProps) {
         {exam.name}
       </h2>
 
-      <dl className="exam-tile-facts">
+      <ul className="exam-tile-chips" aria-label="Sınav bilgileri">
+        <li>
+          <Clock3 size={15} aria-hidden="true" />
+          <span className="numeric">{exam.durationMinutes} dakika</span>
+        </li>
+        <li>
+          <ListChecks size={15} aria-hidden="true" />
+          <span className="numeric">{exam.questionCount} soru</span>
+        </li>
+      </ul>
+
+      <dl className="exam-tile-window">
         <div>
           <dt>
-            <Clock3 size={16} aria-hidden="true" />
-            Süre
+            <CalendarRange size={15} aria-hidden="true" />
+            Açılış
           </dt>
-          <dd className="numeric">{exam.durationMinutes} dakika</dd>
+          <dd className="numeric">{formatDateTime(exam.windowStartAt)}</dd>
         </div>
         <div>
           <dt>
-            <ListChecks size={16} aria-hidden="true" />
-            Soru
-          </dt>
-          <dd className="numeric">{exam.questionCount}</dd>
-        </div>
-        <div className="exam-tile-fact-wide">
-          <dt>
-            <CalendarRange size={16} aria-hidden="true" />
-            Erişim
-          </dt>
-          <dd className="numeric">
-            {formatDateTime(exam.windowStartAt)} – {formatDateTime(exam.windowEndAt)}
-          </dd>
-        </div>
-        <div className="exam-tile-fact-wide">
-          <dt>
-            <CalendarClock size={16} aria-hidden="true" />
+            <CalendarClock size={15} aria-hidden="true" />
             Son başlangıç
           </dt>
           <dd className="numeric">{formatDateTime(exam.latestStartAt)}</dd>
+        </div>
+        <div className="exam-tile-window-end">
+          <dt>Kapanış</dt>
+          <dd className="numeric">{formatDateTime(exam.windowEndAt)}</dd>
         </div>
       </dl>
 

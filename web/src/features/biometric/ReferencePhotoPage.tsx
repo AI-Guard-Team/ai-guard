@@ -1,4 +1,5 @@
-import { CircleCheck, CircleX } from 'lucide-react'
+import { CircleCheck, CircleX, FileCheck2, ScanFace } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { getBiometricStatus, uploadReferencePhoto, withdrawBiometricConsent } from '../../api/profile'
@@ -6,7 +7,7 @@ import { Alert, FormAlert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { Checkbox } from '../../components/Checkbox'
 import { Modal } from '../../components/Modal'
-import { PageHeader } from '../../components/PageHeader'
+import { ProfileHero } from '../../pages/profile/ProfileHero'
 import { Panel } from '../../components/Panel'
 import { Skeleton } from '../../components/Skeleton'
 import { StatusBadge } from '../../components/StatusBadge'
@@ -40,6 +41,8 @@ export function ReferencePhotoPage() {
   const [preparing, setPreparing] = useState(false)
   const [pending, setPending] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
+  const [consentOpen, setConsentOpen] = useState(false)
+  const [consentChecked, setConsentChecked] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
   const [withdrawing, setWithdrawing] = useState(false)
   const generation = useRef(0)
@@ -96,6 +99,7 @@ export function ReferencePhotoPage() {
       await uploadReferencePhoto(photo, version)
       setPhoto(null)
       setConsent(false)
+      setConsentChecked(false)
       status.reload()
       showToast('Kayıt fotoğrafınız işlendi. Yüz şablonunuz hazır.', 'success')
     } catch (caught) {
@@ -128,7 +132,7 @@ export function ReferencePhotoPage() {
 
   return (
     <>
-      <PageHeader title="Profil" description="Hesap bilgileriniz ve kayıt fotoğrafınız." />
+      <ProfileHero />
       <ProfileTabs />
 
       <div className="photo-layout">
@@ -157,20 +161,35 @@ export function ReferencePhotoPage() {
             ) : null}
 
             <form onSubmit={save} noValidate>
-              <ConsentTextPanel resource={consentText} />
-              <Checkbox
-                checked={consent}
-                disabled={!consentText.data}
-                onChange={(event) => {
-                  setConsent(event.target.checked)
-                  setError(null)
-                }}
-                label="Yukarıdaki metni okudum; yüz fotoğrafımdan kimlik doğrulaması için biyometrik şablon çıkarılmasına açık rıza veriyorum."
-              />
-
-              <div className="photo-picker-slot">
-                <PhotoPicker disabled={!consent} previewUrl={previewUrl} onPick={pick} />
-              </div>
+              {!consent ? (
+                // 1. adım: açık rıza (KVKK). Metin ve onay açılır pencerede; onaydan sonra fotoğraf alanı açılır.
+                <div className="consent-gate">
+                  <span className="consent-gate-icon" aria-hidden="true">
+                    <FileCheck2 size={26} />
+                  </span>
+                  <div>
+                    <strong>Önce açık rızanız gerekiyor</strong>
+                    <p>Fotoğrafınızdan yüz şablonu çıkarılmadan önce biyometrik veri aydınlatma metnini okuyup onaylamanız gerekir.</p>
+                  </div>
+                  <Button onClick={() => setConsentOpen(true)} icon={<FileCheck2 size={18} aria-hidden="true" />}>
+                    Metni oku ve onayla
+                  </Button>
+                </div>
+              ) : (
+                // 2. adım: fotoğraf (sürükle-bırak, dosya ya da kamera).
+                <div className="photo-step">
+                  <div className="photo-step-head">
+                    <strong>Fotoğrafınızı buraya ekleyin</strong>
+                    <button type="button" className="consent-given" onClick={() => setConsentOpen(true)}>
+                      <CircleCheck size={16} aria-hidden="true" />
+                      Açık rıza verildi · metni gör
+                    </button>
+                  </div>
+                  <div className="photo-picker-slot">
+                    <PhotoPicker disabled={false} previewUrl={previewUrl} onPick={pick} />
+                  </div>
+                </div>
+              )}
 
               {error ? (
                 <Alert tone="danger" title={error.title}>
@@ -178,9 +197,14 @@ export function ReferencePhotoPage() {
                 </Alert>
               ) : null}
 
-              <Button type="submit" size="lg" loading={pending || preparing} disabled={!consent || !photo}>
-                {pending ? 'Gönderiliyor…' : preparing ? 'Hazırlanıyor…' : enrolled ? 'Fotoğrafı güncelle' : 'Fotoğrafı kaydet'}
-              </Button>
+              {consent ? (
+                <div className="photo-submit">
+                  <Button type="submit" size="lg" loading={pending || preparing} disabled={!photo}>
+                    {pending ? 'Gönderiliyor…' : preparing ? 'Hazırlanıyor…' : enrolled ? 'Fotoğrafı güncelle' : 'Fotoğrafı kaydet'}
+                  </Button>
+                  {pending ? <span className="photo-submit-hint">Yüz şablonu çıkarılıyor; bu birkaç saniye sürebilir.</span> : null}
+                </div>
+              ) : null}
             </form>
           </Panel>
 
@@ -194,9 +218,22 @@ export function ReferencePhotoPage() {
         </div>
 
         <Panel title="İyi bir fotoğraf için" tone="accent" className="photo-guide" headingLevel={2}>
+          <motion.span
+            className="photo-guide-icon"
+            aria-hidden="true"
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <ScanFace size={30} />
+          </motion.span>
           <ul className="photo-rules">
-            {PHOTO_RULES.map((rule) => (
-              <li key={rule.ok}>
+            {PHOTO_RULES.map((rule, index) => (
+              <motion.li
+                key={rule.ok}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.35, delay: 0.15 + index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <span className="photo-rule-ok">
                   <CircleCheck size={16} aria-hidden="true" />
                   {rule.ok}
@@ -205,12 +242,47 @@ export function ReferencePhotoPage() {
                   <CircleX size={16} aria-hidden="true" />
                   {rule.no}
                 </span>
-              </li>
+              </motion.li>
             ))}
           </ul>
           <p className="field-hint">Fotoğraf uygun değilse sistem nedenini söyler; fotoğrafı değiştirip tekrar deneyebilirsiniz.</p>
         </Panel>
       </div>
+
+      <Modal open={consentOpen} title="Biyometrik veri aydınlatma metni" onClose={() => setConsentOpen(false)}>
+        <div className="consent-modal">
+          <ConsentTextPanel resource={consentText} />
+          {consent ? (
+            <p className="consent-modal-done">
+              <CircleCheck size={16} aria-hidden="true" /> Bu metne açık rıza verdiniz.
+            </p>
+          ) : (
+            <>
+              <Checkbox
+                checked={consentChecked}
+                disabled={!consentText.data}
+                onChange={(event) => setConsentChecked(event.target.checked)}
+                label="Metni okudum; yüz fotoğrafımdan kimlik doğrulaması için biyometrik şablon çıkarılmasına açık rıza veriyorum."
+              />
+              <div className="modal-actions">
+                <Button variant="secondary" onClick={() => setConsentOpen(false)}>
+                  Vazgeç
+                </Button>
+                <Button
+                  disabled={!consentChecked}
+                  onClick={() => {
+                    setConsent(true)
+                    setConsentOpen(false)
+                    setError(null)
+                  }}
+                >
+                  Onaylıyorum
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
 
       <Modal open={withdrawOpen} title="Biyometrik rızayı geri al" onClose={() => setWithdrawOpen(false)}>
         <FormAlert message={withdrawError} />

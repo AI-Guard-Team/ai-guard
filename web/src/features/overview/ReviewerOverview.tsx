@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, FolderOpen, Gavel, ListChecks, ScanSearch, ShieldAlert } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, FolderOpen, Gavel, ListChecks } from 'lucide-react'
 import { Link } from 'react-router'
 import { listExams } from '../../api/exams'
 import { getReviewSessions } from '../../api/review'
@@ -7,7 +7,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useResource } from '../../hooks/useResource'
 import { greeting } from './greeting'
-import { CardHead, FlowSteps, Hero, StatTile } from './OverviewParts'
+import { CardHead, Hero, StatTile } from './OverviewParts'
 
 const load = async (signal: AbortSignal) => {
   const exams = await listExams(signal)
@@ -29,7 +29,7 @@ export function ReviewerOverview({ firstName }: { firstName: string }) {
     <div className="overview">
       <Hero
         greeting={greeting(firstName)}
-        text={data ? (pending > 0 ? `${pending} dosya kararınızı bekliyor. Olayları inceleyin, yanlış alarmları ayıklayın, kararı siz verin.` : 'Karar bekleyen dosya yok. Yeni bir dosya düştüğünde inceleme panelinde görünür.') : 'Dosyalar yükleniyor…'}
+        text={data ? (pending > 0 ? `${pending} dosya kararınızı bekliyor.` : 'Karar bekleyen dosya yok. Yeni bir dosya düştüğünde inceleme panelinde görünür.') : 'Dosyalar yükleniyor…'}
         aside={
           nextCase ? (
             <Link className="button button-lg hero-button" to={`/review/sessions/${nextCase.sessionId}`}>
@@ -78,15 +78,6 @@ export function ReviewerOverview({ firstName }: { firstName: string }) {
         )}
       </section>
 
-      <FlowSteps
-        title="Değerlendirme nasıl yapılır?"
-        steps={[
-          { icon: FolderOpen, tone: 'amber', title: 'Dosyayı açın', text: 'Riskli ve işaretli oturumlar inceleme panelinde en üstte.' },
-          { icon: ScanSearch, tone: 'sky', title: 'Olaylara bakın', text: 'Sinyal kaydında ne zaman ne olduğunu, kanıt karesini görün.' },
-          { icon: ShieldAlert, tone: 'rose', title: 'Yanlış alarmı ayıklayın', text: 'Yanlış alarm olay silinmez, skordan çıkar.' },
-          { icon: Gavel, tone: 'mint', title: 'Karar verin', text: 'Temiz, Şüpheli ya da İhlal; karar bir kez verilir.' },
-        ]}
-      />
     </div>
   )
 }

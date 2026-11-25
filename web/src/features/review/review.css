@@ -777,3 +777,141 @@
     justify-content: space-between;
   }
 }
+
+/* Skor gerekçesi: sıralı yatay çubuk (K-43, dataviz). */
+.bars {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.bars-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bars-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr) 4rem;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bars-row:hover,
+.bars-row.is-selected {
+  background: var(--color-row-hover);
+}
+
+.bars-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.bars-label {
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bars-track {
+  height: 0.75rem;
+}
+
+.bars-fill {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--color-primary);
+}
+
+.bars-row.is-selected .bars-fill {
+  background: var(--color-primary-hover);
+}
+
+.bars-value {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-align: right;
+}
+
+.bars-tip {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 30%;
+  z-index: 5;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.bars-tip strong {
+  color: var(--color-text);
+}
+
+.bars-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.bars-total strong {
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
+}
+
+.evidence-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.evidence-facts > div:first-child {
+  grid-column: 1 / -1;
+}
+
+.evidence-facts dt {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.evidence-facts dd {
+  margin: 2px 0 0;
+  font-weight: 650;
+}
+
+.evidence-marked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}

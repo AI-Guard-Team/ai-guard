@@ -1,5 +1,4 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
-import { ForbiddenPage } from '../pages/errors/ErrorPages'
 import { ROLE_HOME, type Role } from './roles'
 import { tokenStore } from './tokenStore'
 import { useAuth } from './useAuth'
@@ -15,8 +14,9 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
     return <Navigate to={target} replace state={{ from }} />
   }
 
-  // Yönlendirmek yerine 403 gösterilir: kullanıcı neden o sayfayı göremediğini bilsin (Stitch ekran 6).
-  if (roles && !roles.includes(user.role)) return <ForbiddenPage />
+  // Rolün açamadığı sayfa kullanıcıya hiç gösterilmez; kendi ana sayfasına gider (kullanıcı isteği, K-43).
+  // Örn. yönetici sayfasında oturumu kapanıp aday olarak giren kişi yönetici adresine düşmez.
+  if (roles && !roles.includes(user.role)) return <Navigate to={ROLE_HOME[user.role]} replace />
 
   return <Outlet />
 }

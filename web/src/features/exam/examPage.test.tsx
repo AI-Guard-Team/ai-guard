@@ -399,7 +399,8 @@ describe('sınav ekranı', () => {
       expect((body as FormData).get('frame')).toBeInstanceOf(Blob)
       // Kare ve ses tarayıcıda saklanmaz.
       expect(localStorage.length).toBe(0)
-      expect(sessionStorage.length).toBe(0)
+      // sessionStorage'da yalnızca oturum belirteci (K-43); kare ya da ses yok.
+      expect(Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))).toEqual(['aiguard.session'])
       expect(queue.items).toHaveLength(0)
     })
 

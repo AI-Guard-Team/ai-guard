@@ -25,14 +25,13 @@ describe('yönlendirme', () => {
     expect(screen.getByRole('link', { name: 'Genel bakış' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('başka rolün sayfasında 403 gösterir ve menüyü korur', async () => {
+  it('başka rolün sayfasına giden kullanıcı kendi ana sayfasına döner (K-43)', async () => {
     signInAs('Candidate')
     await renderApp('/admin')
 
-    expect(screen.getByRole('heading', { name: 'Bu sayfaya erişim yetkiniz yok' })).toBeInTheDocument()
-    expect(screen.getByText('403')).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Ana menü' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ana sayfaya dön' })).toHaveAttribute('href', '/overview')
+    expect(screen.getByRole('heading', { level: 1, name: /Merhaba, Test/ })).toBeInTheDocument()
+    expect(screen.queryByText('403')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Genel bakış' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('menüde yalnızca kullanıcının rolüne ait bağlantılar görünür', async () => {

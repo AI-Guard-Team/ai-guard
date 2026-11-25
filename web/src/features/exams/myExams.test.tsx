@@ -64,7 +64,7 @@ describe('Sınavlarım', () => {
   it('kayıt fotoğrafı yoksa uyarır ve sınav yerine fotoğraf yüklemeye yönlendirir', async () => {
     await open([exam('a')], undefined, false)
 
-    expect(await screen.findByText('Kayıt fotoğrafınız yok')).toBeInTheDocument()
+    expect(await screen.findByText('Kayıt fotoğrafınızı yükleyin')).toBeInTheDocument()
     expect(within(card('Sınav a')).getByRole('link', { name: 'Kayıt fotoğrafı yükle' })).toHaveAttribute('href', '/profile/photo')
     expect(within(card('Sınav a')).queryByRole('button', { name: 'Sınav öncesi adımlara geç' })).not.toBeInTheDocument()
   })

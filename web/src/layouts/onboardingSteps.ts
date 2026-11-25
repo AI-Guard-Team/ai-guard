@@ -27,8 +27,8 @@ const INTRO: OnboardingStep[] = [
 
 const OUTRO: OnboardingStep = {
   icon: 'info',
-  title: 'Her zaman buradayız',
-  text: 'Her sayfanın başlığındaki "i" düğmesi o sayfayı kısaca anlatır. Platformun nasıl çalıştığını "Platform hakkında" sayfasında bulabilir, bu tanıtımı yan menüden yeniden açabilirsiniz.',
+  title: 'Takıldığınız yerde',
+  text: 'Sayfa başlığındaki "i" düğmesi o sayfada ne yapılacağını kısaca söyler. Bu tanıtımı yan menüdeki "Tanıtımı yeniden göster" ile istediğiniz zaman açabilirsiniz.',
 }
 
 const withIntro = (steps: OnboardingStep[]) => [...INTRO, ...steps, OUTRO]

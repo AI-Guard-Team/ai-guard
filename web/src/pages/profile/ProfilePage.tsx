@@ -1,16 +1,18 @@
+import { LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { changePassword, login } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { ROLE_LABEL } from '../../auth/roles'
 import { useAuth } from '../../auth/useAuth'
-import { Alert, FormAlert } from '../../components/Alert'
+import { FormAlert } from '../../components/Alert'
+import { IconTile } from '../../components/IconTile'
 import { Button } from '../../components/Button'
 import { PasswordInput } from '../../components/Input'
-import { PageHeader } from '../../components/PageHeader'
 import { Panel } from '../../components/Panel'
 import { useToast } from '../../components/useToast'
 import { NewPasswordFields } from '../auth/NewPasswordFields'
 import { validateNewPassword, type NewPasswordErrors } from '../auth/passwordRules'
+import { ProfileHero } from './ProfileHero'
 import { ProfileTabs } from './ProfileTabs'
 import './ProfilePage.css'
 
@@ -67,31 +69,38 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageHeader title="Profil" description="Hesap bilgileriniz ve şifreniz." />
+      <ProfileHero />
       <ProfileTabs />
 
       <div className="profile-grid">
         <Panel title="Hesap bilgileri">
-          <dl className="profile-facts">
-            <div>
-              <dt>Ad soyad</dt>
-              <dd>{missing(user.name)}</dd>
-            </div>
-            <div>
-              <dt>E-posta</dt>
-              <dd>{missing(user.email)}</dd>
-            </div>
-            <div>
-              <dt>Rol</dt>
-              <dd>{ROLE_LABEL[user.role]}</dd>
-            </div>
-          </dl>
-          <Alert tone="info" live={false}>
-            Ad, e-posta ve rol bilgilerinizi yalnızca kurum yöneticisi değiştirebilir.
-          </Alert>
+          <ul className="profile-rows">
+            <li>
+              <IconTile icon={UserRound} tone="indigo" size="sm" />
+              <span>
+                <span className="profile-row-label">Ad soyad</span>
+                <strong>{missing(user.name)}</strong>
+              </span>
+            </li>
+            <li>
+              <IconTile icon={Mail} tone="sky" size="sm" />
+              <span>
+                <span className="profile-row-label">E-posta</span>
+                <strong>{missing(user.email)}</strong>
+              </span>
+            </li>
+            <li>
+              <IconTile icon={ShieldCheck} tone="lilac" size="sm" />
+              <span>
+                <span className="profile-row-label">Rol</span>
+                <strong>{ROLE_LABEL[user.role]}</strong>
+              </span>
+            </li>
+          </ul>
+          <p className="profile-note">Ad, e-posta ve rolü yalnızca kurum yöneticisi değiştirebilir.</p>
         </Panel>
 
-        <Panel title="Şifre değiştir" description="Değişiklikten sonra diğer cihazlardaki oturumlarınız kapatılır.">
+        <Panel title="Şifre değiştir" description="Değişiklikten sonra diğer cihazlardaki oturumlarınız kapatılır." aside={<IconTile icon={LockKeyhole} tone="amber" size="sm" />}>
           <form onSubmit={handleSubmit} noValidate>
             <FormAlert message={formError} />
             <PasswordInput

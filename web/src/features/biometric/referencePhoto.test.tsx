@@ -32,42 +32,54 @@ async function open(handler: FetchHandler, enrolled = false) {
   const fetchMock = mockFetch(withCandidateBasics(handler, { enrolled }))
   signInAs('Candidate')
   await renderApp('/profile/photo')
-  await screen.findByText(CONSENT_TEXTS.Biometric.title)
+  await screen.findByRole('button', { name: 'Metni oku ve onayla' }) // rıza metni açılır pencerede (K-43)
   return fetchMock
 }
 
 const photoCall = (fetchMock: ReturnType<typeof mockFetch>) => fetchMock.mock.calls.find(([url]) => url === '/api/me/photo')
 
+/** Yeni akış (K-43): rıza metni açılır pencerede okunup onaylanır, sonra fotoğraf alanı açılır. */
+async function giveConsent() {
+  await userEvent.click(await screen.findByRole('button', { name: 'Metni oku ve onayla' }))
+  await userEvent.click(screen.getByRole('checkbox'))
+  await userEvent.click(screen.getByRole('button', { name: 'Onaylıyorum' }))
+}
+
 describe('kayıt fotoğrafı ve biyometrik rıza', () => {
-  it('aday olmayan kullanıcıya 403 gösterir', async () => {
+  it('aday olmayan kullanıcı kendi ana sayfasına döner', async () => {
     signInAs('Reviewer')
     await renderApp('/profile/photo')
 
-    expect(screen.getByRole('heading', { name: 'Bu sayfaya erişim yetkiniz yok' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /Merhaba/ })).toBeInTheDocument()
   })
 
   it('sunucudaki rıza metnini düz yazı olarak gösterir', async () => {
     await open(() => jsonResponse(500))
+    await userEvent.click(screen.getByRole('button', { name: 'Metni oku ve onayla' }))
 
     expect(screen.getByText('Birinci paragraf.')).toBeInTheDocument()
     expect(screen.getByText('İkinci paragraf.')).toBeInTheDocument()
     expect(screen.getByText(/Metin sürümü kvkk-biometric-v2/)).toBeInTheDocument()
   })
 
-  it('rıza olmadan dosya seçimi ve kamera kapalı, istek gitmez', async () => {
+  it('rıza olmadan fotoğraf alanı açılmaz, istek gitmez; onaylayınca açılır', async () => {
     const fetchMock = await open(() => jsonResponse(204))
 
-    expect(screen.getByRole('button', { name: 'Kameradan çek' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Dosya seç' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Fotoğrafı kaydet' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Kameradan çek' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Fotoğrafı kaydet' })).not.toBeInTheDocument()
     expect(photoCall(fetchMock)).toBeUndefined()
+
+    await giveConsent()
+    expect(screen.getByText('Fotoğrafınızı buraya ekleyin')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dosya seç' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Fotoğrafı kaydet' })).toBeDisabled()
   })
 
   it('fotoğrafı sunucunun beklediği alanlarla ve ekrandaki metnin sürümüyle gönderir', async () => {
     stubPhotoDecoder(800, 600)
     const fetchMock = await open(() => jsonResponse(204))
 
-    await userEvent.click(screen.getByRole('checkbox'))
+    await giveConsent()
     await userEvent.upload(screen.getByLabelText('Fotoğraf dosyası seç'), jpeg())
     expect(await screen.findByRole('img', { name: 'Seçilen kayıt fotoğrafı' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Fotoğrafı kaydet' }))
@@ -86,7 +98,7 @@ describe('kayıt fotoğrafı ve biyometrik rıza', () => {
     stubPhotoDecoder(4032, 3024, 128)
     const fetchMock = await open(() => jsonResponse(204))
 
-    await userEvent.click(screen.getByRole('checkbox'))
+    await giveConsent()
     await userEvent.upload(screen.getByLabelText('Fotoğraf dosyası seç'), jpeg('telefon.jpg', 6 * 1024 * 1024))
     expect(await screen.findByRole('img', { name: 'Seçilen kayıt fotoğrafı' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Fotoğrafı kaydet' }))
@@ -104,7 +116,7 @@ describe('kayıt fotoğrafı ve biyometrik rıza', () => {
       url === '/api/me/photo' ? jsonResponse(422, { title: 'Fotoğrafta tek ve net bir yüz bulunamadı.', detail: 'Yüzünüzün net göründüğü başka bir fotoğraf yükleyin.' }) : jsonResponse(500),
     )
 
-    await userEvent.click(screen.getByRole('checkbox'))
+    await giveConsent()
     await userEvent.upload(screen.getByLabelText('Fotoğraf dosyası seç'), jpeg())
     await screen.findByRole('img', { name: 'Seçilen kayıt fotoğrafı' })
     await userEvent.click(screen.getByRole('button', { name: 'Fotoğrafı kaydet' }))
@@ -118,6 +130,7 @@ describe('kayıt fotoğrafı ve biyometrik rıza', () => {
     const fetchMock = await open((url, init) => (url === '/api/me/biometric-consent' && init.method === 'DELETE' ? jsonResponse(204) : jsonResponse(500)), true)
 
     expect(await screen.findByText('Yüz şablonunuz hazır')).toBeInTheDocument()
+    await giveConsent() // yeni fotoğraf için de önce rıza (K-43)
     expect(screen.getByRole('button', { name: 'Fotoğrafı güncelle' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Rızamı geri al' }))
     const dialog = screen.getByRole('dialog')

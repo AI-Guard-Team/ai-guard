@@ -42,8 +42,18 @@ function store(key: string, value: string) {
   }
 }
 
-/** İlk girişte tanıtım bir kez açılır; testlerde açılmaz (sayfa testlerini örtmesin). */
-const shouldShowOnboarding = (role: Role) => import.meta.env.MODE !== 'test' && stored(onboardingKey(role)) === null
+/**
+ * Tanıtım her girişte bir kez açılır; "Bir daha gösterme" seçilirse bir daha açılmaz. Aynı oturumda kapatılınca
+ * tekrar açılmaz. Testlerde açılmaz (sayfa testlerini örtmesin).
+ */
+function shouldShowOnboarding(role: Role): boolean {
+  if (import.meta.env.MODE === 'test' || stored(onboardingKey(role)) !== null) return false
+  try {
+    return sessionStorage.getItem(onboardingKey(role)) === null
+  } catch {
+    return true
+  }
+}
 
 /**
  * Giriş yapılmış ekranların kabuğu. Menü rolden gelir (auth/roles.ts). Masaüstünde menü daraltılabilir: daraltınca
@@ -74,10 +84,19 @@ export function AppShell() {
   }, [menuOpen])
 
   const role = user?.role
-  const closeOnboarding = useCallback(() => {
-    setOnboardingOpen(false)
-    if (role) store(onboardingKey(role), new Date().toISOString())
-  }, [role])
+  const closeOnboarding = useCallback(
+    (dontShowAgain: boolean) => {
+      setOnboardingOpen(false)
+      if (!role) return
+      if (dontShowAgain) store(onboardingKey(role), new Date().toISOString())
+      try {
+        sessionStorage.setItem(onboardingKey(role), '1')
+      } catch {
+        // Depolama kapalıysa tanıtım bir sonraki sayfa açılışında yeniden görünebilir.
+      }
+    },
+    [role],
+  )
 
   const toggleCollapsed = () =>
     setCollapsed((value) => {

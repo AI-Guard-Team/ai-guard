@@ -31,7 +31,8 @@ const ROLE_TITLE: Record<Role, string> = {
 interface OnboardingDialogProps {
   role: Role
   open: boolean
-  onClose: () => void
+  /** `dontShowAgain`: kullanıcı "Bir daha gösterme"yi seçti. */
+  onClose: (dontShowAgain: boolean) => void
 }
 
 /**
@@ -42,13 +43,15 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
   const steps = ONBOARDING[role]
   const [index, setIndex] = useState(0)
   const [direction, setDirection] = useState(1)
+  const [dontShowAgain, setDontShowAgain] = useState(false)
+  const close = () => onClose(dontShowAgain)
   const dialog = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     dialog.current?.focus()
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onClose(false)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -79,7 +82,7 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
-            <button type="button" className="onboarding-close" aria-label="Tanıtımı kapat" onClick={onClose}>
+            <button type="button" className="onboarding-close" aria-label="Tanıtımı kapat" onClick={close}>
               <X size={18} aria-hidden="true" />
             </button>
 
@@ -116,6 +119,10 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
                 </motion.div>
               </AnimatePresence>
 
+              <label className="onboarding-dismiss">
+                <input type="checkbox" checked={dontShowAgain} onChange={(event) => setDontShowAgain(event.target.checked)} />
+                Bir daha gösterme
+              </label>
               <div className="onboarding-footer">
                 <ol className="onboarding-dots" aria-label={`Adım ${index + 1} / ${steps.length}`}>
                   {steps.map((item, dot) => (
@@ -130,11 +137,11 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
                       Geri
                     </Button>
                   ) : (
-                    <Button variant="ghost" onClick={onClose}>
+                    <Button variant="ghost" onClick={close}>
                       Atla
                     </Button>
                   )}
-                  <Button onClick={() => (last ? onClose() : go(index + 1))}>{last ? 'Başlayalım' : 'İleri'}</Button>
+                  <Button onClick={() => (last ? close() : go(index + 1))}>{last ? 'Başlayalım' : 'İleri'}</Button>
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { ImageOff } from 'lucide-react'
+import { Flag, ImageOff } from 'lucide-react'
 import { useState } from 'react'
 import type { ReviewEvent } from '../../api/review'
 import { Button } from '../../components/Button'
@@ -8,37 +8,49 @@ import { formatDuration, formatNumber, formatTimeSeconds } from '../../lib/forma
 interface EvidencePanelProps {
   event: ReviewEvent | null
   monitoringDataDeletedAt: string | null
+  /** Yanlış alarm işaretleyebilir mi (atanmış değerlendirici, karar verilmemiş). */
+  canMark: boolean
+  marking: boolean
+  onMark: (event: ReviewEvent) => void
 }
 
 /**
- * Seçilen olayın ayrıntısı ve kanıt karesi. Kare varsayılan olarak bulanık; değerlendirici bilerek açar.
- * Bağlantı 5 dakikalık imzalı adres (K-31); süresi dolarsa sayfa yenilenince yenisi gelir.
+ * Olay ayrıntısı: seçilen olayın ne olduğu, ne zaman ve ne kadar sürdüğü, skora etkisi ve kanıt karesi.
+ * Yanlış alarm kararı burada verilir. Kare varsayılan bulanık; değerlendirici bilerek açar (5 dk imzalı bağlantı).
  */
-export function EvidencePanel({ event, monitoringDataDeletedAt }: EvidencePanelProps) {
+export function EvidencePanel({ event, monitoringDataDeletedAt, canMark, marking, onMark }: EvidencePanelProps) {
   const [revealedId, setRevealedId] = useState<string | null>(null)
   const [failedId, setFailedId] = useState<string | null>(null)
 
-  if (!event) {
-    return <p className="evidence-empty">Sinyal kaydında ya da şelalede bir olay seçin; ayrıntısı ve varsa kanıt karesi burada açılır.</p>
-  }
+  if (!event) return <p className="evidence-empty">Bu oturumda olay yok.</p>
 
   const revealed = revealedId === event.id
   return (
     <div className="evidence">
-      <p className="kicker">
-        {SOURCE_LABEL[event.source]} · {formatTimeSeconds(event.startedAt)}
-        {event.durationSec > 0 ? ` · ${formatDuration(event.durationSec)}` : ''}
-      </p>
-      <h3>{eventLabel(event.type)}</h3>
-      {event.reason ? <p className="evidence-reason">{event.reason}</p> : null}
-      <dl className="evidence-meta">
+      <dl className="evidence-facts">
         <div>
-          <dt>Katkı</dt>
+          <dt>Ne oldu</dt>
+          <dd>{event.reason ?? eventLabel(event.type)}</dd>
+        </div>
+        <div>
+          <dt>Kaynak</dt>
+          <dd>{SOURCE_LABEL[event.source]}</dd>
+        </div>
+        <div>
+          <dt>Ne zaman</dt>
+          <dd className="numeric">{formatTimeSeconds(event.startedAt)}</dd>
+        </div>
+        <div>
+          <dt>Süre</dt>
+          <dd className="numeric">{event.durationSec > 0 ? formatDuration(event.durationSec) : 'Anlık'}</dd>
+        </div>
+        <div>
+          <dt>Skora etkisi</dt>
           <dd className="numeric">{event.isFalseAlarm ? '0 (yanlış alarm)' : `+${formatNumber(event.contribution, 1)}`}</dd>
         </div>
         {event.confidence !== null ? (
           <div>
-            <dt>Güven</dt>
+            <dt>Model güveni</dt>
             <dd className="numeric">%{formatNumber(event.confidence * 100)}</dd>
           </div>
         ) : null}
@@ -65,6 +77,17 @@ export function EvidencePanel({ event, monitoringDataDeletedAt }: EvidencePanelP
               : 'Bu olay için kanıt karesi yok.'}
         </p>
       )}
+
+      {event.isFalseAlarm ? (
+        <p className="evidence-marked">
+          <Flag size={16} aria-hidden="true" />
+          Yanlış alarm{event.falseAlarmMarkedBy ? ` · ${event.falseAlarmMarkedBy}` : ''}
+        </p>
+      ) : canMark && event.contribution > 0 ? (
+        <Button variant="secondary" loading={marking} icon={<Flag size={16} aria-hidden="true" />} onClick={() => onMark(event)}>
+          Yanlış alarm olarak işaretle
+        </Button>
+      ) : null}
     </div>
   )
 }

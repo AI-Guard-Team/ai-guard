@@ -35,7 +35,7 @@ export function AdminOverview({ firstName }: { firstName: string }) {
     <div className="overview">
       <Hero
         greeting={greeting(firstName)}
-        text="Sınavları kurun, kullanıcıları yönetin, raporları ve denetim kaydını izleyin. Kopya kararını sistem değil, atadığınız değerlendiriciler verir."
+        text="Sınavlar, kullanıcılar ve bekleyen işler bir bakışta."
         aside={
           <Link className="button button-lg hero-button" to="/admin/exams/new">
             <Plus size={18} aria-hidden="true" />

@@ -1,7 +1,8 @@
-import { ArrowRight, ClipboardList } from 'lucide-react'
+import { ArrowRight, Camera, ClipboardList } from 'lucide-react'
 import { Link } from 'react-router'
 import { listExams, type ExamSummary } from '../../api/exams'
 import { getBiometricStatus, type BiometricStatus } from '../../api/profile'
+import { ActionBanner } from '../../components/ActionBanner'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { EmptyState } from '../../components/EmptyState'
@@ -32,16 +33,21 @@ export function MyExamsPage() {
 
   return (
     <>
-      <PageHeader title="Sınavlarım" description="Size atanmış sınavlar ve oturum durumunuz." />
+      <PageHeader title="Sınavlarım" description="Size atanan sınavlar, açılış saatleri ve durumları." />
 
       {data && !data.biometric.enrolled ? (
-        <Alert tone="warning" title="Kayıt fotoğrafınız yok">
-          <p>Sınav başında kimliğiniz bu fotoğrafla doğrulanır. Fotoğraf yüklemeden hiçbir sınava başlayamazsınız.</p>
-          <Link className="alert-link" to="/profile/photo">
-            Kayıt fotoğrafı yükle
-            <ArrowRight size={16} aria-hidden="true" />
-          </Link>
-        </Alert>
+        <ActionBanner
+          icon={Camera}
+          title="Kayıt fotoğrafınızı yükleyin"
+          action={
+            <Link className="button button-primary button-md" to="/profile/photo">
+              Fotoğraf yükle
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+          }
+        >
+          Sınav başında kimliğiniz bu fotoğrafla doğrulanır; yüklemeden sınava başlayamazsınız.
+        </ActionBanner>
       ) : null}
 
       {error && !data ? (

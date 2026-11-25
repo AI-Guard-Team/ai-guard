@@ -1,6 +1,5 @@
 import { MailPlus, Search, UserRoundX, UserRoundCheck, Users } from 'lucide-react'
-import { motion } from 'motion/react'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useDeferredValue, useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { createUser, listUsers, updateUser, type InviteStatus, type UserRole, type UserSummary } from '../../api/admin'
 import { ROLE_LABEL } from '../../auth/roles'
@@ -37,17 +36,18 @@ export function UsersPage() {
   const showToast = useToast()
   const [role, setRole] = useState<UserRole | 'all'>('all')
   const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
   const [inviting, setInviting] = useState(false)
   const [toggling, setToggling] = useState<UserSummary | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
   const rows = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('tr-TR')
+    const term = deferredQuery.trim().toLocaleLowerCase('tr-TR')
     return (data ?? [])
       .filter((user) => role === 'all' || user.role === role)
       .filter((user) => !term || user.fullName.toLocaleLowerCase('tr-TR').includes(term) || user.email.toLocaleLowerCase('tr-TR').includes(term))
       .sort((a, b) => a.fullName.localeCompare(b.fullName, 'tr'))
-  }, [data, role, query])
+  }, [data, role, deferredQuery])
 
   const counts = useMemo(() => {
     const result: Record<UserRole | 'all', number> = { all: data?.length ?? 0, Candidate: 0, Reviewer: 0, Admin: 0 }
@@ -92,7 +92,8 @@ export function UsersPage() {
         description="Hesap açın, rolleri yönetin, gerekirse hesabı pasife alın."
         info={
           <ul>
-            <li>Yeni kullanıcıya şifre belirleme bağlantısı içeren bir davet e-postası gider.</li>
+            <li>Davet, kullanıcının e-posta adresine 72 saat geçerli bir şifre belirleme bağlantısı gönderir. Kullanıcı şifresini belirleyince hesap etkin olur.</li>
+            <li>Bağlantının süresi dolarsa durum "Davetin süresi doldu" olur.</li>
             <li>Pasife alınan kullanıcı giriş yapamaz; kayıtları silinmez.</li>
             <li>Rol değişikliği ve pasife alma denetim kaydına yazılır.</li>
           </ul>
@@ -149,10 +150,10 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((user, index) => {
+              {rows.map((user) => {
                 const self = user.id === me?.id
                 return (
-                  <motion.tr key={user.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(index, 10) * 0.02 }} className={user.isActive ? undefined : 'is-muted'}>
+                  <tr key={user.id} className={user.isActive ? undefined : 'is-muted'}>
                     <td>
                       <span className="person">
                         <span className="assign-avatar" aria-hidden="true">
@@ -204,7 +205,7 @@ export function UsersPage() {
                         </Button>
                       )}
                     </td>
-                  </motion.tr>
+                  </tr>
                 )
               })}
             </tbody>
@@ -288,7 +289,14 @@ function InviteDialog({ open, onClose, onInvited }: InviteDialogProps) {
   return (
     <Modal open={open} title="Kullanıcı davet et" onClose={() => (reset(), onClose())}>
       <form onSubmit={submit} noValidate>
-        <p className="form-note">Kullanıcıya şifresini belirleyeceği bir bağlantı e-postayla gider.</p>
+        <div className="invite-how">
+          <MailPlus size={18} aria-hidden="true" />
+          <p>
+            Kullanıcının e-posta adresine <strong>72 saat geçerli</strong> bir şifre belirleme bağlantısı gider. Kullanıcı şifresini belirleyince hesabı etkin
+            olur.
+          </p>
+        </div>
+        <p className="form-note">Not: Gerçek e-posta gönderimi henüz kurulu değil; şimdilik bağlantı sunucu kaydına yazılıyor (S-15).</p>
         <Input label="Ad soyad" value={fullName} error={errors.fullName} maxLength={200} onChange={(event) => setFullName(event.target.value)} />
         <Input label="E-posta" type="email" autoComplete="off" value={email} error={errors.email} onChange={(event) => setEmail(event.target.value)} />
         <fieldset className="role-picker">

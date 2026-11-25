@@ -1160,6 +1160,11 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 | Yağmur (#30) | `auth/roles.ts` | Bütün rollerin ana sayfası `/overview`; menülere "Genel bakış" ve "Platform hakkında", adaya "Kayıt fotoğrafı" eklendi | Hayır |
 | Yağmur (#30) | `layouts/AppShell.*`, `components/PageHeader.*` | Renkli simge kutuları, daraltılabilir menü, sayfa başlığı bandı, hata sınırı (K-42) | Hayır |
 | Yağmur (#30) | `App.test.tsx`, `pages/authPages.test.tsx` | Kökten ve girişten sonra beklenen başlık artık genel bakışın karşılaması ("Merhaba, Ayşe 👋", adı olmayan kullanıcıda "Hoş geldiniz 👋"); 403 ekranındaki "Ana sayfaya dön" `/overview`'e gidiyor | Davranış aynı, yalnızca ana sayfa değişti |
+| Yağmur (#30) | `auth/RequireAuth.tsx`, `auth/tokenStore.ts` | K-43: rol uyuşmazlığında yönlendirme, belirteçler `sessionStorage`'da | Evet: K-34'teki iki karar değişti (gerekçe K-43'te) |
+| Yağmur (#30) | `pages/profile/ProfilePage.*`, yeni `ProfileHero.tsx` | Profil kartı (avatar, ad, rol), simgeli hesap satırları; şifre formu aynı. Ekran okuyucu başlığı "Profil" | Hayır |
+| Yağmur (#32) | `features/biometric/ReferencePhotoPage.*`, `referencePhoto.test.tsx` | Rıza açılır pencerede, sonra fotoğraf alanı; testler önce "Metni oku ve onayla"yı tıklıyor, beklenen gönderim aynı | Akış değişti, kurallar aynı |
+| Yağmur (#32) | `features/exams/MyExamsPage.tsx`, `ExamCard.*`, `myExams.test.tsx` | Uyarı yerine eylem kartı ("Kayıt fotoğrafınızı yükleyin"); sınav bilgileri çip ve pencere kutusu | Hayır |
+| Yağmur (#33) / Şeyma (S4) | `features/exam/examPage.test.tsx` | "Tarayıcıda kare saklanmaz" kontrolü: `sessionStorage`'da yalnızca oturum belirteci | Hayır; kontrolün amacı aynı |
 | Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-38, modern yön) | Hayır |
 
 ---
@@ -1204,6 +1209,24 @@ Kullanıcı geri bildirimi: "sitenin amacı belli değil", "nerede olduğumu anl
 | Yan menü | Her bölüm kendi renginde simge kutusuyla; masaüstünde "Menüyü daralt" ile yalnızca simgeler kalır (adlar ipucunda), tercih `aiguard.sidebar.collapsed`. Telefonda çekmece |
 | Tanıtım | Her rolde önce "AI-Guard nedir?" ve "Kararı insan verir", sonra role özel dört adım, sonunda "i" düğmesi ve Platform hakkında. Anahtar `aiguard.onboarding.<rol>.v2` (önceki tanıtımı görmüş kullanıcı yenisini bir kez görür) |
 | Hata sınırı (`RouteErrorBoundary`) | Sayfa çizilirken ya da sayfa parçası yüklenemezken boş ekran yerine "Sayfa yüklenemedi / Sayfayı yenile". Yeni sürüm yayımlanınca eski parçanın bulunamaması da buraya düşer (yerelde, çalışırken paket kurulunca görülen boş sayfa hatası) |
+
+---
+
+## K-43 · Kullanıcı geri bildirimi turu: yetki, oturum, sadeleştirme (UI1)
+
+| Karar | Ayrıntı | Önceki karar |
+|---|---|---|
+| Rolün açamadığı sayfa gösterilmez | `RequireAuth` rol uyuşmazlığında 403 ekranı yerine rolün ana sayfasına (`/overview`) yönlendiriyor. Başka rolün adresiyle giriş yapan da kendi ana sayfasına düşüyor (üç rolün "yanlış yerden başlaması" buydu) | K-34'teki "403 ekranı" kaldırıldı (`ForbiddenPage` kullanılmıyor) |
+| Sayfa yenilenince oturum düşmez | Belirteçler sekmeye özel `sessionStorage`'da (`aiguard.session`): yenilemede kalır, sekme kapanınca silinir; `localStorage` kullanılmıyor. XSS'e karşı CSP `script-src 'self'` | K-34'teki "yalnızca bellek" |
+| Site anlatımı tek yerde: tanıtım | "Platform hakkında" sayfası, panellerdeki "nasıl ilerler" bölümleri ve girişteki YM 491 satırı kaldırıldı. Tanıtıma "Bir daha gösterme" eklendi (seçilmezse bir sonraki girişte yeniden açılır, aynı oturumda açılmaz) | K-42 |
+| "i" kutusu kesilmez | Kutu `document.body`'ye (portal) sabit konumla açılıyor; kart ya da başlık bandı onu kesemiyor | — |
+| Form alanları yazarken bozulmaz | Sınav formunda tarih ve sayı alanlarının ham metni ayrı tutuluyor; değer yalnızca geçerliyken forma yansıyor (erişim penceresi ve saklama süresindeki "donma") | — |
+| Aramalar takılmaz | Liste süzme `useDeferredValue` ile; kullanıcı tablosunda satır animasyonu yok | — |
+| Kayıt fotoğrafı akışı | Önce "Önce açık rızanız gerekiyor" kartı; metin ve onay açılır pencerede; onaydan sonra sürükle-bırak fotoğraf alanı. Her yeni yükleme için rıza yeniden veriliyor | Yağmur'un satır içi rıza kutusu |
+| Skor gerekçesi | Şelale yerine olay türüne göre sıralı yatay çubuk (tek renk, değer çubuk ucunda, üzerine gelince ayrıntı). "Seçilen olay" yerine "Olay ayrıntısı": açılışta en etkili olay seçili, yanlış alarm düğmesi bu kartta | — |
+| Davet | Davet penceresi bağlantının 72 saat geçerli olduğunu ve e-posta gönderiminin henüz kurulmadığını (S-15) yazıyor | — |
+
+Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; servis çalışmıyorsa API 15 sn zaman aşımını bekliyor (`VisionFaceService`). Rıza geri alma ucu ölçüldü: 26 ms. Ekranda yükleme sırasında "birkaç saniye sürebilir" yazıyor.
 
 ---
 

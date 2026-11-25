@@ -75,3 +75,106 @@
     position: static;
   }
 }
+
+/* Yeni akış (K-43): önce rıza kartı, sonra fotoğraf alanı. */
+.consent-gate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  padding: var(--space-6);
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-row-hover);
+}
+
+.consent-gate > div {
+  display: grid;
+  flex: 1 1 18rem;
+  gap: var(--space-1);
+}
+
+.consent-gate p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.consent-gate-icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 16px;
+  background: linear-gradient(140deg, #7c5cf0, #b39dfa);
+  color: #fff;
+}
+
+.photo-step {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.photo-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.photo-step-head strong {
+  font-size: var(--font-size-lg);
+}
+
+.consent-given {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.photo-submit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.photo-submit-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.consent-modal {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.consent-modal-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-success-text);
+  font-weight: 600;
+}
+
+.photo-guide-icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: var(--space-4);
+  border-radius: 18px;
+  background: linear-gradient(140deg, #e0457f, #f589b4);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgb(224 69 127 / 70%);
+}

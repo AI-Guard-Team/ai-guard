@@ -1,5 +1,5 @@
 import { Search, UserMinus, UserPlus, Users } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { ApiError } from '../../api/client'
 import { addAssignment, deleteAssignment, listUsers, type AssignmentDetail, type AssignmentRole } from '../../api/admin'
 import { Button } from '../../components/Button'
@@ -48,7 +48,7 @@ function AssignmentSection({ examId, role, title, empty, hint, rows, onChanged }
   const [busy, setBusy] = useState<string | null>(null)
 
   const assigned = useMemo(() => new Set(rows.map((row) => row.userId)), [rows])
-  const term = query.trim().toLocaleLowerCase('tr-TR')
+  const term = useDeferredValue(query).trim().toLocaleLowerCase('tr-TR')
   const matches = term
     ? (users ?? [])
         .filter((user) => user.isActive && !assigned.has(user.id))

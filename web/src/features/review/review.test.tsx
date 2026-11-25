@@ -90,7 +90,7 @@ describe('değerlendirici ekranları', () => {
 
     expect(await screen.findByRole('heading', { name: 'Elif Yılmaz' })).toBeInTheDocument()
     expect(screen.getByText('Tespit edilen olaylar kopya kanıtı değildir; karar size aittir.')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Yanlış alarm' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Yanlış alarm olarak işaretle' }))
 
     expect(await screen.findByText(/Yanlış alarm · Test Kullanıcı/)).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/events/ev1/false-alarm' && init?.method === 'POST')).toBe(true)
@@ -121,10 +121,10 @@ describe('değerlendirici ekranları', () => {
     expect(JSON.parse(call![1]!.body as string)).toEqual({ decision: 'Suspicious', note: null })
   })
 
-  it('yönetici dosyayı yalnızca okur: karar ve yanlış alarm yok', async () => {
+  it('yönetici değerlendirici dosya adresine giderse kendi ana sayfasına döner', async () => {
     mockFetch((url) => (url === '/api/reports/exams/ex1/sessions/s1' ? jsonResponse(404) : jsonResponse(404)))
     signInAs('Admin')
     await renderApp('/review/sessions/s1')
-    expect(await screen.findByRole('heading', { name: 'Bu sayfaya erişim yetkiniz yok' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: /Merhaba, Test/ })).toBeInTheDocument()
   })
 })

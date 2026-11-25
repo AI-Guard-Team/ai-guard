@@ -13,9 +13,9 @@ import { Seal } from '../../components/Seal'
 import { Skeleton } from '../../components/Skeleton'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useResource } from '../../hooks/useResource'
-import { DECISION_LABEL, DECISION_TONE, FLAG_LABEL, FLAG_TONE, STATUS_LABEL, STATUS_TONE } from '../../lib/eventCatalog'
+import { DECISION_LABEL, DECISION_TONE, FLAG_LABEL, FLAG_TONE, STATUS_LABEL, STATUS_TONE, eventLabel } from '../../lib/eventCatalog'
 import { docNumber, formatDate, formatDateTime, formatTimeRange } from '../../lib/format'
-import { ContributionWaterfall } from './ContributionWaterfall'
+import { ContributionBars } from './ContributionBars'
 import { DecisionPanel } from './DecisionPanel'
 import { EvidencePanel } from './EvidencePanel'
 import { NotesPanel } from './NotesPanel'
@@ -71,7 +71,9 @@ export function SessionDetailPage() {
   const isReviewer = user?.role === 'Reviewer'
   const canDecide = isReviewer && detail.status === 'AwaitingReview'
   const canMark = isReviewer && detail.status !== 'Decided' && !detail.monitoringDataDeletedAt
-  const selectedEvent = selected ? (detail.events.find((item) => item.id === selected.id) ?? null) : null
+  // Açılışta skora en çok katkı yapan olay seçili: ayrıntı kartı hiç boş kalmaz.
+  const strongest = [...detail.events].sort((a, b) => b.contribution - a.contribution)[0] ?? null
+  const selectedEvent = selected ? (detail.events.find((item) => item.id === selected.id) ?? strongest) : strongest
 
   const select = (event: ReviewEvent) => {
     setSelected(event)
@@ -196,21 +198,19 @@ export function SessionDetailPage() {
       )}
 
       <div className="case-grid">
-        <DocumentCard title={`Skor neden ${Math.round(detail.riskScore)}?`} aside={<InfoTip title="Skor gerekçesi" align="end"><p>Her çubuk bir olayın skora katkısı; büyükten küçüğe sıralı. Katkıları sunucu hesaplar (tekrar ve zamanla azalma dahil).</p><p>Bir olayın yanlış alarm olduğunu düşünüyorsanız işaretleyin: olay silinmez, skordan çıkar.</p></InfoTip>}>
-          <ContributionWaterfall
-            events={detail.events}
-            riskScore={detail.riskScore}
-            canMark={canMark}
-            pendingId={markingId}
-            selectedId={selectedEvent?.id ?? null}
-            onMark={(event) => void mark(event)}
-            onSelect={select}
-          />
+        <DocumentCard title={`Skor neden ${Math.round(detail.riskScore)}?`} aside={<InfoTip title="Skor gerekçesi" align="end"><p>Her çubuk bir olay türünün skora toplam katkısı; büyükten küçüğe sıralı. Bir çubuğa tıklayınca o türün en etkili olayı ayrıntıda açılır.</p></InfoTip>}>
+          <ContributionBars events={detail.events} selectedType={selectedEvent?.type ?? null} onSelect={select} />
         </DocumentCard>
 
         <div className="case-side">
-          <DocumentCard title="Seçilen olay">
-            <EvidencePanel event={selectedEvent} monitoringDataDeletedAt={detail.monitoringDataDeletedAt} />
+          <DocumentCard title={selectedEvent ? `Olay ayrıntısı: ${eventLabel(selectedEvent.type)}` : 'Olay ayrıntısı'}>
+            <EvidencePanel
+              event={selectedEvent}
+              monitoringDataDeletedAt={detail.monitoringDataDeletedAt}
+              canMark={canMark}
+              marking={markingId === selectedEvent?.id}
+              onMark={(event) => void mark(event)}
+            />
             <p className="evidence-audit">Bu dosyayı açmanız denetim kaydına yazıldı.</p>
           </DocumentCard>
           <DocumentCard title="Değerlendirici notları">

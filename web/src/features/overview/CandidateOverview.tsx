@@ -1,4 +1,4 @@
-import { ArrowRight, Camera, CircleCheck, CircleDashed, ClipboardCheck, ClipboardList, Clock3, FileCheck2, PlayCircle, ScanFace, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Camera, CircleCheck, CircleDashed, ClipboardCheck, ClipboardList, Clock3 } from 'lucide-react'
 import { Link } from 'react-router'
 import { EXAM_TYPE_LABEL, listExams, type ExamSummary } from '../../api/exams'
 import { getBiometricStatus } from '../../api/profile'
@@ -8,7 +8,7 @@ import { useNow } from '../../hooks/useNow'
 import { useResource } from '../../hooks/useResource'
 import { formatDateTime } from '../../lib/format'
 import { greeting } from './greeting'
-import { CardHead, FlowSteps, Hero, StatTile } from './OverviewParts'
+import { CardHead, Hero, StatTile } from './OverviewParts'
 
 const load = async (signal: AbortSignal) => {
   const [exams, biometric] = await Promise.all([listExams(signal), getBiometricStatus(signal)])
@@ -50,7 +50,7 @@ export function CandidateOverview({ firstName }: { firstName: string }) {
     <div className="overview">
       <Hero
         greeting={greeting(firstName)}
-        text="Çevrim içi sınavlarınız burada. Sınav öncesi adımları tamamlayın, sınavınızı rahatça çözün; kararı bir değerlendirici verir."
+        text="Sınavlarınız ve hazırlık durumunuz bir bakışta."
         aside={
           <Link className="button button-lg hero-button" to="/exams">
             Sınavlarıma git
@@ -127,15 +127,6 @@ export function CandidateOverview({ firstName }: { firstName: string }) {
         </section>
       </div>
 
-      <FlowSteps
-        title="Sınav nasıl ilerler?"
-        steps={[
-          { icon: FileCheck2, tone: 'lilac', title: 'Rıza', text: 'Hangi verinin neden işlendiğini okuyup onaylarsınız.' },
-          { icon: ShieldCheck, tone: 'indigo', title: 'Güvenlik ajanı', text: 'Cihazınızdaki ajan eşleştirilir, ortam denetlenir.' },
-          { icon: ScanFace, tone: 'rose', title: 'Kimlik doğrulama', text: 'Kayıt fotoğrafınızla karşılaştırılır; süre ancak sonra başlar.' },
-          { icon: PlayCircle, tone: 'mint', title: 'Sınav', text: 'Cevaplar her seçimde kaydedilir; bağlantı koparsa cihazda bekler.' },
-        ]}
-      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { BookOpenCheck, ChevronRight, Plus, Search } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { EXAM_TYPE_LABEL, listExams } from '../../api/exams'
 import { Alert } from '../../components/Alert'
@@ -32,14 +32,16 @@ export function AdminExamsPage() {
   const now = useNow(30_000)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
+  // Yazarken liste ertelenmiş değerle süzülür: arama kutusu takılmaz.
+  const deferredQuery = useDeferredValue(query)
 
   const rows = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('tr-TR')
+    const term = deferredQuery.trim().toLocaleLowerCase('tr-TR')
     return (data ?? [])
       .map((exam) => ({ exam, phase: windowPhase(exam, now.getTime()) }))
       .filter(({ exam, phase }) => (filter === 'all' || phase === filter || (filter === 'open' && phase === 'closing')) && (!term || exam.name.toLocaleLowerCase('tr-TR').includes(term)))
       .sort((a, b) => new Date(b.exam.windowStartAt).getTime() - new Date(a.exam.windowStartAt).getTime())
-  }, [data, filter, query, now])
+  }, [data, filter, deferredQuery, now])
 
   return (
     <div className="admin-page">

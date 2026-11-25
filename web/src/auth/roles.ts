@@ -27,7 +27,6 @@ export interface MenuItem {
 }
 
 const OVERVIEW: MenuItem = { to: '/overview', label: 'Genel bakış' }
-const ABOUT: MenuItem = { to: '/about', label: 'Platform hakkında' }
 
 export const ROLE_MENU: Record<Role, MenuItem[]> = {
   Admin: [
@@ -37,8 +36,7 @@ export const ROLE_MENU: Record<Role, MenuItem[]> = {
     { to: '/admin/reports', label: 'Raporlar' },
     { to: '/admin/settings', label: 'Ayarlar' },
     { to: '/admin/audit', label: 'Denetim kaydı' },
-    ABOUT,
   ],
-  Reviewer: [OVERVIEW, { to: '/review', label: 'İncelemeler' }, ABOUT],
-  Candidate: [OVERVIEW, { to: '/exams', label: 'Sınavlarım' }, { to: '/profile/photo', label: 'Kayıt fotoğrafı' }, ABOUT],
+  Reviewer: [OVERVIEW, { to: '/review', label: 'İncelemeler' }],
+  Candidate: [OVERVIEW, { to: '/exams', label: 'Sınavlarım' }, { to: '/profile/photo', label: 'Kayıt fotoğrafı' }],
 }

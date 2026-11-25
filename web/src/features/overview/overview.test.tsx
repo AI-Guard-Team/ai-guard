@@ -21,7 +21,7 @@ const exam = {
 
 afterEach(() => localStorage.clear())
 
-describe('genel bakış ve platform hakkında (K-42)', () => {
+describe('genel bakış (K-42)', () => {
   it('aday sıradaki sınavını, açılışa kalan süreyi ve eksik kayıt fotoğrafını görür', async () => {
     mockFetch((url) => (url === '/api/exams' ? jsonResponse(200, [exam]) : url === '/api/me/biometric' ? jsonResponse(200, { enrolled: false }) : jsonResponse(404)))
     signInAs('Candidate', 'Ayşe Demir')
@@ -34,20 +34,10 @@ describe('genel bakış ve platform hakkında (K-42)', () => {
     expect(within(screen.getByRole('region', { name: 'Hazırlık listesi' })).getByRole('link', { name: /Yükle/ })).toHaveAttribute('href', '/profile/photo')
   })
 
-  it('platform hakkında sayfası amacı ve ilkeleri anlatır', async () => {
-    mockFetch(() => jsonResponse(404))
-    signInAs('Reviewer')
-    await renderApp('/about')
-
-    expect(screen.getByRole('heading', { level: 1, name: 'AI-Guard nedir?' })).toBeInTheDocument()
-    expect(screen.getByText('Kararı insan verir')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Platform hakkında' })).toHaveAttribute('aria-current', 'page')
-  })
-
   it('yan menü daraltılır ve tercih hatırlanır', async () => {
     mockFetch(() => jsonResponse(404))
     signInAs('Reviewer')
-    await renderApp('/about')
+    await renderApp('/overview')
 
     await userEvent.click(screen.getByRole('button', { name: 'Menüyü daralt' }))
     expect(document.querySelector('.app-shell')).toHaveAttribute('data-collapsed', 'true')

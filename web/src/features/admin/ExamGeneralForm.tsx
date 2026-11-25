@@ -46,11 +46,28 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
     ? { name: exam.name, type: exam.type, durationMinutes: exam.durationMinutes, windowStartAt: exam.windowStartAt, windowEndAt: exam.windowEndAt, retentionDays: exam.retentionDays }
     : defaults()
   const [form, setForm] = useState<ExamRequest>(initial)
+  // Alanların ham metni: yazarken (yıl yarımken, sayı silinince) değer bozulmasın; geçerli olunca forma yansır.
+  const [startText, setStartText] = useState(() => toLocalInput(initial.windowStartAt))
+  const [endText, setEndText] = useState(() => toLocalInput(initial.windowEndAt))
+  const [durationText, setDurationText] = useState(String(initial.durationMinutes))
+  const [retentionText, setRetentionText] = useState(String(initial.retentionDays))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const set = <K extends keyof ExamRequest>(key: K, value: ExamRequest[K]) => setForm((current) => ({ ...current, [key]: value }))
+  const setDate = (key: 'windowStartAt' | 'windowEndAt', text: string) => {
+    ;(key === 'windowStartAt' ? setStartText : setEndText)(text)
+    const date = new Date(text)
+    if (text && !Number.isNaN(date.getTime()) && date.getFullYear() > 1999) set(key, date.toISOString())
+  }
+  const setNumber = (key: 'durationMinutes' | 'retentionDays', text: string) => {
+    ;(key === 'durationMinutes' ? setDurationText : setRetentionText)(text)
+    const value = Number(text)
+    if (text.trim() && Number.isInteger(value) && value > 0) set(key, value)
+  }
+  const durationError = Number(durationText) > 0 ? undefined : 'Süre en az 1 dakika olmalı.'
+  const retentionError = Number(retentionText) > 0 ? undefined : 'Saklama süresi en az 1 gün olmalı.'
 
   const start = new Date(form.windowStartAt)
   const end = new Date(form.windowEndAt)
@@ -59,8 +76,9 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!form.name.trim() || windowError) {
-      setError(!form.name.trim() ? 'Sınav adı zorunludur.' : windowError!)
+    const problem = !form.name.trim() ? 'Sınav adı zorunludur.' : (durationError ?? retentionError ?? windowError)
+    if (problem) {
+      setError(problem)
       return
     }
     setPending(true)
@@ -120,8 +138,9 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
           min={1}
           max={600}
           inputMode="numeric"
-          value={form.durationMinutes}
-          onChange={(event) => set('durationMinutes', Number(event.target.value) || 0)}
+          value={durationText}
+          error={durationError}
+          onChange={(event) => setNumber('durationMinutes', event.target.value)}
         />
       </div>
 
@@ -133,13 +152,13 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
           </InfoTip>
         </legend>
         <div className="form-grid">
-          <Input label="Başlangıç" type="datetime-local" value={toLocalInput(form.windowStartAt)} onChange={(event) => event.target.value && set('windowStartAt', new Date(event.target.value).toISOString())} />
+          <Input label="Başlangıç" type="datetime-local" value={startText} onChange={(event) => setDate('windowStartAt', event.target.value)} />
           <Input
             label="Bitiş"
             type="datetime-local"
-            value={toLocalInput(form.windowEndAt)}
+            value={endText}
             error={windowError}
-            onChange={(event) => event.target.value && set('windowEndAt', new Date(event.target.value).toISOString())}
+            onChange={(event) => setDate('windowEndAt', event.target.value)}
           />
         </div>
         {!windowError ? (
@@ -159,8 +178,9 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
         max={3650}
         inputMode="numeric"
         hint="Süre dolunca kanıt kareleri, olaylar ve yüz vektörü otomatik silinir; sonuç ve karar kalır."
-        value={form.retentionDays}
-        onChange={(event) => set('retentionDays', Number(event.target.value) || 0)}
+        value={retentionText}
+        error={retentionError}
+        onChange={(event) => setNumber('retentionDays', event.target.value)}
       />
 
       {error ? <Alert tone="danger">{error}</Alert> : null}

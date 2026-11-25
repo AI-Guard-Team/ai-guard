@@ -52,36 +52,6 @@ export function StatTile({ icon, tone, value, label, hint, to, index = 0 }: Stat
   )
 }
 
-export interface FlowStep {
-  icon: LucideIcon
-  tone: TileTone
-  title: string
-  text: string
-}
-
-/** Süreç şeridi: bir işin adımları soldan sağa (ör. sınav nasıl ilerler). */
-export function FlowSteps({ title, steps }: { title: string; steps: FlowStep[] }) {
-  return (
-    <section className="overview-card" aria-labelledby="flow-title">
-      <h2 className="overview-card-title" id="flow-title">
-        {title}
-      </h2>
-      <ol className="flow">
-        {steps.map((step, index) => (
-          <li key={step.title}>
-            <IconTile icon={step.icon} tone={step.tone} />
-            <span className="flow-index" aria-hidden="true">
-              {index + 1}
-            </span>
-            <strong>{step.title}</strong>
-            <span>{step.text}</span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
-}
-
 /** Kart başlığı + "tümünü gör" bağlantısı. */
 export function CardHead({ title, to, linkLabel }: { title: string; to?: string; linkLabel?: string }) {
   return (
