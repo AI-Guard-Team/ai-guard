@@ -70,6 +70,7 @@ public class AccessMatrixTests
         ["POST api/events/{id:guid}/false-alarm"] = $"{AccessPolicies.ReviewRead}+{AccessPolicies.ReviewDecide}",
 
         // Kullanıcı, sınav, ayar ve saklama süresi yönetimi: Yönetici.
+        ["GET api/risk-settings"] = AccessPolicies.Manage,
         ["GET api/users"] = AccessPolicies.Manage,
         ["POST api/users"] = AccessPolicies.Manage,
         ["PATCH api/users/{id:guid}"] = AccessPolicies.Manage,

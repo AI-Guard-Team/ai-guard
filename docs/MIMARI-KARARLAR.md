@@ -1152,7 +1152,28 @@ Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #
 | Yağmur (#30) | `layouts/AppShell.tsx/.css`, `components/BrandMark.css` | Yeni görünüm (K-38): lacivert geçişli yan menü, "Menü" başlığı, beyaz etkin öğe, "Tanıtımı yeniden göster", ilk girişte tanıtım penceresi, sayfa geçiş hareketi. Menü içeriği ve rol mantığı değişmedi | Hayır; kabuk testleri geçiyor |
 | Yağmur (#30) | `components/PageHeader.tsx` | Yeni alanlar `breadcrumbs`, `info`; `kicker` artık tek öğeli yol çubuğu olarak gösteriliyor | Hayır |
 | Yağmur (#30) | `layouts/AuthLayout.tsx` | `kicker` yeniden isteğe bağlı ve gösterilmiyor; sol panel yeniden üç ilke + başlık (Yağmur'un ilk sürümündeki ilkeler geri geldi) | Hayır |
+| Yağmur (#30) | `pages/RoleHomePage.tsx` | Silindi; yerine gerçek ana sayfalar (yönetici: Sınavlar, değerlendirici: İncelemeler). `auth/roles.ts`'te yöneticinin ana sayfası `/admin/exams`, menüye beş yönetici sayfası eklendi | Hayır; yer tutucuydu |
+| Yağmur (#30) | `App.test.tsx` | İki beklenti güncellendi: yöneticinin kökten düştüğü başlık "Yönetim" yerine "Sınavlar"; çıkış testinde `/api/auth/logout` ilk istek değil (ana sayfa önce sınavları istiyor), istekler arasında aranıyor | Davranış aynı, yalnızca ana sayfa gerçek |
 | Yağmur (K-34 kuralı) | `docs/MIMARI-KARARLAR.md` | K-34'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-38, modern yön) | Hayır |
+
+---
+
+## K-40 · Yönetici ekranları ve risk ayarları ucu (UI1, Stitch 23–32)
+
+| Ekran | Adres | Bağlandığı uç |
+|---|---|---|
+| 25 Sınavlar | `/admin/exams` | `GET /api/exams`; durum erişim penceresinden (planlandı / erişime açık / son başlangıç geçti / sona erdi) |
+| 26–29 Sınav düzenleyici | `/admin/exams/new`, `/admin/exams/{id}[/questions\|assignments\|risk]` | `POST/PUT/DELETE /api/exams`, soru ve atama uçları (E3), `GET /api/risk-settings` |
+| 23–24 Kullanıcılar ve davet | `/admin/users` | `GET/POST /api/users`, `PATCH /api/users/{id}` (rol, pasife alma) |
+| 30 Raporlar | `/admin/reports` | `GET /api/review/exams/{id}/sessions` (yönetici okur, K-31), rapor görünümü `/reports/exams/{examId}/sessions/{sessionId}`, PDF/Excel indirme |
+| 31 Ayarlar | `/admin/settings` | Rıza metinleri (`GET /api/consent-texts/{type}`), sınav başına saklama süresi, risk değerleri özeti |
+| 32 Denetim kaydı | `/admin/audit` | `GET /api/audit-logs` (işlem grubu, tarih aralığı, sayfa) |
+
+- **Yeni uç `GET /api/risk-settings`** (`Manage`): `riskconfig.json`'daki oturum eşiği, tekrar ve süre ayarları ile her olay türünün ağırlığı, azalma katsayısı ve tek başına eşiği; ağırlığa göre sıralı. Salt okunur, değerler sunucunun skor hesabındakiyle aynı. Sınav başına düzenleme açık konu (S-27); ekranda "salt okunur, sınav başına ayar henüz yok" yazıyor.
+- Ekranda uydurma ayar yok: "alternatif sınav yöntemi metni" ve "destek talebi" için uç olmadığından Ayarlar sayfasında gösterilmiyor.
+- Yeni sınav yalnızca "Genel bilgiler" adımıyla açılıyor; kaydedilince sınavın adresine ve "Sorular" adımına geçiliyor. Adımların yanında ilerleme (soru sayısı, aday/değerlendirici sayısı).
+- Kullanıcı kendi rolünü değiştiremez ve kendini pasife alamaz (ekranda "Siz"). Pasife alma yenileme belirteçlerini iptal ediyor; ekranda "oturumu en geç 15 dakika içinde kapanır" deniyor (erişim belirteci ömrü, K-20).
+- Ortak desenler (filtre çipleri, arama, veri tablosu, seçim kutusu, form ızgarası) `web/src/styles/patterns.css`'te.
 
 ---
 
@@ -1220,6 +1241,7 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-24 | Tarayıcı ses parçasını WebM/Opus olarak kaydedemiyorsa (`MediaRecorder` yok ya da `audio/webm` desteklenmiyor) ses gönderilmiyor; kareler gidiyor | Yağmur (S4), Dilan (D5) | D5'te kare gelirken ses gelmeyen oturum için `MONITORING_GAP` üretilmesi; gerekirse tarayıcıda WAV'a dönüştürme. Desteklenen tarayıcılar `docs/tarayici-deneme-notlari.md`'deki S4 denemesiyle belirlenecek |
 | S-25 | GAB 3.3.8: "Silinen veriler en geç 7 gün içinde yedeklerden de çıkar" | Yağmur (E1b), Ayşe | Kodla değil yedekleme düzeniyle: yedekler en fazla 7 gün tutulmalı. Veritabanı yedeği alınıyorsa saklama süresi buna göre ayarlanmalı |
 | S-26 | GAB'da olaylar ve kararlar "saklama süresi sonunda (itiraz süreci bitmişse)" siliniyor; itiraz (FR-32) henüz yok | Ayşe, Esma | Şimdilik saklama süresi itirazı beklemiyor (K-32). FR-32 eklenirse açık itirazı olan oturum saklama görevinde atlanmalı |
+| S-27 | Risk ağırlıkları şu an platform geneli ve salt okunur (`riskconfig.json`, K-40); Stitch 29 sınav başına düzenleme gösteriyordu | Ayşe | Sınav başına ağırlık istenirse: sınava bağlı ayar tablosu, `PUT /api/exams/{id}/risk-settings`, RiskEngine'in oturumun sınavına göre ayar okuması ve geçmiş skorların hangi ayarla hesaplandığının kaydı gerekir |
 | S-27 | GAB 3.3.2: reddedilen istekler denetim kaydına yazılmalı | Ayşe, Esma | A5'te yapılmadı (K-32): her 401/403'ü kayda yazmak tabloyu hızla büyütür. Uygulama günlüğünde var; gerekirse yalnızca tekrarlayan reddedilmeler (ör. aynı kullanıcıdan art arda 403) kayda alınabilir |
 | S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |
 | S-29 | Sorular kamera/mikrofon açılmadan önyüzde gizleniyor, ama sunucu `InProgress`'te soruları yine döndürüyor; değiştirilmiş bir istemci kamera açmadan soruları okuyabilir | Yağmur (S4), Esma (E4) | Sunucuda da kontrol: oturum uç `GET /api/sessions/{id}` soruları ancak son birkaç saniyede kare gelmişse döndürsün. K-24'ü değiştirdiği için ekip kararı gerekiyor |

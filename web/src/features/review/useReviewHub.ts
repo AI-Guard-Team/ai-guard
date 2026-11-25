@@ -23,15 +23,21 @@ export function useReviewHub(onReady: (message: SessionReadyMessage) => void): v
   })
 
   useEffect(() => {
-    const connection = new HubConnectionBuilder()
-      .withUrl('/hubs/review', { accessTokenFactory: () => tokenStore.get()?.accessToken ?? '' })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.None)
-      .build()
-    connection.on('SessionReadyForReview', (message: SessionReadyMessage) => handler.current(message))
-    const started = connection.start().catch(() => undefined)
+    let connection
+    try {
+      connection = new HubConnectionBuilder()
+        .withUrl(`${window.location.origin}/hubs/review`, { accessTokenFactory: () => tokenStore.get()?.accessToken ?? '' })
+        .withAutomaticReconnect()
+        .configureLogging(LogLevel.None)
+        .build()
+    } catch {
+      return // Bağlantı kurulamıyorsa bildirim yok; liste elle yenilenebilir.
+    }
+    const hub = connection
+    hub.on('SessionReadyForReview', (message: SessionReadyMessage) => handler.current(message))
+    const started = hub.start().catch(() => undefined)
     return () => {
-      void started.then(() => connection.stop())
+      void started.then(() => hub.stop())
     }
   }, [])
 }

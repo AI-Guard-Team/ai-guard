@@ -13,7 +13,12 @@ export const pageLoaders = {
   reviewPanel: () => import('./features/review/ReviewPanelPage').then((m) => ({ default: m.ReviewPanelPage })),
   reviewSession: () => import('./features/review/SessionDetailPage').then((m) => ({ default: m.SessionDetailPage })),
   candidateReport: () => import('./features/review/CandidateReportPage').then((m) => ({ default: m.CandidateReportPage })),
-  roleHome: () => import('./pages/RoleHomePage').then((m) => ({ default: m.RoleHomePage })),
+  adminExams: () => import('./features/admin/AdminExamsPage').then((m) => ({ default: m.AdminExamsPage })),
+  examEditor: () => import('./features/admin/ExamEditorPage').then((m) => ({ default: m.ExamEditorPage })),
+  users: () => import('./features/admin/UsersPage').then((m) => ({ default: m.UsersPage })),
+  reports: () => import('./features/admin/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+  settings: () => import('./features/admin/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+  auditLog: () => import('./features/admin/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
 }
 
 /** Bütün sayfa parçalarını önceden indirir (testlerde ve ileride boşta önden yükleme için). */

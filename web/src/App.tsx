@@ -1,6 +1,6 @@
 import { MotionConfig } from 'motion/react'
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 import { HomeRedirect, RequireAuth } from './auth/RequireAuth'
 import { RouteFallback } from './components/RouteFallback'
 import { AppShell } from './layouts/AppShell'
@@ -18,7 +18,12 @@ const ReferencePhotoPage = lazy(loaders.profilePhoto)
 const PreflightPage = lazy(loaders.examStart)
 const MyExamsPage = lazy(loaders.myExams)
 const ExamPage = lazy(loaders.exam)
-const RoleHomePage = lazy(loaders.roleHome)
+const AdminExamsPage = lazy(loaders.adminExams)
+const ExamEditorPage = lazy(loaders.examEditor)
+const UsersPage = lazy(loaders.users)
+const ReportsPage = lazy(loaders.reports)
+const SettingsPage = lazy(loaders.settings)
+const AuditLogPage = lazy(loaders.auditLog)
 const ReviewerExamsPage = lazy(loaders.reviewerExams)
 const ReviewPanelPage = lazy(loaders.reviewPanel)
 const SessionDetailPage = lazy(loaders.reviewSession)
@@ -42,7 +47,16 @@ export default function App() {
               <Route path="/profile" element={<ProfilePage />} />
 
               <Route element={<RequireAuth roles={['Admin']} />}>
-                <Route path="/admin/*" element={<RoleHomePage title="Yönetim" />} />
+                <Route path="/admin" element={<Navigate to="/admin/exams" replace />} />
+                <Route path="/admin/exams" element={<AdminExamsPage />} />
+                <Route path="/admin/exams/new" element={<ExamEditorPage />} />
+                <Route path="/admin/exams/:examId" element={<ExamEditorPage />} />
+                <Route path="/admin/exams/:examId/:step" element={<ExamEditorPage />} />
+                <Route path="/admin/users" element={<UsersPage />} />
+                <Route path="/admin/reports" element={<ReportsPage />} />
+                <Route path="/admin/settings" element={<SettingsPage />} />
+                <Route path="/admin/audit" element={<AuditLogPage />} />
+                <Route path="/admin/*" element={<NotFoundPage />} />
               </Route>
               <Route element={<RequireAuth roles={['Reviewer']} />}>
                 <Route path="/review" element={<ReviewerExamsPage />} />

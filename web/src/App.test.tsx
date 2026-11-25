@@ -17,7 +17,7 @@ describe('yönlendirme', () => {
   })
 
   it.each([
-    ['Admin', 'Yönetim'],
+    ['Admin', 'Sınavlar'],
     ['Reviewer', 'İncelemeler'],
     ['Candidate', 'Sınavlarım'],
   ] as const)('%s kökten kendi ana sayfasına yönlenir', async (role, heading) => {
@@ -61,7 +61,7 @@ describe('yönlendirme', () => {
     expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument()
     expect(tokenStore.get()).toBeNull()
     expect(tokenStore.endReason()).toBe('signout')
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/logout')
+    expect(fetchMock.mock.calls.map((call) => call[0])).toContain('/api/auth/logout') // yönetici ana sayfası önce sınavları istiyor
   })
 
   it('yenileme reddedilince "oturum süresi doldu" ekranına götürür, giriş sonrası aynı sayfaya döner', async () => {

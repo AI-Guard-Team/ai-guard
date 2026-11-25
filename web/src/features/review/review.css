@@ -158,40 +158,6 @@
   gap: var(--space-4);
 }
 
-/* Sekme-çip dizisi. */
-.chip-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.chip-tab {
-  min-height: 2.25rem;
-  padding: 0 var(--space-4);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.chip-tab:hover {
-  background: var(--color-row-hover);
-}
-
-.chip-tab[aria-pressed='true'] {
-  border-color: var(--color-text);
-  background: var(--color-text);
-  color: var(--color-surface);
-}
-
-.chip-tab:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
 .review-sort {
   display: flex;
   align-items: center;
