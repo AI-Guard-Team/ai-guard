@@ -15,13 +15,14 @@ public class AuthServiceTimeTests(PostgresFixture fx) : IClassFixture<PostgresFi
 {
     private const string Password = "Gecerli-Sifre-123";
     private static readonly IPasswordHasher Hasher = new IdentityPasswordHasher();
+    private readonly CapturingEmailSender Emails = new();
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.Zero));
 
     private AuthService Auth(AppDbContext db)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["JWT_SECRET"] = TestApi.JwtSecret }).Build();
-        return new AuthService(db, Hasher, new JwtTokenService(JwtSettings.FromConfiguration(config), _clock), _clock);
+        return new AuthService(db, Hasher, new JwtTokenService(JwtSettings.FromConfiguration(config), _clock), Emails, _clock);
     }
 
     private async Task<User> SavedUserAsync()
@@ -106,6 +107,48 @@ public class AuthServiceTimeTests(PostgresFixture fx) : IClassFixture<PostgresFi
         var result = await Auth(db).SetPasswordAsync(new SetPasswordRequest(emails.InviteTokenFor(email), Password));
 
         Assert.Equal(AuthOperationStatus.InvalidToken, result.Status);
+    }
+
+    [SkippableFact]
+    public async Task Reset_link_expires_after_30_minutes_and_is_not_resent_within_2_minutes()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var user = await SavedUserAsync();
+        await using var db = fx.CreateContext();
+        var auth = Auth(db);
+
+        await auth.RequestPasswordResetAsync(new ForgotPasswordRequest(user.Email));
+        await auth.RequestPasswordResetAsync(new ForgotPasswordRequest(user.Email)); // bekleme süresinde: gönderilmez
+        _clock.Advance(AuthPolicy.PasswordResetCooldown);
+        await auth.RequestPasswordResetAsync(new ForgotPasswordRequest(user.Email)); // yeni bağlantı, eskisi geçersiz
+        var sent = Emails.ResetTokensFor(user.Email);
+        var oldLink = await auth.ResetPasswordAsync(new ResetPasswordRequest(sent[0], "Yeni-Sifre-789"));
+        _clock.Advance(AuthPolicy.PasswordResetLifetime + TimeSpan.FromSeconds(1));
+        var expired = await auth.ResetPasswordAsync(new ResetPasswordRequest(sent[1], "Yeni-Sifre-789"));
+
+        Assert.Equal(2, sent.Count);
+        Assert.Equal(AuthOperationStatus.InvalidToken, oldLink.Status);
+        Assert.Equal(AuthOperationStatus.InvalidToken, expired.Status);
+    }
+
+    [SkippableFact]
+    public async Task Password_reset_lifts_the_lockout()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var user = await SavedUserAsync();
+        await using var db = fx.CreateContext();
+        var auth = Auth(db);
+        for (var i = 0; i < AuthPolicy.MaxFailedLogins; i++)
+        {
+            await auth.LoginAsync(new LoginRequest(user.Email, "yanlis-sifre"));
+        }
+
+        await auth.RequestPasswordResetAsync(new ForgotPasswordRequest(user.Email));
+        var reset = await auth.ResetPasswordAsync(new ResetPasswordRequest(Emails.ResetTokensFor(user.Email)[0], "Yeni-Sifre-789"));
+        var login = await auth.LoginAsync(new LoginRequest(user.Email, "Yeni-Sifre-789"));
+
+        Assert.Equal(AuthOperationStatus.Success, reset.Status);
+        Assert.Equal(LoginStatus.Success, login.Status);
     }
 
     [SkippableFact]

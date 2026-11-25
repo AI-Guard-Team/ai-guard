@@ -16,6 +16,15 @@ public static class AuthPolicy
     /// <summary>Davet bağlantısı ömrü; kartta örnek olarak 72 saat.</summary>
     public static readonly TimeSpan InviteLifetime = TimeSpan.FromHours(72);
 
+    /// <summary>Şifre sıfırlama bağlantısı ömrü. Kısa tutuldu: bağlantı e-postada bir kimlik bilgisi.</summary>
+    public static readonly TimeSpan PasswordResetLifetime = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// Aynı hesap için iki sıfırlama e-postası arasında en az bu kadar süre olmalı;
+    /// başkasının adresine art arda e-posta yağdırılamasın.
+    /// </summary>
+    public static readonly TimeSpan PasswordResetCooldown = TimeSpan.FromMinutes(2);
+
     /// <summary>Bu sayıda art arda hatalı girişte hesap geçici olarak kilitleniyor (kart: 5).</summary>
     public const int MaxFailedLogins = 5;
 

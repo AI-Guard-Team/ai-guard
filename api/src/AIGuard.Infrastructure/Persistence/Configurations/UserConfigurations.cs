@@ -16,12 +16,14 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(u => u.NormalizedEmail).HasMaxLength(320);
         b.Property(u => u.PasswordHash).HasMaxLength(512);
         b.Property(u => u.InviteTokenHash).HasMaxLength(128);
+        b.Property(u => u.PasswordResetTokenHash).HasMaxLength(128);
 
         // Aynı e-postayla iki hesap açılamaz (büyük/küçük harf duyarsız).
         b.HasIndex(u => u.NormalizedEmail).IsUnique();
 
         // Davet bağlantısı özet üzerinden aranıyor. Boş değerler benzersizlik kuralına takılmıyor.
         b.HasIndex(u => u.InviteTokenHash).IsUnique();
+        b.HasIndex(u => u.PasswordResetTokenHash).IsUnique();
 
         b.ToTable(t => t.HasCheckConstraint("ck_users_failed_login_count", "failed_login_count >= 0"));
     }
