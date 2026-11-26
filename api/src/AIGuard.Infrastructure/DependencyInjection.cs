@@ -1,4 +1,5 @@
 using AIGuard.Application.Abstractions;
+using AIGuard.Application.Monitoring;
 using AIGuard.Infrastructure.Email;
 using AIGuard.Infrastructure.Persistence;
 using AIGuard.Infrastructure.Persistence.Interceptors;
@@ -10,6 +11,7 @@ using AIGuard.Infrastructure.Vision;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace AIGuard.Infrastructure;
 
@@ -42,7 +44,16 @@ public static class DependencyInjection
         // E2: JWT anahtarı eksik ya da kısaysa uygulama açılışta duruyor (bağlantı dizesiyle aynı davranış).
         services.AddSingleton(JwtSettings.FromConfiguration(configuration));
         services.AddSingleton<ITokenService, JwtTokenService>();
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        // K-49: SMTP_HOST tanımlıysa gerçek gönderim; değilse bağlantı loga (geliştirme ve CI).
+        if (SmtpSettings.FromConfiguration(configuration) is { } smtp)
+        {
+            services.AddSingleton(smtp);
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        }
 
         // Şifreleme anahtarı ve görüntü servisi ayarları ilk kullanımda okunuyor; eksikse ilgili uç
         // hata veriyor ama uygulamanın geri kalanı açılıyor. Docker Compose ve CI bu değişkenleri
@@ -52,8 +63,10 @@ public static class DependencyInjection
             FileEvidenceStore.FromConfiguration(configuration, sp.GetRequiredService<IFieldEncryptor>()));
         services.AddHttpClient<IFaceService, VisionFaceService>(client => VisionFaceService.Configure(client, configuration));
 
-        // S4: sınav sırası kare ve ses buraya geliyor. Görüntü servisine bağlayan uygulama D4/D5'te bunun yerine geçecek.
-        services.AddSingleton<IMediaAnalyzer, PendingMediaAnalyzer>();
+        // D4: sınav sırası kare analizi (IMediaAnalyzer'ın uygulaması Application'da, CameraMonitor). Yüz uçlarından
+        // ayrı istemci: zaman aşımı kısa (CameraMonitoring:VisionTimeoutSeconds), anahtar yoksa istek gönderilmiyor.
+        services.AddHttpClient<IFrameAnalysisService, VisionFrameAnalysisService>((sp, client) =>
+            VisionFrameAnalysisService.Configure(client, configuration, sp.GetRequiredService<IOptions<CameraMonitorOptions>>().Value));
 
         // A5 (FR-34): aday raporunun Excel ve PDF hâli. Durumsuz; rapor ucu istenen biçimi Format'a göre seçiyor.
         services.AddSingleton<IReportExporter, ExcelReportExporter>();

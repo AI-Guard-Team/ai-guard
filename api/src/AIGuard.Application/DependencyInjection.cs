@@ -1,4 +1,6 @@
+using AIGuard.Application.Abstractions;
 using AIGuard.Application.Agents;
+using AIGuard.Application.Monitoring;
 using AIGuard.Application.Audit;
 using AIGuard.Application.Auth;
 using AIGuard.Application.Exams;
@@ -27,6 +29,8 @@ public static class DependencyInjection
         services.AddSingleton<IValidateOptions<RiskOptions>, RiskOptionsValidator>();
         services.AddSingleton(sp => new RiskEngine(sp.GetRequiredService<IOptions<RiskOptions>>().Value));
 
+        // K-49: sınava özel risk ayarları; skor hesaplayan servisler motoru buradan alıyor.
+        services.AddScoped<ExamRiskService>();
         services.AddScoped<EventService>();
         services.AddScoped<SessionIpGuard>();
 
@@ -56,6 +60,18 @@ public static class DependencyInjection
         services.AddSingleton<SessionMediaRateLimiter>();
         services.AddScoped<SessionMediaService>();
 
+        // D4: sınav sırası kamera analizi ve olay kuralları (K-45). Oturum durumları bellekte, uygulama boyunca tek
+        // (S-17). Eşikler "CameraMonitoring" bölümünden Api'de bağlanıyor; varsayılanlar sınıfta.
+        services.AddOptions<CameraMonitorOptions>();
+        services.AddSingleton<IValidateOptions<CameraMonitorOptions>, CameraMonitorOptionsValidator>();
+        services.AddSingleton<CameraMonitorStore>();
+        services.AddScoped<ICameraMonitorStorage, CameraMonitorStorage>();
+        services.AddScoped<Func<ICameraMonitorStorage>>(sp => () => sp.GetRequiredService<ICameraMonitorStorage>());
+        services.AddScoped<EncryptionKeyConfigured>(sp => () => EncryptionKey.IsConfigured(sp));
+        services.AddScoped<IMediaAnalyzer, CameraMonitor>();
+        services.AddScoped<CameraEpisodeCloser>();
+        services.AddScoped<ISessionMonitoringCloser>(sp => sp.GetRequiredService<CameraEpisodeCloser>());
+
         // A3: kayıt fotoğrafı, oturum rızası ve sınav başı doğrulama.
         // Eşikler appsettings.json'daki "Biometrics" bölümünden; Api'de bağlanıyor.
         services.AddSingleton<IValidateOptions<BiometricOptions>, BiometricOptionsValidator>();
@@ -67,11 +83,14 @@ public static class DependencyInjection
         services.AddSingleton<EvidenceLinkSigner>();
         services.AddScoped<ReviewService>();
         services.AddScoped<ReportService>();
+        services.AddScoped<ExamReportService>();
+        services.AddScoped<AIGuard.Application.Notifications.NotificationService>();
 
         // A5: veri koruma. Saklama süresi görevi, rıza metinleri ve denetim kaydının görüntülenmesi.
         services.AddScoped<DataRetentionService>();
         services.AddScoped<ConsentTextService>();
         services.AddScoped<AuditLogService>();
+        services.AddScoped<AIGuard.Application.Settings.PlatformSettingsService>();
 
         return services;
     }

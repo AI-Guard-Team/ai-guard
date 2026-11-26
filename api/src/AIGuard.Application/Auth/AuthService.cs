@@ -58,6 +58,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHasher hasher, IToken
 
         user.FailedLoginCount = 0;
         user.LockoutEndAt = null;
+        user.LastLoginAt = now; // K-49: yönetici kullanıcı listesinde son giriş
         var response = IssueTokens(user, now);
         Audit(user.Id, "user.login", user.Id, now); // FR-35: giriş denetim kaydına
         await db.SaveChangesAsync(ct);

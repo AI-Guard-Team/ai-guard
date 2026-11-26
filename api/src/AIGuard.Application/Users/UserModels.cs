@@ -26,7 +26,8 @@ public sealed record UserSummary(
     UserRole Role,
     bool IsActive,
     InviteStatus InviteStatus,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? LastLoginAt = null);
 
 public enum UserOperationStatus
 {
@@ -36,6 +37,12 @@ public enum UserOperationStatus
 
     /// <summary>Bu e-postayla bir hesap zaten var.</summary>
     EmailTaken,
+
+    /// <summary>Davet kabul edilmiş ya da kullanıcı pasif; davet yeniden gönderilemez.</summary>
+    Conflict,
+
+    /// <summary>Davet az önce gönderildi (bekleme süresi).</summary>
+    TooSoon,
 }
 
 public sealed record UserOperationResult(UserOperationStatus Status, string? Error = null, Guid? Id = null);

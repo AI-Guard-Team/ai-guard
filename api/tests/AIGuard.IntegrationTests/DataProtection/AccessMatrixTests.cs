@@ -40,6 +40,9 @@ public class AccessMatrixTests
         ["GET api/exams/{id:guid}"] = SignedIn,
         ["GET api/consent-texts/{type}"] = SignedIn,
         ["GET api/consent-texts/{type}/{version}"] = SignedIn,
+        // K-49: aday da okur (alternatif yöntem metni, ajan indirme adresi); bildirimler rolüne göre süzülür.
+        ["GET api/platform-settings"] = SignedIn,
+        ["GET api/notifications"] = SignedIn,
 
         // Atandığı sınavı çözme, kendi rızasını verme ve geri alma: Aday.
         ["GET api/me/biometric"] = AccessPolicies.TakeExam,
@@ -63,6 +66,7 @@ public class AccessMatrixTests
         ["GET api/review/exams/{examId:guid}/sessions"] = AccessPolicies.ReviewRead,
         ["GET api/review/sessions/{id:guid}"] = AccessPolicies.ReviewRead,
         ["GET api/reports/exams/{examId:guid}/sessions/{sessionId:guid}"] = AccessPolicies.ReviewRead,
+        ["GET api/reports/exams/{examId:guid}"] = AccessPolicies.ReviewRead,
 
         // Yanlış alarm işaretleme ve karar kaydetme: yalnızca atandığı sınavda Gözetmen.
         ["POST api/review/sessions/{id:guid}/decision"] = $"{AccessPolicies.ReviewRead}+{AccessPolicies.ReviewDecide}",
@@ -74,6 +78,11 @@ public class AccessMatrixTests
         ["GET api/users"] = AccessPolicies.Manage,
         ["POST api/users"] = AccessPolicies.Manage,
         ["PATCH api/users/{id:guid}"] = AccessPolicies.Manage,
+        ["POST api/users/{id:guid}/invite"] = AccessPolicies.Manage,
+        ["PUT api/platform-settings"] = AccessPolicies.Manage,
+        ["GET api/exams/{examId:guid}/risk-settings"] = AccessPolicies.Manage,
+        ["PUT api/exams/{examId:guid}/risk-settings"] = AccessPolicies.Manage,
+        ["DELETE api/exams/{examId:guid}/risk-settings"] = AccessPolicies.Manage,
         ["POST api/exams"] = AccessPolicies.Manage,
         ["PUT api/exams/{id:guid}"] = AccessPolicies.Manage,
         ["DELETE api/exams/{id:guid}"] = AccessPolicies.Manage,

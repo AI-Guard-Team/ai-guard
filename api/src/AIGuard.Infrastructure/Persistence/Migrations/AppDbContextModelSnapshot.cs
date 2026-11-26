@@ -505,6 +505,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("retention_days");
 
+                    b.Property<double?>("RiskSessionThreshold")
+                        .HasColumnType("double precision")
+                        .HasColumnName("risk_session_threshold");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -674,6 +678,52 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_exam_sessions_verification_attempts_non_negative", "verification_attempts >= 0");
                         });
+                });
+
+            modelBuilder.Entity("AIGuard.Domain.Entities.PlatformSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AgentDownloadUrlMac")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("agent_download_url_mac");
+
+                    b.Property<string>("AgentDownloadUrlWindows")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("agent_download_url_windows");
+
+                    b.Property<string>("AlternativeMethodText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("alternative_method_text");
+
+                    b.Property<string>("SupportEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("support_email");
+
+                    b.Property<string>("SupportPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("support_phone");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_platform_settings");
+
+                    b.ToTable("platform_settings", (string)null);
                 });
 
             modelBuilder.Entity("AIGuard.Domain.Entities.Question", b =>
@@ -978,6 +1028,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("invite_expires_at");
 
+                    b.Property<DateTimeOffset?>("InviteSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("invite_sent_at");
+
                     b.Property<string>("InviteTokenHash")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
@@ -986,6 +1040,10 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
 
                     b.Property<DateTimeOffset?>("LockoutEndAt")
                         .HasColumnType("timestamp with time zone")

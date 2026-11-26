@@ -2,10 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using AIGuard.Application.Abstractions;
+using AIGuard.Application.Sessions;
 using AIGuard.Domain.Entities;
 using AIGuard.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using static AIGuard.IntegrationTests.Events.EventTestHelpers;
 
 namespace AIGuard.IntegrationTests.Sessions;
@@ -103,12 +105,24 @@ public class SessionMonitoringApiTests(PostgresFixture fx) : IClassFixture<Postg
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
         var session = await SessionAsync();
-        var client = Api.As(session.Candidate);
+        // Sunucu saati donduruluyor: iki kare aynı anda gelmiş sayılır. Gerçek saatle, yavaş CI'da ilk istek
+        // 250 ms'lik aralıktan (SessionMediaRateLimiter.MinInterval) uzun sürünce ikinci kare kabul ediliyordu.
+        var frozen = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var api = new TestApi(fx, services: s =>
+        {
+            s.AddSingleton<IMediaAnalyzer>(_analyzer);
+            s.AddSingleton<TimeProvider>(frozen);
+        });
+        var client = api.As(session.Candidate);
 
-        await client.PostAsync($"/api/sessions/{session.Id}/frames", FrameForm());
+        var first = await client.PostAsync($"/api/sessions/{session.Id}/frames", FrameForm());
         var second = await client.PostAsync($"/api/sessions/{session.Id}/frames", FrameForm());
+        frozen.Advance(SessionMediaRateLimiter.MinInterval);
+        var later = await client.PostAsync($"/api/sessions/{session.Id}/frames", FrameForm());
 
+        Assert.Equal(HttpStatusCode.Accepted, first.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, second.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, later.StatusCode);
     }
 
     [SkippableFact]
