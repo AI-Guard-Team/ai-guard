@@ -17,7 +17,10 @@ namespace AIGuard.Application.Sessions;
 /// olay aynı anda gelse de sırayla işleniyor.
 /// </remarks>
 // reviewNotifier isteğe bağlı: testler oturum akışını bildirimsiz kurabiliyor; uygulamada DI her zaman veriyor (A4).
-public sealed class SessionService(IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null)
+// monitoring de isteğe bağlı: teslimde açık kamera bölümlerini yazıyor (D4, K-45); verilmezse davranış aynı.
+public sealed class SessionService(
+    IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null,
+    ISessionMonitoringCloser? monitoring = null)
 {
     public async Task<StartSessionResult> StartAsync(Guid examId, Guid candidateId, CancellationToken ct = default)
     {
@@ -192,7 +195,7 @@ public sealed class SessionService(IAppDbContext db, EventService events, TimePr
                     : "Sınav henüz başlamadı.");
             }
 
-            await CompleteAsync(events, session, now, ct);
+            await CompleteAsync(events, session, now, ct, monitoring);
             readyForReview = SessionReadyForReview.For(session);
             return SessionOperationResult.Ok;
         }, ct);
@@ -312,10 +315,17 @@ public sealed class SessionService(IAppDbContext db, EventService events, TimePr
     /// <summary>
     /// Teslim ya da süre dolması: bitiş anı süre sonunu geçmiyor. Oturum izin beklerken bitiyorsa izinsiz süre
     /// bitiş anına kadar yazılıyor (FR-17). Oturum satırı kilitli ve bir işlem içinde çağrılmalı.
+    /// Açık kamera bölümleri de burada, oturum kapanmadan yazılıyor (D4, K-45).
     /// </summary>
-    internal static async Task CompleteAsync(EventService events, ExamSession session, DateTimeOffset now, CancellationToken ct)
+    internal static async Task CompleteAsync(
+        EventService events, ExamSession session, DateTimeOffset now, CancellationToken ct, ISessionMonitoringCloser? monitoring = null)
     {
         var endedAt = session.EndsAt is { } endsAt && endsAt < now ? endsAt : now;
+        if (monitoring is not null)
+        {
+            await monitoring.CloseSessionAsync(session.Id, ct);
+        }
+
         await ClosePermissionGapAsync(events, session, endedAt, ct);
         session.TransitionTo(SessionState.Completed);
         session.EndedAt = endedAt;

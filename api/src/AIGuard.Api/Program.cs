@@ -4,6 +4,7 @@ using AIGuard.Api.Auth;
 using AIGuard.Application;
 using AIGuard.Application.Biometrics;
 using AIGuard.Application.Events;
+using AIGuard.Application.Monitoring;
 using AIGuard.Application.Risk;
 using AIGuard.Infrastructure;
 using AIGuard.Infrastructure.Persistence;
@@ -26,6 +27,11 @@ builder.Services.AddOptions<VpnIpBlockOptions>()
 // Doğrulama eşikleri ve rıza metni sürümleri (A3); değerlerin varsayılanı sınıfta.
 builder.Services.AddOptions<BiometricOptions>()
     .Bind(builder.Configuration.GetSection(BiometricOptions.SectionName))
+    .ValidateOnStart();
+
+// Kamera analizinin eşikleri ve zamanlaması (D4, K-45); varsayılanlar sınıfta ve contracts.md ile aynı.
+builder.Services.AddOptions<CameraMonitorOptions>()
+    .Bind(builder.Configuration.GetSection(CameraMonitorOptions.SectionName))
     .ValidateOnStart();
 
 builder.Services.AddApplication();
@@ -58,6 +64,9 @@ builder.Services.AddHostedService<AIGuard.Api.Agents.AgentSignalWatchdog>();
 
 // E4: süresi dolan oturumu otomatik teslim, istek gelmeyen oturumu bağlantı kesik sayma.
 builder.Services.AddHostedService<AIGuard.Api.Sessions.SessionTimekeeperService>();
+
+// D4: kareleri kesilen oturumun açık kamera bölümlerini yazma, biten oturumların durumunu bellekten silme.
+builder.Services.AddHostedService<AIGuard.Api.Monitoring.CameraMonitorSweepService>();
 
 // A5: saklama süresi dolan kanıt kareleri, izleme verisi, yüz vektörleri, rıza ve denetim kayıtları (günde bir).
 builder.Services.AddHostedService<AIGuard.Api.DataProtection.DataRetentionWorker>();

@@ -1,4 +1,6 @@
+using AIGuard.Application.Abstractions;
 using AIGuard.Application.Agents;
+using AIGuard.Application.Monitoring;
 using AIGuard.Application.Audit;
 using AIGuard.Application.Auth;
 using AIGuard.Application.Exams;
@@ -55,6 +57,18 @@ public static class DependencyInjection
         // S4: sınav sırası kamera karesi ve ses parçası; hız sınırı bellekte, uygulama boyunca tek.
         services.AddSingleton<SessionMediaRateLimiter>();
         services.AddScoped<SessionMediaService>();
+
+        // D4: sınav sırası kamera analizi ve olay kuralları (K-45). Oturum durumları bellekte, uygulama boyunca tek
+        // (S-17). Eşikler "CameraMonitoring" bölümünden Api'de bağlanıyor; varsayılanlar sınıfta.
+        services.AddOptions<CameraMonitorOptions>();
+        services.AddSingleton<IValidateOptions<CameraMonitorOptions>, CameraMonitorOptionsValidator>();
+        services.AddSingleton<CameraMonitorStore>();
+        services.AddScoped<ICameraMonitorStorage, CameraMonitorStorage>();
+        services.AddScoped<Func<ICameraMonitorStorage>>(sp => () => sp.GetRequiredService<ICameraMonitorStorage>());
+        services.AddScoped<EncryptionKeyConfigured>(sp => () => EncryptionKey.IsConfigured(sp));
+        services.AddScoped<IMediaAnalyzer, CameraMonitor>();
+        services.AddScoped<CameraEpisodeCloser>();
+        services.AddScoped<ISessionMonitoringCloser>(sp => sp.GetRequiredService<CameraEpisodeCloser>());
 
         // A3: kayıt fotoğrafı, oturum rızası ve sınav başı doğrulama.
         // Eşikler appsettings.json'daki "Biometrics" bölümünden; Api'de bağlanıyor.

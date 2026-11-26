@@ -11,7 +11,10 @@ namespace AIGuard.Application.Sessions;
 /// istek gelmeyen oturumu bağlantı kesik sayar (FR-26). Api'deki arka plan görevi birkaç saniyede bir çağırır.
 /// </summary>
 // reviewNotifier isteğe bağlı: testler bildirimsiz kurabiliyor; uygulamada DI her zaman veriyor (A4).
-public sealed class SessionTimekeeper(IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null)
+// monitoring de isteğe bağlı: otomatik teslimde açık kamera bölümlerini yazıyor (D4, K-45).
+public sealed class SessionTimekeeper(
+    IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null,
+    ISessionMonitoringCloser? monitoring = null)
 {
     /// <summary>
     /// Bu süre boyunca adaydan istek gelmezse bağlantı kesik sayılıyor. Önyüz sınav sırasında en geç
@@ -45,7 +48,7 @@ public sealed class SessionTimekeeper(IAppDbContext db, EventService events, Tim
 
                 // Sunucuda kayıtlı cevaplarla teslim; bitiş anı süre sonu (FR-26). İzin beklerken bittiyse
                 // izinsiz süre de yazılıyor (FR-17, S4).
-                await SessionService.CompleteAsync(events, session, now, ct);
+                await SessionService.CompleteAsync(events, session, now, ct, monitoring);
                 if (SessionReadyForReview.For(session) is { } message)
                 {
                     readyForReview.Add(message);
