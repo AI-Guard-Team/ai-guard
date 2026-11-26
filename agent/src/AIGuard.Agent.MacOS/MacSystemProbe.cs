@@ -40,6 +40,99 @@ internal sealed class MacSystemProbe(ILogger<MacSystemProbe> logger) : IMacSyste
         }
     }
 
+    public IReadOnlyList<string> RunningProcessNames()
+    {
+        // "comm" tam yolu veriyor (/Applications/zoom.us.app/Contents/MacOS/zoom.us); dosya adı alınıyor.
+        // -c kullanılmıyor: ad 16 karaktere kısalıp "Cisco AnyConnect Secure Mobility Client" gibi adlar eşleşmez.
+        var output = Run("/bin/ps", ["-axo", "comm="], milliseconds: 3_000);
+        return ParseProcessNames(output);
+    }
+
+    public string? RouteInterface(string destination) =>
+        ParseRouteInterface(Run("/sbin/route", ["-n", "get", destination], milliseconds: 3_000));
+
+    public MacProxySettings ReadProxySettings() =>
+        ParseProxySettings(Run("/usr/sbin/scutil", ["--proxy"], milliseconds: 3_000));
+
+    /// <summary><c>ps -axo comm=</c> çıktısı: satır başına bir yol. Aynı ad bir kez.</summary>
+    internal static IReadOnlyList<string> ParseProcessNames(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return [];
+        }
+
+        return text
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => Path.GetFileName(line))
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary><c>route -n get</c> çıktısındaki "interface: utun4" satırı.</summary>
+    internal static string? ParseRouteInterface(string? text) => Field(text, "interface");
+
+    /// <summary>
+    /// <c>scutil --proxy</c> çıktısı. Yalnızca en üst düzeydeki anahtarlar okunuyor; <c>__SCOPED__</c> altındaki
+    /// arayüze özel kayıtlar (iç içe sözlükler) sayılmıyor.
+    /// </summary>
+    internal static MacProxySettings ParseProxySettings(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return new MacProxySettings();
+        }
+
+        var top = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var depth = 0;
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.EndsWith('{'))
+            {
+                depth++;
+                continue;
+            }
+
+            if (line.StartsWith('}'))
+            {
+                depth--;
+                continue;
+            }
+
+            // Üst düzey sözlüğün içi depth == 1.
+            var sep = line.IndexOf(" : ", StringComparison.Ordinal);
+            if (depth == 1 && sep > 0)
+            {
+                top[line[..sep].Trim()] = line[(sep + 3)..].Trim();
+            }
+        }
+
+        string? HostPort(string enable, string host, string port)
+        {
+            if (!top.TryGetValue(enable, out var on) || on != "1" || !top.TryGetValue(host, out var h) || h.Length == 0)
+            {
+                return null;
+            }
+
+            return top.TryGetValue(port, out var p) && p.Length > 0 ? $"{h}:{p}" : h;
+        }
+
+        string? pac = null;
+        if (top.TryGetValue("ProxyAutoConfigEnable", out var pacOn) && pacOn == "1"
+            && top.TryGetValue("ProxyAutoConfigURLString", out var url) && url.Length > 0)
+        {
+            pac = url;
+        }
+
+        return new MacProxySettings(
+            Http: HostPort("HTTPEnable", "HTTPProxy", "HTTPPort"),
+            Https: HostPort("HTTPSEnable", "HTTPSProxy", "HTTPSPort"),
+            Socks: HostPort("SOCKSEnable", "SOCKSProxy", "SOCKSPort"),
+            PacUrl: pac);
+    }
+
     /// <summary><c>system_profiler</c> satırı: "Model Name: MacBook Air".</summary>
     internal static string? Field(string? text, string label)
     {
