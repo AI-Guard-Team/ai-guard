@@ -276,3 +276,54 @@
     flex: 1 1 100%;
   }
 }
+
+/* Alternatif sınav yöntemi (Stitch 17, K-49). */
+.alternative-card {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-muted);
+}
+
+.alternative-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.alternative-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.alternative-body h3 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.alternative-text {
+  margin: 0;
+  color: var(--color-text-muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.alternative-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.alternative-contact a {
+  overflow-wrap: anywhere;
+}

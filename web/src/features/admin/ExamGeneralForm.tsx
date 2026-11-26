@@ -11,7 +11,80 @@ import { InfoTip } from '../../components/InfoTip'
 import { Modal } from '../../components/Modal'
 import { useToast } from '../../components/useToast'
 import { formatDateTime } from '../../lib/format'
+import { common } from '../../i18n/common'
+import { getLocale } from '../../i18n/lang'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { WindowStrip } from './WindowStrip'
+
+const MAX_DURATION = 600
+const MAX_RETENTION = 3650
+
+const messages = defineMessages({
+  tr: {
+    durationError: `Süre 1–${MAX_DURATION} dakika arasında olmalı.`,
+    retentionError: `Saklama süresi 1–${MAX_RETENTION} gün arasında olmalı.`,
+    windowOrder: 'Pencere bitişi başlangıçtan sonra olmalı.',
+    windowShort: 'Pencere, sınav süresinden kısa olamaz.',
+    nameRequired: 'Sınav adı zorunludur.',
+    saved: 'Sınav bilgileri kaydedildi.',
+    created: 'Sınav oluşturuldu. Şimdi soruları ekleyin.',
+    saveFailed: 'Sınav kaydedilemedi.',
+    deleted: 'Sınav silindi.',
+    deleteFailed: 'Sınav silinemedi.',
+    title: 'Genel bilgiler',
+    name: 'Sınav adı',
+    namePlaceholder: 'Örn. 2026 Güz Genel Yetenek Sınavı',
+    type: 'Sınav türü',
+    duration: 'Süre (dakika)',
+    window: 'Erişim penceresi',
+    windowInfo: 'Adaylar bu aralıkta sınava girebilir. Son başlangıç saati, pencere bitişinden sınav süresi çıkarılarak bulunur; bu saatten sonra yeni aday başlayamaz.',
+    start: 'Başlangıç',
+    end: 'Bitiş',
+    latestStart: 'Son başlangıç:',
+    retention: 'Kanıt saklama süresi (gün)',
+    retentionHint: 'Süre dolunca kanıt kareleri, olaylar ve yüz vektörü otomatik silinir; sonuç ve karar kalır.',
+    delete: 'Sınavı sil',
+    saveChanges: 'Değişiklikleri kaydet',
+    saveContinue: 'Kaydet ve devam et',
+    confirmTitle: 'Sınav silinsin mi?',
+    confirmText: (name: string) => `"${name}" ve soruları silinecek. Oturumu olan sınav silinemez; sunucu bu durumda nedenini söyler.`,
+  },
+  en: {
+    durationError: `Duration must be between 1 and ${MAX_DURATION} minutes.`,
+    retentionError: `Retention must be between 1 and ${MAX_RETENTION} days.`,
+    windowOrder: 'The window must end after it starts.',
+    windowShort: 'The window cannot be shorter than the exam duration.',
+    nameRequired: 'Exam name is required.',
+    saved: 'Exam details saved.',
+    created: 'Exam created. Now add the questions.',
+    saveFailed: 'The exam could not be saved.',
+    deleted: 'Exam deleted.',
+    deleteFailed: 'The exam could not be deleted.',
+    title: 'General details',
+    name: 'Exam name',
+    namePlaceholder: 'e.g. Fall 2026 General Aptitude Exam',
+    type: 'Exam type',
+    duration: 'Duration (minutes)',
+    window: 'Access window',
+    windowInfo: 'Candidates can take the exam within this window. The latest start time is the window end minus the exam duration; after it, no new candidate can start.',
+    start: 'Start',
+    end: 'End',
+    latestStart: 'Latest start:',
+    retention: 'Evidence retention (days)',
+    retentionHint: 'When the period ends, evidence frames, events and face vectors are deleted automatically; the result and decision remain.',
+    delete: 'Delete exam',
+    saveChanges: 'Save changes',
+    saveContinue: 'Save and continue',
+    confirmTitle: 'Delete this exam?',
+    confirmText: (name: string) => `"${name}" and its questions will be deleted. An exam with sessions cannot be deleted; the server will say so.`,
+  },
+})
+
+/** 1 ile `max` arasında tam sayı mı. */
+const inRange = (text: string, max: number) => {
+  const value = Number(text)
+  return text.trim() !== '' && Number.isInteger(value) && value >= 1 && value <= max
+}
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
@@ -40,6 +113,8 @@ interface ExamGeneralFormProps {
  * ve pencere sırası önden söyleniyor. Son başlangıç = pencere bitişi − süre (FR-06), formda anlık gösteriliyor.
  */
 export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
+  const m = useMessages(messages)
+  const c = useMessages(common)
   const navigate = useNavigate()
   const showToast = useToast()
   const initial = exam
@@ -73,20 +148,20 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
   }
   const setNumber = (key: 'durationMinutes' | 'retentionDays', text: string) => {
     ;(key === 'durationMinutes' ? setDurationText : setRetentionText)(text)
-    const value = Number(text)
-    if (text.trim() && Number.isInteger(value) && value > 0) set(key, value)
+    if (inRange(text, key === 'durationMinutes' ? MAX_DURATION : MAX_RETENTION)) set(key, Number(text))
   }
-  const durationError = Number(durationText) > 0 ? undefined : 'Süre en az 1 dakika olmalı.'
-  const retentionError = Number(retentionText) > 0 ? undefined : 'Saklama süresi en az 1 gün olmalı.'
+  const durationError = inRange(durationText, MAX_DURATION) ? undefined : m.durationError
+  const retentionError = inRange(retentionText, MAX_RETENTION) ? undefined : m.retentionError
 
   const start = new Date(form.windowStartAt)
   const end = new Date(form.windowEndAt)
   const latestStart = new Date(end.getTime() - form.durationMinutes * 60_000)
-  const windowError = end <= start ? 'Pencere bitişi başlangıçtan sonra olmalı.' : latestStart < start ? 'Pencere, sınav süresinden kısa olamaz.' : undefined
+  const windowError = end <= start ? m.windowOrder : latestStart < start ? m.windowShort : undefined
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const problem = !form.name.trim() ? 'Sınav adı zorunludur.' : (durationError ?? retentionError ?? windowError)
+    if (pending) return
+    const problem = !form.name.trim() ? m.nameRequired : (durationError ?? retentionError ?? windowError)
     if (problem) {
       setError(problem)
       return
@@ -97,15 +172,15 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
       const body = { ...form, name: form.name.trim() }
       if (exam) {
         await updateExam(exam.id, body)
-        showToast('Sınav bilgileri kaydedildi.', 'success')
+        showToast(m.saved, 'success')
         onSaved()
       } else {
         const created = await createExam(body)
-        showToast('Sınav oluşturuldu. Şimdi soruları ekleyin.', 'success')
+        showToast(m.created, 'success')
         navigate(`/admin/exams/${created.id}/questions`)
       }
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Sınav kaydedilemedi.')
+      setError(caught instanceof ApiError ? caught.message : m.saveFailed)
     } finally {
       setPending(false)
     }
@@ -116,24 +191,31 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
     setPending(true)
     try {
       await deleteExam(exam.id)
-      showToast('Sınav silindi.', 'success')
+      showToast(m.deleted, 'success')
       navigate('/admin/exams', { replace: true })
     } catch (caught) {
       setConfirmDelete(false)
-      setError(caught instanceof ApiError ? caught.message : 'Sınav silinemedi.')
+      setError(caught instanceof ApiError ? caught.message : m.deleteFailed)
       setPending(false)
     }
   }
 
   return (
     <form className="editor-card" onSubmit={submit} noValidate>
-      <h2 className="editor-card-title">Genel bilgiler</h2>
+      <h2 className="editor-card-title">{m.title}</h2>
 
-      <Input label="Sınav adı" value={form.name} maxLength={200} placeholder="Örn. 2026 Güz Genel Yetenek Sınavı" onChange={(event) => set('name', event.target.value)} />
+      <Input
+        label={m.name}
+        value={form.name}
+        maxLength={200}
+        placeholder={m.namePlaceholder}
+        error={error === m.nameRequired ? m.nameRequired : undefined}
+        onChange={(event) => set('name', event.target.value)}
+      />
 
       <div className="form-grid">
         <label className="field">
-          <span className="field-label">Sınav türü</span>
+          <span className="field-label">{m.type}</span>
           <select className="select" value={form.type} onChange={(event) => set('type', event.target.value as ExamType)}>
             {(Object.keys(EXAM_TYPE_LABEL) as ExamType[]).map((type) => (
               <option key={type} value={type}>
@@ -143,10 +225,10 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
           </select>
         </label>
         <Input
-          label="Süre (dakika)"
+          label={m.duration}
           type="number"
           min={1}
-          max={600}
+          max={MAX_DURATION}
           inputMode="numeric"
           value={durationText}
           error={durationError}
@@ -156,16 +238,17 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
 
       <fieldset className="form-fieldset">
         <legend>
-          Erişim penceresi{' '}
-          <InfoTip title="Erişim penceresi">
-            <p>Adaylar bu aralıkta sınava girebilir. Son başlangıç saati, pencere bitişinden sınav süresi çıkarılarak bulunur; bu saatten sonra yeni aday başlayamaz.</p>
+          {m.window}{' '}
+          <InfoTip title={m.window}>
+            <p>{m.windowInfo}</p>
           </InfoTip>
         </legend>
         <div className="form-grid">
-          <Input label="Başlangıç" type="datetime-local" value={startText} onChange={(event) => setDate('windowStartAt', event.target.value)} />
+          <Input label={m.start} type="datetime-local" lang={getLocale()} value={startText} onChange={(event) => setDate('windowStartAt', event.target.value)} />
           <Input
-            label="Bitiş"
+            label={m.end}
             type="datetime-local"
+            lang={getLocale()}
             value={endText}
             error={windowError}
             onChange={(event) => setDate('windowEndAt', event.target.value)}
@@ -175,19 +258,19 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
           <>
             <WindowStrip start={start} end={end} latestStart={latestStart} />
             <p className="form-note">
-              Son başlangıç: <strong>{formatDateTime(latestStart)}</strong>
+              {m.latestStart} <strong>{formatDateTime(latestStart)}</strong>
             </p>
           </>
         ) : null}
       </fieldset>
 
       <Input
-        label="Kanıt saklama süresi (gün)"
+        label={m.retention}
         type="number"
         min={1}
-        max={3650}
+        max={MAX_RETENTION}
         inputMode="numeric"
-        hint="Süre dolunca kanıt kareleri, olaylar ve yüz vektörü otomatik silinir; sonuç ve karar kalır."
+        hint={m.retentionHint}
         value={retentionText}
         error={retentionError}
         onChange={(event) => setNumber('retentionDays', event.target.value)}
@@ -198,24 +281,24 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
       <div className="editor-actions">
         {exam ? (
           <Button variant="ghost" icon={<Trash2 size={18} aria-hidden="true" />} onClick={() => setConfirmDelete(true)} disabled={pending}>
-            Sınavı sil
+            {m.delete}
           </Button>
         ) : (
           <span />
         )}
         <Button type="submit" loading={pending} icon={<Save size={18} aria-hidden="true" />}>
-          {exam ? 'Değişiklikleri kaydet' : 'Kaydet ve devam et'}
+          {exam ? m.saveChanges : m.saveContinue}
         </Button>
       </div>
 
-      <Modal open={confirmDelete} title="Sınav silinsin mi?" onClose={() => setConfirmDelete(false)}>
-        <p>"{exam?.name}" ve soruları silinecek. Oturumu olan sınav silinemez; sunucu bu durumda nedenini söyler.</p>
+      <Modal open={confirmDelete} title={m.confirmTitle} onClose={() => setConfirmDelete(false)}>
+        <p>{m.confirmText(exam?.name ?? '')}</p>
         <div className="modal-actions">
           <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
-            Vazgeç
+            {c.cancel}
           </Button>
           <Button variant="danger" loading={pending} onClick={() => void remove()}>
-            Sınavı sil
+            {m.delete}
           </Button>
         </div>
       </Modal>

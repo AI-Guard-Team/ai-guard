@@ -20,7 +20,15 @@
   color: var(--color-sidebar-text);
 }
 
+.auth-aside > :not(.auth-orbit) {
+  /* İçerik halkaların ve ışığın üstünde. */
+  position: relative;
+  z-index: 1;
+}
+
 .auth-aside-body {
+  /* Marka üstte, tanıtım panelin dikey ortasında. */
+  margin-block: auto;
   display: grid;
   gap: var(--space-10);
   max-width: 30rem;
@@ -36,10 +44,40 @@
 
 /* Tek marka anı: ikinci satır marka geçişiyle (PRODUCT.md referansı). */
 .auth-aside-accent {
-  background: var(--gradient-brand);
+  /* Marka geçişi yavaşça akar: geniş bir geçiş, yazının içinde ileri geri kayar. */
+  background: linear-gradient(
+    115deg,
+    var(--palette-sky) 0%,
+    var(--palette-lilac) 30%,
+    var(--palette-rose) 50%,
+    var(--palette-lilac) 70%,
+    var(--palette-sky) 100%
+  );
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: auth-accent-flow 9s ease-in-out infinite alternate;
+}
+
+@keyframes auth-accent-flow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+/* İmleci izleyen yumuşak ışık (yalnızca fareyle; konum JS'ten --spot-x / --spot-y). */
+.auth-aside::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(420px circle at var(--spot-x, 70%) var(--spot-y, 20%), rgb(127 179 245 / 14%), transparent 60%);
+  transition: opacity var(--duration) var(--ease-out);
 }
 
 .auth-principles {
@@ -97,19 +135,35 @@
 
 .auth-main {
   position: relative;
+  overflow: hidden;
 }
 
-.auth-theme {
+/* Dil ve tema: sağ üst köşe; yan yana, sabit yer (sayfalar arasında kaymaz). */
+.auth-prefs {
   position: absolute;
   top: var(--space-6);
   right: var(--space-6);
+  display: flex;
+  gap: var(--space-2);
+  z-index: 2;
 }
 
 .auth-mobile-brand {
   display: none;
 }
 
+.auth-main-orbit {
+  display: none;
+}
+
+.auth-main > :not(.auth-main-orbit, .auth-prefs) {
+  position: relative;
+  z-index: 1;
+}
+
 .auth-card {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   max-width: 27rem;
   margin: 0 auto;
@@ -118,6 +172,96 @@
   border-radius: var(--radius-xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-md);
+}
+
+/*
+ * Forma odaklanınca kartın kenarında dönen ince ışık halkası: kullanıcı nerede olduğunu hisseder.
+ * Açı @property ile canlanır; yalnızca kenar boyanır (maske), içerik etkilenmez.
+ */
+@property --auth-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--auth-angle),
+    transparent 0deg,
+    transparent 200deg,
+    var(--palette-sky) 260deg,
+    var(--palette-lilac) 300deg,
+    var(--palette-rose) 330deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.auth-card:focus-within::before {
+  opacity: 1;
+  animation: auth-border-spin 3.5s linear infinite;
+}
+
+@keyframes auth-border-spin {
+  to {
+    --auth-angle: 360deg;
+  }
+}
+
+/* Giriş düğmesi: üzerine gelince içinden ışık geçer. */
+.auth-card .button-primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.auth-card .button-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 32%) 50%, transparent 70%);
+  transform: translateX(-120%);
+}
+
+.auth-card .button-primary:hover:not(:disabled)::after {
+  transform: translateX(120%);
+  transition: transform 0.7s var(--ease-out);
+}
+
+/* Kart yerine oturunca üstünden bir kez geçen ince ışık: tek seferlik, yalnızca transform. */
+.auth-card-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 55%) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: auth-sheen 1.4s 0.55s var(--ease-out) forwards;
+}
+
+:root[data-theme='dark'] .auth-card-sheen {
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 8%) 50%, transparent 65%);
+}
+
+@keyframes auth-sheen {
+  to {
+    transform: translateX(120%);
+  }
 }
 
 .auth-card h1 {
@@ -173,9 +317,18 @@
     padding: var(--space-6) var(--space-4) var(--space-10);
   }
 
-  .auth-theme {
+  .auth-prefs {
     top: var(--space-5);
     right: var(--space-4);
+  }
+
+  /* Telefonda düğmeler yalnızca simge: marka ile çakışmasın. */
+  .auth-prefs .theme-toggle span {
+    display: none;
+  }
+
+  .auth-main-orbit {
+    display: block;
   }
 
   .auth-mobile-brand {
@@ -187,5 +340,12 @@
 
   .auth-card {
     padding: var(--space-8) var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-aside-accent,
+  .auth-card:focus-within::before {
+    animation: none;
   }
 }

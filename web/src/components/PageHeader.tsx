@@ -4,7 +4,13 @@ import { Link, useLocation } from 'react-router'
 import { SECTION_ICON } from '../layouts/sections'
 import { IconTile } from './IconTile'
 import { InfoTip } from './InfoTip'
+import { defineMessages, useMessages } from '../i18n/messages'
 import './PageHeader.css'
+
+const messages = defineMessages({
+  tr: { location: 'Konumunuz', thisPage: 'Bu sayfa', about: 'Bu sayfa hakkında' },
+  en: { location: 'You are here', thisPage: 'This page', about: 'About this page' },
+})
 
 export interface Crumb {
   label: string
@@ -37,6 +43,7 @@ function sectionOf(pathname: string): string | undefined {
  * ve eylemler. Bütün sayfalar aynı düzende başlar; kullanıcı bölümü rengiyle de tanır. Sayfa başına tek h1.
  */
 export function PageHeader({ title, breadcrumbs, kicker, description, info, actions, section }: PageHeaderProps) {
+  const m = useMessages(messages)
   const { pathname } = useLocation()
   const crumbs = breadcrumbs ?? (kicker ? [{ label: kicker }] : [])
   const icon = SECTION_ICON[section ?? sectionOf(pathname) ?? '']
@@ -46,7 +53,7 @@ export function PageHeader({ title, breadcrumbs, kicker, description, info, acti
       {icon ? <IconTile icon={icon.icon} tone={icon.tone} size="lg" /> : null}
       <div className="page-header-text">
         {crumbs.length ? (
-          <nav aria-label="Konumunuz" className="breadcrumbs">
+          <nav aria-label={m.location} className="breadcrumbs">
             <ol>
               {crumbs.map((crumb, index) => (
                 <Fragment key={`${crumb.label}-${index}`}>
@@ -57,7 +64,7 @@ export function PageHeader({ title, breadcrumbs, kicker, description, info, acti
                 </Fragment>
               ))}
               <li aria-current="page" className="breadcrumbs-current">
-                {typeof title === 'string' ? title : 'Bu sayfa'}
+                {typeof title === 'string' ? title : m.thisPage}
               </li>
             </ol>
           </nav>
@@ -65,7 +72,7 @@ export function PageHeader({ title, breadcrumbs, kicker, description, info, acti
         <div className="page-header-title">
           <h1>{title}</h1>
           {info ? (
-            <InfoTip title="Bu sayfa hakkında" align="start">
+            <InfoTip title={m.about} align="start">
               {info}
             </InfoTip>
           ) : null}

@@ -2,6 +2,24 @@ import { Bookmark, BookmarkCheck, Check, CloudOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { SessionQuestion } from '../../api/sessions'
 import { OpticalBubble } from '../../components/OpticalBubble'
+import { defineMessages, useMessages } from '../../i18n/messages'
+
+const messages = defineMessages({
+  tr: {
+    count: (current: number, total: number) => `${total} sorudan ${current}.`,
+    mark: 'Daha sonra dön',
+    queued: (n: number) => `${n} cevap gönderilmeyi bekliyor`,
+    saved: 'Kaydedildi',
+    clear: 'Seçimi temizle',
+  },
+  en: {
+    count: (current: number, total: number) => `Question ${current} of ${total}`,
+    mark: 'Come back later',
+    queued: (n: number) => `${n} ${n === 1 ? 'answer' : 'answers'} waiting to be sent`,
+    saved: 'Saved',
+    clear: 'Clear selection',
+  },
+})
 
 const LETTERS = 'ABCDEFGHIJ'
 /** Kaydedildi işaretinin ekranda kalma süresi. */
@@ -25,6 +43,7 @@ interface QuestionCardProps {
  * Seçenekler radyo grubu; klavyeyle ok tuşlarıyla gezilir. "Kaydedildi" işareti sunucu onayından sonra kısa süre görünür.
  */
 export function QuestionCard({ question, index, total, selected, disabled, marked, queued, lastSavedAt, onChoose, onToggleMark }: QuestionCardProps) {
+  const m = useMessages(messages)
   const titleId = `question-${question.id}`
   const savedAt = lastSavedAt?.getTime() ?? null
   const [flashFor, setFlashFor] = useState<number | null>(null)
@@ -48,12 +67,10 @@ export function QuestionCard({ question, index, total, selected, disabled, marke
       </p>
       <div className="question-body">
         <header className="question-paper-header">
-          <p className="question-count numeric">
-            {total} sorudan {index + 1}.
-          </p>
+          <p className="question-count numeric">{m.count(index + 1, total)}</p>
           <button type="button" className={['question-mark', marked && 'is-marked'].filter(Boolean).join(' ')} aria-pressed={marked} onClick={onToggleMark}>
             {marked ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}
-            Daha sonra dön
+            {m.mark}
           </button>
         </header>
 
@@ -76,20 +93,20 @@ export function QuestionCard({ question, index, total, selected, disabled, marke
             {queued > 0 ? (
               <>
                 <CloudOff size={16} aria-hidden="true" />
-                {queued} cevap gönderilmeyi bekliyor
+                {m.queued(queued)}
               </>
             ) : flashFor !== null ? (
               <span className="question-saved" key={flashFor}>
                 <span className="question-saved-tick" aria-hidden="true">
                   <Check size={12} strokeWidth={3} />
                 </span>
-                Kaydedildi
+                {m.saved}
               </span>
             ) : null}
           </p>
           {selected != null && !disabled ? (
             <button type="button" className="question-clear" onClick={() => onChoose(null)}>
-              Seçimi temizle
+              {m.clear}
             </button>
           ) : null}
         </footer>

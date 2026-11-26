@@ -1,15 +1,27 @@
 // API kayıt fotoğrafını 5 MB ile sınırlıyor. Telefonun orijinal karesi (özellikle iPhone JPEG'i)
 // bu sınırı aşabildiği için dosya, yüklenmeden önce uzun kenarı 1600 px olan JPEG'e indiriliyor.
 
+import { defineMessages, pick } from '../../i18n/messages'
+
 export const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 export const PHOTO_MAX_BYTES = 5 * 1024 * 1024
 export const PHOTO_MAX_EDGE = 1600
 export const PHOTO_JPEG_QUALITY = 0.9
 
-const TYPE_ERROR = 'Fotoğraf JPEG, PNG veya WebP olmalıdır.'
-const SIZE_ERROR = 'Fotoğraf 5 MB’den küçük olmalıdır.'
-const READ_ERROR = 'Fotoğraf okunamadı. Lütfen başka bir dosya deneyin.'
-const PROCESS_ERROR = 'Fotoğraf işlenemedi. Lütfen başka bir dosya deneyin.'
+const messages = defineMessages({
+  tr: {
+    type: 'Fotoğraf JPEG, PNG veya WebP olmalıdır.',
+    size: 'Fotoğraf 5 MB’den küçük olmalıdır.',
+    read: 'Fotoğraf okunamadı. Lütfen başka bir dosya deneyin.',
+    process: 'Fotoğraf işlenemedi. Lütfen başka bir dosya deneyin.',
+  },
+  en: {
+    type: 'The photo must be JPEG, PNG or WebP.',
+    size: 'The photo must be smaller than 5 MB.',
+    read: 'The photo could not be read. Please try another file.',
+    process: 'The photo could not be processed. Please try another file.',
+  },
+})
 
 export class PhotoPrepareError extends Error {
   constructor(message: string) {
@@ -19,12 +31,12 @@ export class PhotoPrepareError extends Error {
 }
 
 export function rejectedPhotoType(file: File): string | null {
-  return ACCEPTED_PHOTO_TYPES.includes(file.type) ? null : TYPE_ERROR
+  return ACCEPTED_PHOTO_TYPES.includes(file.type) ? null : pick(messages).type
 }
 
 /** Uzun kenar `maxEdge` pikselin altına inecek şekilde en-boy oranını korur. */
 export function fittedSize(width: number, height: number, maxEdge = PHOTO_MAX_EDGE): { width: number; height: number } {
-  if (width < 1 || height < 1) throw new PhotoPrepareError(READ_ERROR)
+  if (width < 1 || height < 1) throw new PhotoPrepareError(pick(messages).read)
   const longEdge = Math.max(width, height)
   if (longEdge <= maxEdge) return { width, height }
   const scale = maxEdge / longEdge
@@ -53,7 +65,7 @@ async function decode(file: File): Promise<DecodedPhoto> {
       close: () => bitmap.close(),
     }
   } catch {
-    throw new PhotoPrepareError(READ_ERROR)
+    throw new PhotoPrepareError(pick(messages).read)
   }
 }
 
@@ -72,7 +84,7 @@ function decodeWithImage(file: File): Promise<DecodedPhoto> {
     }
     image.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new PhotoPrepareError(READ_ERROR))
+      reject(new PhotoPrepareError(pick(messages).read))
     }
     image.src = url
   })
@@ -82,7 +94,7 @@ function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
-        if (!blob) reject(new PhotoPrepareError(PROCESS_ERROR))
+        if (!blob) reject(new PhotoPrepareError(pick(messages).process))
         else resolve(blob)
       },
       'image/jpeg',
@@ -96,7 +108,7 @@ async function encodeJpeg(source: CanvasImageSource, width: number, height: numb
   canvas.width = width
   canvas.height = height
   const context = canvas.getContext('2d')
-  if (!context) throw new PhotoPrepareError(PROCESS_ERROR)
+  if (!context) throw new PhotoPrepareError(pick(messages).process)
   context.imageSmoothingEnabled = true
   context.imageSmoothingQuality = 'high'
   context.drawImage(source, 0, 0, width, height)
@@ -124,7 +136,7 @@ export async function prepareReferencePhoto(file: File): Promise<File> {
     if (alreadyFits) return file
 
     const blob = await encodeJpeg(decoded.source, size.width, size.height)
-    if (blob.size > PHOTO_MAX_BYTES) throw new PhotoPrepareError(SIZE_ERROR)
+    if (blob.size > PHOTO_MAX_BYTES) throw new PhotoPrepareError(pick(messages).size)
     return new File([blob], jpegName(file.name), { type: 'image/jpeg', lastModified: file.lastModified })
   } finally {
     decoded.close()

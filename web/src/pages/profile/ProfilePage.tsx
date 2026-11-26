@@ -10,18 +10,55 @@ import { Button } from '../../components/Button'
 import { PasswordInput } from '../../components/Input'
 import { Panel } from '../../components/Panel'
 import { useToast } from '../../components/useToast'
+import { defineMessages, useMessages } from '../../i18n/messages'
+import { authCopy } from '../auth/authCopy'
 import { NewPasswordFields } from '../auth/NewPasswordFields'
-import { validateNewPassword, type NewPasswordErrors } from '../auth/passwordRules'
+import { MAX_PASSWORD_LENGTH, validateNewPassword, type NewPasswordErrors } from '../auth/passwordRules'
 import { ProfileHero } from './ProfileHero'
 import { ProfileTabs } from './ProfileTabs'
 import './ProfilePage.css'
 
-function missing(value: string | undefined): string {
-  return value?.trim() ? value : 'Kayıtlı değil'
-}
+const messages = defineMessages({
+  tr: {
+    missing: 'Kayıtlı değil',
+    same: 'Yeni şifre mevcut şifreyle aynı olamaz.',
+    currentRequired: 'Mevcut şifre zorunludur.',
+    wrongCurrent: 'Mevcut şifre hatalı.',
+    updated: 'Şifreniz güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.',
+    failed: 'Şifre güncellenemedi. Lütfen tekrar deneyin.',
+    account: 'Hesap bilgileri',
+    name: 'Ad soyad',
+    email: 'E-posta',
+    role: 'Rol',
+    note: 'Ad, e-posta ve rolü yalnızca kurum yöneticisi değiştirebilir.',
+    change: 'Şifre değiştir',
+    changeText: 'Değişiklikten sonra diğer cihazlardaki oturumlarınız kapatılır.',
+    current: 'Mevcut şifre',
+    submit: 'Şifreyi güncelle',
+  },
+  en: {
+    missing: 'Not on record',
+    same: 'The new password cannot be the same as the current one.',
+    currentRequired: 'Current password is required.',
+    wrongCurrent: 'The current password is incorrect.',
+    updated: 'Your password has been updated. Your sessions on other devices were signed out.',
+    failed: 'The password could not be updated. Please try again.',
+    account: 'Account details',
+    name: 'Full name',
+    email: 'Email',
+    role: 'Role',
+    note: 'Only your institution’s administrator can change your name, email and role.',
+    change: 'Change password',
+    changeText: 'After the change, your sessions on other devices are signed out.',
+    current: 'Current password',
+    submit: 'Update password',
+  },
+})
 
 /** Profil ve şifre değiştirme (Stitch ekran 5, GAB 3.4.5). Ad ve e-postayı yalnızca yönetici değiştirebilir. */
 export function ProfilePage() {
+  const m = useMessages(messages)
+  const copy = useMessages(authCopy)
   const { user, signIn } = useAuth()
   const showToast = useToast()
   const [currentPassword, setCurrentPassword] = useState('')
@@ -36,9 +73,10 @@ export function ProfilePage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    if (pending) return
     const next = validateNewPassword(newPassword, confirm)
-    if (!next.password && newPassword === currentPassword) next.password = 'Yeni şifre mevcut şifreyle aynı olamaz.'
-    const current = currentPassword ? undefined : 'Mevcut şifre zorunludur.'
+    if (!next.password && newPassword === currentPassword) next.password = m.same
+    const current = currentPassword ? undefined : m.currentRequired
     setErrors(next)
     setCurrentError(current)
     setFormError(null)
@@ -59,13 +97,17 @@ export function ProfilePage() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirm('')
-      showToast('Şifreniz güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.', 'success')
+      showToast(m.updated, 'success')
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : 'Şifre güncellenemedi. Lütfen tekrar deneyin.')
+      // Sunucu mevcut şifre yanlışsa 400 veriyor; Türkçe neden yoksa alanın altında söylenir.
+      if (error instanceof ApiError && error.status === 400 && !error.title) setCurrentError(m.wrongCurrent)
+      else setFormError(error instanceof ApiError ? error.message : m.failed)
     } finally {
       setPending(false)
     }
   }
+
+  const missing = (value: string | undefined) => (value?.trim() ? value : m.missing)
 
   return (
     <>
@@ -73,39 +115,41 @@ export function ProfilePage() {
       <ProfileTabs />
 
       <div className="profile-grid">
-        <Panel title="Hesap bilgileri">
+        <Panel title={m.account}>
           <ul className="profile-rows">
             <li>
               <IconTile icon={UserRound} tone="indigo" size="sm" />
               <span>
-                <span className="profile-row-label">Ad soyad</span>
+                <span className="profile-row-label">{m.name}</span>
                 <strong>{missing(user.name)}</strong>
               </span>
             </li>
             <li>
               <IconTile icon={Mail} tone="sky" size="sm" />
               <span>
-                <span className="profile-row-label">E-posta</span>
+                <span className="profile-row-label">{m.email}</span>
                 <strong>{missing(user.email)}</strong>
               </span>
             </li>
             <li>
               <IconTile icon={ShieldCheck} tone="lilac" size="sm" />
               <span>
-                <span className="profile-row-label">Rol</span>
+                <span className="profile-row-label">{m.role}</span>
                 <strong>{ROLE_LABEL[user.role]}</strong>
               </span>
             </li>
           </ul>
-          <p className="profile-note">Ad, e-posta ve rolü yalnızca kurum yöneticisi değiştirebilir.</p>
+          <p className="profile-note">{m.note}</p>
         </Panel>
 
-        <Panel title="Şifre değiştir" description="Değişiklikten sonra diğer cihazlardaki oturumlarınız kapatılır." aside={<IconTile icon={LockKeyhole} tone="amber" size="sm" />}>
+        <Panel title={m.change} description={m.changeText} aside={<IconTile icon={LockKeyhole} tone="amber" size="sm" />}>
           <form onSubmit={handleSubmit} noValidate>
             <FormAlert message={formError} />
             <PasswordInput
-              label="Mevcut şifre"
+              label={m.current}
+              placeholder={copy.passwordPlaceholder}
               autoComplete="current-password"
+              maxLength={MAX_PASSWORD_LENGTH}
               value={currentPassword}
               error={currentError}
               onChange={(event) => setCurrentPassword(event.target.value)}
@@ -118,7 +162,7 @@ export function ProfilePage() {
               onConfirmChange={setConfirm}
             />
             <Button type="submit" loading={pending}>
-              {pending ? 'Kaydediliyor…' : 'Şifreyi güncelle'}
+              {pending ? copy.saving : m.submit}
             </Button>
           </form>
         </Panel>

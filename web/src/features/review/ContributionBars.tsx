@@ -2,6 +2,27 @@ import { useState } from 'react'
 import type { ReviewEvent } from '../../api/review'
 import { eventLabel } from '../../lib/eventCatalog'
 import { formatDuration, formatNumber } from '../../lib/format'
+import { defineMessages, useMessages } from '../../i18n/messages'
+
+const messages = defineMessages({
+  tr: {
+    empty: 'Skora katkı yapan olay yok.',
+    aria: (label: string, points: string, share: number, count: number) => `${label}: skora ${points} puan, toplamın yüzde ${share}'i, ${count} olay`,
+    count: (count: number, duration: string) => `${count} olay · toplam ${duration}`,
+    share: (share: number) => `Skorun %${share}'i`,
+    excluded: (n: number) => `${n} yanlış alarm hariç`,
+    total: 'Toplam katkı',
+  },
+  en: {
+    empty: 'No event contributed to the score.',
+    aria: (label: string, points: string, share: number, count: number) =>
+      `${label}: ${points} points, ${share}% of the total, ${count} ${count === 1 ? 'event' : 'events'}`,
+    count: (count: number, duration: string) => `${count} ${count === 1 ? 'event' : 'events'} · ${duration} in total`,
+    share: (share: number) => `${share}% of the score`,
+    excluded: (n: number) => `${n} false ${n === 1 ? 'alarm' : 'alarms'} excluded`,
+    total: 'Total contribution',
+  },
+})
 
 interface ContributionBarsProps {
   events: ReviewEvent[]
@@ -25,6 +46,7 @@ interface TypeRow {
  * üzerine gelince ayrıntı.
  */
 export function ContributionBars({ events, onSelect, selectedType }: ContributionBarsProps) {
+  const m = useMessages(messages)
   const [hover, setHover] = useState<string | null>(null)
   const byType = new Map<string, TypeRow>()
   for (const event of events) {
@@ -40,7 +62,7 @@ export function ContributionBars({ events, onSelect, selectedType }: Contributio
   const total = rows.reduce((sum, row) => sum + row.contribution, 0)
   const max = Math.max(1, ...rows.map((row) => row.contribution))
 
-  if (rows.length === 0) return <p className="waterfall-empty">Skora katkı yapan olay yok.</p>
+  if (rows.length === 0) return <p className="waterfall-empty">{m.empty}</p>
 
   return (
     <div className="bars">
@@ -57,7 +79,7 @@ export function ContributionBars({ events, onSelect, selectedType }: Contributio
                 onMouseLeave={() => setHover(null)}
                 onFocus={() => setHover(row.type)}
                 onBlur={() => setHover(null)}
-                aria-label={`${eventLabel(row.type)}: skora ${formatNumber(row.contribution, 1)} puan, toplamın yüzde ${share}'i, ${row.count} olay`}
+                aria-label={m.aria(eventLabel(row.type), formatNumber(row.contribution, 1), share, row.count)}
               >
                 <span className="bars-label">{eventLabel(row.type)}</span>
                 <span className="bars-track" aria-hidden="true">
@@ -67,11 +89,9 @@ export function ContributionBars({ events, onSelect, selectedType }: Contributio
                 {hover === row.type ? (
                   <span className="bars-tip" role="tooltip">
                     <strong>{eventLabel(row.type)}</strong>
-                    <span>
-                      {row.count} olay · toplam {formatDuration(row.seconds)}
-                    </span>
-                    <span>Skorun %{share}'i</span>
-                    {row.falseAlarms ? <span>{row.falseAlarms} yanlış alarm hariç</span> : null}
+                    <span>{m.count(row.count, formatDuration(row.seconds))}</span>
+                    <span>{m.share(share)}</span>
+                    {row.falseAlarms ? <span>{m.excluded(row.falseAlarms)}</span> : null}
                   </span>
                 ) : null}
               </button>
@@ -80,7 +100,7 @@ export function ContributionBars({ events, onSelect, selectedType }: Contributio
         })}
       </ol>
       <p className="bars-total">
-        <span>Toplam katkı</span>
+        <span>{m.total}</span>
         <strong className="numeric">{formatNumber(total, 1)}</strong>
       </p>
     </div>

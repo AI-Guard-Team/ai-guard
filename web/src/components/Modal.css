@@ -6,7 +6,15 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
-  background: rgb(13 28 48 / 45%);
+  background: rgb(13 20 40 / 45%);
+  backdrop-filter: blur(3px);
+  animation: modal-backdrop-in var(--duration) var(--ease-out);
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .modal {
@@ -31,7 +39,7 @@
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.98);
+    transform: translateY(10px) scale(0.97);
   }
 }
 

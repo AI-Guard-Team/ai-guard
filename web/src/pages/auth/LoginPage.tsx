@@ -1,4 +1,4 @@
-import { ArrowRight, Mail } from 'lucide-react'
+import { ArrowRight, LockKeyhole, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { login } from '../../api/auth'
@@ -9,9 +9,37 @@ import { useAuth } from '../../auth/useAuth'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { Input, PasswordInput } from '../../components/Input'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { AuthLayout } from '../../layouts/AuthLayout'
+import { authCopy } from './authCopy'
+import { MAX_EMAIL_LENGTH, MAX_PASSWORD_LENGTH, validateEmail, validateLoginPassword } from './passwordRules'
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const messages = defineMessages({
+  tr: {
+    title: 'Giriş yap',
+    description: 'Kurum hesabınızla oturum açın.',
+    footer: 'Hesabınızı kurum yöneticisi açar. Davet e-postanız yoksa yöneticinize başvurun.',
+    unreadable: 'Giriş yanıtı okunamadı. Lütfen tekrar deneyin.',
+    wrong: 'E-posta veya şifre hatalı.',
+    locked: 'Hesap geçici olarak kilitlendi',
+    lockedText: '5 hatalı denemeden sonra hesap 15 dakika kilitlenir. Biraz bekleyip tekrar deneyin ya da şifrenizi sıfırlayın.',
+    failed: 'Giriş yapılamadı. Lütfen tekrar deneyin.',
+    forgot: 'Şifremi unuttum',
+    signingIn: 'Giriş yapılıyor…',
+  },
+  en: {
+    title: 'Sign in',
+    description: 'Sign in with your institution account.',
+    footer: 'Accounts are opened by your institution’s administrator. If you have no invitation email, contact your administrator.',
+    unreadable: 'The sign-in response could not be read. Please try again.',
+    wrong: 'Incorrect email or password.',
+    locked: 'Account temporarily locked',
+    lockedText: 'After 5 failed attempts the account is locked for 15 minutes. Wait a little and try again, or reset your password.',
+    failed: 'Sign-in failed. Please try again.',
+    forgot: 'Forgot password?',
+    signingIn: 'Signing in…',
+  },
+})
 
 function requestedPath(state: unknown): string | null {
   if (!state || typeof state !== 'object' || !('from' in state)) return null
@@ -25,6 +53,8 @@ function requestedPath(state: unknown): string | null {
 type FormMessage = { tone: 'danger' | 'warning'; title?: string; text: string }
 
 export function LoginPage() {
+  const m = useMessages(messages)
+  const copy = useMessages(authCopy)
   const { user, signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,10 +69,8 @@ export function LoginPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    const next = {
-      email: !email.trim() ? 'E-posta zorunludur.' : EMAIL_PATTERN.test(email.trim()) ? undefined : 'Geçerli bir e-posta adresi girin.',
-      password: password ? undefined : 'Şifre zorunludur.',
-    }
+    if (pending) return
+    const next = { email: validateEmail(email), password: validateLoginPassword(password) }
     setErrors(next)
     setMessage(null)
     if (next.email || next.password) return
@@ -52,7 +80,7 @@ export function LoginPage() {
       const tokens = await login(email.trim(), password)
       const session = decodeAccessToken(tokens.accessToken)
       if (!session) {
-        setMessage({ tone: 'danger', text: 'Giriş yanıtı okunamadı. Lütfen tekrar deneyin.' })
+        setMessage({ tone: 'danger', text: m.unreadable })
         return
       }
       signIn(tokens)
@@ -60,14 +88,14 @@ export function LoginPage() {
     } catch (error) {
       // Girişte oturum yoktur; 401 burada "süre doldu" değil, hatalı bilgidir.
       if (error instanceof ApiError && error.status === 401) {
-        setMessage({ tone: 'danger', text: 'E-posta veya şifre hatalı.' })
+        setMessage({ tone: 'danger', text: m.wrong })
       } else if (error instanceof ApiError && error.status === 429) {
-        // Sunucu kalan dakikayı "detail" içinde veriyor (K-20: 5 hatalı denemede 15 dk).
-        setMessage({ tone: 'warning', title: 'Hesap geçici olarak kilitlendi', text: error.message })
+        // Sunucu kalan dakikayı "detail" içinde, isteğin dilinde veriyor (K-20, K-48); yoksa genel açıklama.
+        setMessage({ tone: 'warning', title: m.locked, text: error.message || m.lockedText })
       } else if (error instanceof ApiError) {
         setMessage({ tone: 'danger', text: error.message })
       } else {
-        setMessage({ tone: 'danger', text: 'Giriş yapılamadı. Lütfen tekrar deneyin.' })
+        setMessage({ tone: 'danger', text: m.failed })
       }
     } finally {
       setPending(false)
@@ -75,10 +103,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout kicker="AI-Guard"
-      title="Giriş yap"
-      footer={<p>Hesabınızı kurum yöneticisi açar. Davet e-postanız yoksa yöneticinize başvurun.</p>}
-    >
+    <AuthLayout title={m.title} description={m.description} footer={<p>{m.footer}</p>}>
       <form onSubmit={handleSubmit} noValidate>
         {message ? (
           <Alert tone={message.tone} title={message.title}>
@@ -86,30 +111,44 @@ export function LoginPage() {
           </Alert>
         ) : null}
         <Input
-          label="E-posta"
+          label={copy.email}
           type="email"
           inputMode="email"
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
-          placeholder="ad.soyad@kurum.edu.tr"
+          maxLength={MAX_EMAIL_LENGTH}
+          placeholder={copy.emailPlaceholder}
           icon={<Mail size={18} />}
           value={email}
           error={errors.email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            // Gösterilen hata düzeltildikçe kalkar; yazarken yeni hata çıkmaz.
+            if (errors.email) setErrors((current) => ({ ...current, email: validateEmail(event.target.value) }))
+          }}
+          onBlur={() => {
+            if (email) setErrors((current) => ({ ...current, email: validateEmail(email) }))
+          }}
         />
         <PasswordInput
-          label="Şifre"
+          label={copy.password}
+          placeholder={copy.passwordPlaceholder}
+          icon={<LockKeyhole size={18} />}
           autoComplete="current-password"
+          maxLength={MAX_PASSWORD_LENGTH}
           value={password}
           error={errors.password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+            if (errors.password) setErrors((current) => ({ ...current, password: validateLoginPassword(event.target.value) }))
+          }}
         />
         <div className="auth-row">
-          <Link to="/forgot-password">Şifremi unuttum</Link>
+          <Link to="/forgot-password">{m.forgot}</Link>
         </div>
         <Button type="submit" size="lg" block loading={pending} iconEnd={pending ? undefined : <ArrowRight size={18} aria-hidden="true" />}>
-          {pending ? 'Giriş yapılıyor…' : 'Giriş yap'}
+          {pending ? m.signingIn : m.title}
         </Button>
       </form>
     </AuthLayout>

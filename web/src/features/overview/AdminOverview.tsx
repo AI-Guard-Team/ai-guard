@@ -8,11 +8,60 @@ import { IconTile } from '../../components/IconTile'
 import { Skeleton } from '../../components/Skeleton'
 import { useNow } from '../../hooks/useNow'
 import { useResource } from '../../hooks/useResource'
+import { getLocale } from '../../i18n/lang'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { formatDateTime } from '../../lib/format'
 import { windowPhase } from '../admin/examWindow'
 import { ACTION_LABEL } from '../admin/auditLabels'
 import { greeting } from './greeting'
 import { CardHead, Hero, StatTile } from './OverviewParts'
+
+const messages = defineMessages({
+  tr: {
+    failed: 'Bilgiler yüklenemedi.',
+    hero: 'Sınavlar, kullanıcılar ve bekleyen işler bir bakışta.',
+    newExam: 'Yeni sınav',
+    open: 'Erişime açık sınav',
+    upcoming: 'Planlanan sınav',
+    active: 'Aktif kullanıcı',
+    roles: (candidates: number, reviewers: number) => `${candidates} aday · ${reviewers} değerlendirici`,
+    pending: 'Karar bekleyen dosya',
+    quick: 'Hızlı eylemler',
+    createExam: 'Sınav oluştur',
+    createExamText: 'Genel bilgiler, sorular, atamalar',
+    invite: 'Kullanıcı davet et',
+    inviteText: 'Aday, değerlendirici ya da yönetici',
+    reports: 'Raporlara bak',
+    reportsText: 'Aday raporları, PDF ve Excel',
+    noQuestions: 'Sorusu olmayan sınav var',
+    recent: 'Son işlemler',
+    audit: 'Denetim kaydı',
+    noRecords: 'Henüz kayıt yok.',
+    system: 'Sistem',
+  },
+  en: {
+    failed: 'The information could not be loaded.',
+    hero: 'Exams, users and pending work at a glance.',
+    newExam: 'New exam',
+    open: 'Open exams',
+    upcoming: 'Scheduled exams',
+    active: 'Active users',
+    roles: (candidates: number, reviewers: number) => `${candidates} candidates · ${reviewers} reviewers`,
+    pending: 'Files awaiting decision',
+    quick: 'Quick actions',
+    createExam: 'Create an exam',
+    createExamText: 'General details, questions, assignments',
+    invite: 'Invite a user',
+    inviteText: 'Candidate, reviewer or administrator',
+    reports: 'View reports',
+    reportsText: 'Candidate reports, PDF and Excel',
+    noQuestions: 'Some exams have no questions',
+    recent: 'Recent activity',
+    audit: 'Audit log',
+    noRecords: 'No records yet.',
+    system: 'System',
+  },
+})
 
 const load = async (signal: AbortSignal) => {
   const [exams, users, audit] = await Promise.all([listExams(signal), listUsers(undefined, signal), listAuditLogs({ page: 1, pageSize: 6 }, signal)])
@@ -22,7 +71,8 @@ const load = async (signal: AbortSignal) => {
 
 /** Yönetici genel bakışı: sınavlar, kullanıcılar, bekleyen dosyalar, hızlı eylemler ve son işlemler. */
 export function AdminOverview({ firstName }: { firstName: string }) {
-  const { data, error } = useResource(load, 'Bilgiler yüklenemedi.')
+  const m = useMessages(messages)
+  const { data, error } = useResource(load, m.failed)
   const now = useNow(60_000).getTime()
 
   const phases = data?.exams.map((exam) => windowPhase(exam, now)) ?? []
@@ -35,11 +85,11 @@ export function AdminOverview({ firstName }: { firstName: string }) {
     <div className="overview">
       <Hero
         greeting={greeting(firstName)}
-        text="Sınavlar, kullanıcılar ve bekleyen işler bir bakışta."
+        text={m.hero}
         aside={
           <Link className="button button-lg hero-button" to="/admin/exams/new">
             <Plus size={18} aria-hidden="true" />
-            Yeni sınav
+            {m.newExam}
           </Link>
         }
       />
@@ -47,22 +97,30 @@ export function AdminOverview({ firstName }: { firstName: string }) {
       {error && !data ? <Alert tone="danger">{error}</Alert> : null}
 
       <ul className="stat-grid">
-        <StatTile icon={BookOpenCheck} tone="sky" value={data ? open : '–'} label="Erişime açık sınav" to="/admin/exams" />
-        <StatTile icon={CalendarClock} tone="lilac" value={data ? upcoming : '–'} label="Planlanan sınav" to="/admin/exams" index={1} />
-        <StatTile icon={Users} tone="indigo" value={data ? data.users.filter((user) => user.isActive).length : '–'} label="Aktif kullanıcı" hint={data ? `${roleCount('Candidate')} aday · ${roleCount('Reviewer')} değerlendirici` : undefined} to="/admin/users" index={2} />
-        <StatTile icon={FolderOpen} tone="amber" value={data ? data.pending : '–'} label="Karar bekleyen dosya" to="/admin/reports" index={3} />
+        <StatTile icon={BookOpenCheck} tone="sky" value={data ? open : '–'} label={m.open} to="/admin/exams" />
+        <StatTile icon={CalendarClock} tone="lilac" value={data ? upcoming : '–'} label={m.upcoming} to="/admin/exams" index={1} />
+        <StatTile
+          icon={Users}
+          tone="indigo"
+          value={data ? data.users.filter((user) => user.isActive).length : '–'}
+          label={m.active}
+          hint={data ? m.roles(roleCount('Candidate'), roleCount('Reviewer')) : undefined}
+          to="/admin/users"
+          index={2}
+        />
+        <StatTile icon={FolderOpen} tone="amber" value={data ? data.pending : '–'} label={m.pending} to="/admin/reports" index={3} />
       </ul>
 
       <div className="overview-grid">
         <section className="overview-card">
-          <CardHead title="Hızlı eylemler" />
+          <CardHead title={m.quick} />
           <ul className="quick-actions">
             <li>
               <Link to="/admin/exams/new">
                 <IconTile icon={Plus} tone="sky" size="sm" />
                 <span>
-                  <strong>Sınav oluştur</strong>
-                  <span className="overview-sub">Genel bilgiler, sorular, atamalar</span>
+                  <strong>{m.createExam}</strong>
+                  <span className="overview-sub">{m.createExamText}</span>
                 </span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
@@ -71,8 +129,8 @@ export function AdminOverview({ firstName }: { firstName: string }) {
               <Link to="/admin/users">
                 <IconTile icon={MailPlus} tone="lilac" size="sm" />
                 <span>
-                  <strong>Kullanıcı davet et</strong>
-                  <span className="overview-sub">Aday, değerlendirici ya da yönetici</span>
+                  <strong>{m.invite}</strong>
+                  <span className="overview-sub">{m.inviteText}</span>
                 </span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
@@ -81,15 +139,15 @@ export function AdminOverview({ firstName }: { firstName: string }) {
               <Link to="/admin/reports">
                 <IconTile icon={FileBarChart} tone="mint" size="sm" />
                 <span>
-                  <strong>Raporlara bak</strong>
-                  <span className="overview-sub">Aday raporları, PDF ve Excel</span>
+                  <strong>{m.reports}</strong>
+                  <span className="overview-sub">{m.reportsText}</span>
                 </span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </li>
           </ul>
           {noQuestions.length ? (
-            <Alert tone="warning" title="Sorusu olmayan sınav var">
+            <Alert tone="warning" title={m.noQuestions}>
               {noQuestions.map((exam) => (
                 <Link key={exam.id} className="overview-inline-link" to={`/admin/exams/${exam.id}/questions`}>
                   {exam.name}
@@ -100,18 +158,18 @@ export function AdminOverview({ firstName }: { firstName: string }) {
         </section>
 
         <section className="overview-card">
-          <CardHead title="Son işlemler" to="/admin/audit" linkLabel="Denetim kaydı" />
+          <CardHead title={m.recent} to="/admin/audit" linkLabel={m.audit} />
           {!data ? (
             <Skeleton height="10rem" />
           ) : data.audit.items.length === 0 ? (
-            <p className="overview-empty">Henüz kayıt yok.</p>
+            <p className="overview-empty">{m.noRecords}</p>
           ) : (
             <ol className="activity">
               {data.audit.items.map((item) => (
                 <li key={item.id}>
                   <IconTile icon={ScrollText} tone="slate" size="sm" />
                   <span>
-                    <strong>{item.actorName ?? 'Sistem'}</strong> {(ACTION_LABEL[item.action] ?? item.action).toLocaleLowerCase('tr-TR')}
+                    <strong>{item.actorName ?? m.system}</strong> {(ACTION_LABEL[item.action] ?? item.action).toLocaleLowerCase(getLocale())}
                     <span className="overview-sub">{formatDateTime(item.occurredAt)}</span>
                   </span>
                 </li>

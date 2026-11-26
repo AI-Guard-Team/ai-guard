@@ -50,6 +50,8 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-36) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 | Kamera olayları | Kurallar API'de, bölüm bitince süresiyle tek kayıt; bakış serisinde 1–2 yüz kaybı seriyi sürdürür ama sayılmaz; telefon 3 sn, kimlik 60 sn; MONITORING_GAP tek bölüm, INVALID_IMAGE boşluk değil (K-45) |
+| Arayüz dili | Türkçe ve İngilizce; metinler kullanıldıkları dosyanın yanında iki dilde, tercih tarayıcıda; sunucu metinleri isteğin dilinde (K-46, K-48) |
+| Giriş ve koyu tema | Giriş panelinde dönen, parlayan halkalar (Şeyma'nın S1 tasarımı); koyu temada yan menü sayfayla aynı ailede, kontrastlar AA (K-47) |
 
 ---
 
@@ -1257,29 +1259,6 @@ Uçtan uca deneme (tarayıcı, gerçek API): giriş, yenilemede oturumun kalmas�
 
 Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; servis çalışmıyorsa API 15 sn zaman aşımını bekliyor (`VisionFaceService`). Rıza geri alma ucu ölçüldü: 26 ms. Ekranda yükleme sırasında "birkaç saniye sürebilir" yazıyor.
 
-## K-48 · Sunucu metinlerinin dili (UI1)
-
-Önyüz TR/EN olduğu hâlde hata başlıkları, ayrıntılar, ajan göstergesi uyarıları ve olay gerekçeleri yalnızca Türkçe geliyordu.
-
-- **Dil başlıktan.** İstemci her istekte `Accept-Language: tr` ya da `en` gönderiyor. `UiLanguageMiddleware` en yüksek öncelikli `tr`/`en` etiketini seçip `ApiLanguage`'a istek boyunca (AsyncLocal) yazıyor. Başlık yoksa, tanınmıyorsa ya da istek dışındaysa (arka plan görevi, SignalR bildirimi, test) **Türkçe**. `CultureInfo` değişmiyor: sayı, tarih ve ayrıştırma bugünkü gibi; işletim sisteminin dili de etkilemiyor.
-- **Metinler kodda Türkçe kalıyor.** İngilizce karşılıklar tek yerde: `Api/Localization/ServerTexts.cs` (birebir sözlük + değişkenli cümleler için kalıp). `ProblemDetails` oluşturulurken (`CustomizeProblemDetails`) istek İngilizceyse `title` ve `detail` çevriliyor; karşılığı olmayan metin Türkçe kalıyor, boşalmıyor.
-- **Unutulmaz.** `ServerLocalizationTests` kaynak koddaki her sabit Türkçe hata metnini (`title:`, `detail:`, `Fail(...)`, `Invalid(...)`, `Error = ...`) tarıyor; İngilizcesi yoksa test kırılıyor. Yeni bir hata metni eklendiğinde `ServerTexts`'e de eklenmeli.
-- **Ajan uyarıları** (`IndicatorAdvice`) iki dilde yazıldı. **Olay gerekçeleri** veritabanında Türkçe saklanıyor (kayıtlı değer değişmiyor); inceleme ve rapor yanıtında `ReasonFormatter.Localize` İngilizceye çeviriyor ("3. dakikada 8 sn telefon görüldü" → "In minute 3, for 8 s, phone seen").
-- Sınav düzeyi CSV başlıkları da isteğin diline göre. Rıza metinleri sürümlü ve değiştirilemez olduğu için (K-32) bu kapsamda çevrilmedi; İngilizce rıza metni gerekirse ayrı bir sürüm olarak eklenmeli.
-
-## K-49 · Yönetim özellikleri: e-posta, platform ayarları, davet, sınava özel risk, toplu rapor, bildirimler (UI1)
-
-| Konu | Karar |
-|---|---|
-| Gerçek e-posta | `SMTP_HOST` tanımlıysa `SmtpEmailSender` (MailKit 4.18.2), değilse eskisi gibi `LoggingEmailSender`. Ayarlar ortam değişkeninden: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_SECURITY` (`StartTls`/`Ssl`/`None`), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` (host varken zorunlu, yoksa açılışta hata). 15 sn zaman aşımı; gönderim hatası loglanıyor, isteği bozmuyor (davet/sıfırlama yine 2xx, hesap varlığı sızmasın). Bağlantı loga yazılmıyor. Şablonlar (`EmailTemplates`) iki dilli, düz metin + HTML, ad ve bağlantı HTML kaçışlı |
-| Platform ayarları | Tek satırlık `platform_settings` tablosu: alternatif sınav yöntemi metni (≤4000), destek e-postası ve telefonu, ajan indirme adresleri (Windows, macOS). `GET /api/platform-settings` her giriş yapmış kullanıcıya (aday alternatif yöntem ekranında okuyor), `PUT` yalnızca Admin (`Manage`). Adresler yalnızca `https://`, ≤500; telefon `^[0-9 +()\-]{3,40}$`; boş metin "ayarlanmadı" (null). Her değişiklik denetim kaydına (`settings.update`) |
-| Son giriş | `users.last_login_at` başarılı girişte yazılıyor; `GET /api/users` dönüyor |
-| Daveti yeniden gönder | `POST /api/users/{id}/invite` (Admin): yeni bağlantı üretir, eskisini geçersiz kılar, süresi yeniden 72 saat. Davet kabul edilmişse ya da kullanıcı pasifse 409; aynı kullanıcıya dakikada bir (`users.invite_sent_at`), erkense 429. Denetim: `user.invite_resend` |
-| Sınava özel risk ayarı | `GET/PUT/DELETE /api/exams/{examId}/risk-settings` (Admin). Varsayılan `riskconfig.json`; sınav yalnızca farklı olan olay türlerini (`risk_settings.exam_id` dolu satırlar) ve isterse oturum eşiğini (`exams.risk_session_threshold`) saklıyor. Ağırlık 0–100, azalma 0–5/dk, tek başına eşik boş ya da 0–1000, oturum eşiği 1–1000. **Sınavda ilk oturum açılınca kilitli (409):** aynı sınavdaki adaylar aynı ayarla puanlanır, geçmiş skorların hangi ayarla hesaplandığını ayrıca saklamak gerekmez. Olay kaydı, inceleme ve rapor `ExamRiskService.EngineForExamAsync` ile oturumun sınavının motorunu kullanıyor. Denetim: `exam.risk_settings` |
-| Sınav düzeyi rapor | `GET /api/reports/exams/{examId}` (`ReviewRead`, değerlendirici yalnızca atandığı sınav): atanan/başlayan/süren/tamamlanan/inceleme bekleyen/karar verilen sayıları, riskli oturum, ortalama ve en yüksek skor, ortalama doğru, karar dağılımı, olay türü sayıları, dakika başına olay yoğunluğu. `?format=Csv` bütün oturumlar tek dosya: UTF-8 BOM, `;` ayraç, `= + - @` ile başlayan hücreler `'` ile metne çevriliyor (CSV enjeksiyonu). Denetim: `report.exam_view` / `report.exam_export` |
-| Bildirim zili | `GET /api/notifications`: ayrı tablo yok, her istekte güncel veriden türetiliyor, en fazla 20. Değerlendirici: atandığı sınavlarda inceleme bekleyen dosyalar. Admin: inceleme bekleyen sınavlar, yaklaşan ama sorusu ya da adayı olmayan sınavlar, süresi dolan davetler. Aday: açık ya da yakında açılacak sınavları, kayıt fotoğrafı yoksa uyarı. Okundu bilgisi istemcide (bildirim kimliği kararlı, ör. `review:{sessionId}`) |
-
-Göç: `UI1_YonetimAyarlari` (`users.invite_sent_at`, `users.last_login_at`, `exams.risk_session_threshold`, `platform_settings`). Erişim matrisi testine yeni uçlar eklendi.
 
 ---
 
@@ -1336,6 +1315,78 @@ Zaman aşımı, kesilme (10 sn) ve bağlantı kesintisi (30 sn) eşiklerinin alt
 **Günlük.** Yalnızca oturum kimliği, olay türü, HTTP durumu ve hata kodu (K-27). Boşluk başına bir uyarı (açılışta) ve bir bilgi (dönüşte); her kare için yazılmıyor. Görüntü, vektör ve skor yazılmıyor.
 
 **Sınırlılıklar.** Uzun bir bölüm değerlendirici panelinde ancak bitince görünüyor. API yeniden başlarsa açık bölümler yazılmıyor. Deney 2'de baş dönüklüğünde `GAZE_AWAY`/`FACE_MISSING` karışması bu kuralla yeniden ölçülmeli (K-28). Teslim işlemi geri alınırsa (ör. kayıt hatası) açık bölümler kaybolur ve oturumun kamera durumu en geç ~2 dk kapalı kalır; bu sürede kareler işlenmez. Teslimle aynı anda kapanan bir bölüm de kaybolabilir (milisaniyeler mertebesinde pencere). Temizlik turunda ya da kare isteğinde yazma hatası olursa o bölüm kaybolur; temizlik turu her oturumu kendi DI kapsamında (kendi DbContext'iyle) yazar, hata veren oturumu atlayıp günlüğe oturum kimliğiyle uyarı yazar, turun geri kalanı devam eder. Kimliğe özgü kalıcı bir doğrulama hatası olursa (ör. bozuk vektörle `VALIDATION_ERROR`) kimlik her karede yeniden istenir ve izleme boşluğa düşer; kayıtta vektör doğrulandığı için olasılığı düşük. Vision anahtarı olup şifreleme anahtarı olmayan yerel ortamda, bölüm yazılacağı zaman o kare isteği 500 alır (yalnızca yerel geliştirme; Docker ve CI anahtarı zorunlu tutuyor).
+
+## K-46 · Türkçe / İngilizce arayüz (UI1)
+
+Kullanıcı isteği: "uygulamanın her yerine İngilizce–Türkçe özelliği gelsin".
+
+| Karar | Ayrıntı | Gerekçe |
+|---|---|---|
+| Kütüphane yok | `web/src/i18n/`: `lang.ts` (geçerli dil, `useLang`, `setLang`), `messages.ts` (`defineMessages`, `useMessages`, `pick`, `live`) | Yaklaşık 1.300 metin için i18next gibi bir paket gerekmiyor; ana paket büyümesin |
+| Metinler dosyanın yanında | Her bileşen kendi `messages` sözlüğünü iki dilde tutar; sık tekrar edenler `i18n/common.ts` ve `pages/auth/authCopy.ts` | Modüler: ekranı değiştiren kişi metnini de aynı yerde görür |
+| Eksik çeviri derlenmez | `defineMessages({ tr, en })`'de İngilizce sözlük Türkçeyle aynı tipte olmak zorunda (`NoInfer`) | Unutulan anahtar CI'da yakalanır |
+| Etiket eşlemeleri canlı | `ROLE_LABEL`, `EVENT_LABEL`, `ACTION_LABEL` gibi eşlemeler `live()` ile; okunduğu anda geçerli dili verir | Bu eşlemeleri okuyan onlarca dosya değişmeden kaldı |
+| Dil değişince ağaç yeniden çizilir | `Root` (`src/Root.tsx`) `useLang` ile abone; durum korunuyor (giriş formuna yazılan e-posta kaybolmuyor; giriş kartının anahtarı başlık değil adres) | Düz işlevlerden okunan metinler de güncel dile geçsin |
+| Tercih | `localStorage` `aiguard.lang`; yoksa tarayıcı dili Türkçe değilse İngilizce. `<html lang>` güncelleniyor (ekran okuyucu doğru telaffuz etsin) | Tema tercihiyle aynı yöntem (K-42) |
+| Düğme | Yan menüde, giriş ekranının ve kabuk dışı sayfaların (404, oturum süresi doldu) sağ üstünde; öbür dilin kendi adıyla ("English" / "Türkçe") | Dili bilmeyen kişi de tanısın |
+| Tarih ve sayı | `lib/format.ts` geçerli dile göre `tr-TR` / `en-GB` | — |
+| Sunucu metinleri | API'nin ProblemDetails metinleri Türkçe. İngilizcede istemci, duruma göre İngilizce genel metin gösteriyor (`statusMessage`); bilinen durumlar (hatalı giriş, kilit, aynı e-posta, geçersiz bağlantı) ekranın kendi metniyle söyleniyor | Sunucuya çeviri eklemek ayrı bir işti (S-31); K-48 ile sunucu metinleri de isteğin dilinde geliyor |
+| Hukuki metin | Aydınlatma ve rıza metinleri sunucudan Türkçe; İngilizcede altında "bağlayıcı olan Türkçe metin" notu ve `lang="tr"` | Rıza metninin resmî hâli tek |
+
+Sınav ekranına dil düğmesi konmadı (aday yalnızca sınava odaklanır, K-37); sınav öncesinde seçilen dil sınavda da geçerli.
+
+## K-47 · Giriş ekranı, koyu tema ve kurumsal hareket (UI1)
+
+Kullanıcı isteği: Şeyma'nın "yanar dönerli" arka planı, soldan tanıtım ve sağdan giriş, ikisi de animasyonlu; koyu tema renklerinin düzeltilmesi.
+
+| Karar | Ayrıntı | Gerekçe |
+|---|---|---|
+| Halkalı arka plan | `layouts/AuthOrbit.tsx`: Şeyma'nın S1'deki parlayan halkaları; iki köşede iç içe halkalar, üzerlerinde farklı hız ve yönde dönen ışık yayları ve ışıması, nefes alan yumuşak parıltı | Tek "an": göz alıcı ama kurumsal |
+| Takılma yok | Dönüş ve nefes yalnızca `transform` / `opacity` (kompozitörde); bulanıklık katmanda bir kez çiziliyor. Hareket azaltma tercihinde durur | Giriş ekranı zayıf cihazda da akıcı |
+| Giriş hareketi | Tanıtım soldan (başlık bulanıklıktan netleşerek), ilkeler sırayla; form kartı sağdan, üzerinden bir kez ince ışık geçer. Tanıtım uygulama açılışında bir kez oynar; giriş ekranları arasında yalnızca kart yenilenir | Her geçişte sol panelin yeniden oynaması yorucu |
+| Telefonda | Sol panel yok; halkaların soluk sürümü kartın arkasında, dil ve tema düğmeleri yalnızca simge | — |
+| Koyu tema | Zeminler düşük doygunlukta mürekkep tonu, üç katman (zemin < yüzey < vurgulu yüzey); yan menü ve karşılama bantları sayfayla aynı aileden; seçili menü öğesi beyaz hap yerine marka renginde hafif zemin | Önceki koyu temada parlak lacivert menü ile siyaha yakın sayfa iki ayrı uygulama gibi duruyordu |
+| Kontrast | Koyu temada gövde metni 14.7:1, ikincil 8.0:1, soluk 5.8:1, düğme yazısı 4.7:1 (WCAG AA) | Ölçüldü |
+| Menü göstergesi | Seçili öğenin zemini sayfa değişince bir öğeden ötekine kayar (motion `layoutId`, yay) | Kurumsal, kısa, tek bir yerde |
+| Düzeltme | Genel bakıştaki "Hızlı eylemler" simgeleri uzun çubuk gibi esniyordu (simge de `span`'dı); iki temada da düzeldi | — |
+| YM 491 satırı | Giriş panelinde yok (K-44 kararı korunuyor) | — |
+
+Doğrulama: giriş ve şifremi unuttum ekranları 1440 ve 390 genişlikte, açık/koyu ve TR/EN (16 görünüm) için CLS 0, yatay taşma yok. Üretim paketi nginx'teki CSP başlığıyla açıldı; ihlal yok.
+
+### Doğrulama kuralları (bu turda sıkılaştırılan)
+
+- E-posta: zorunlu, en fazla 254 karakter, biçim; alandan çıkınca denetleniyor, düzeltildikçe hata kalkıyor. Giriş, şifremi unuttum ve davet aynı kuralı kullanıyor (`passwordRules.validateEmail`).
+- Şifre alanları: en fazla 128 karakter; Caps Lock açıkken uyarı.
+- Davet ve sıfırlama bağlantısı: kod base64url biçiminde değilse sunucuya gönderilmiyor; okunduktan sonra adres çubuğundan siliniyor (tarayıcı geçmişinde ve ekran paylaşımında görünmesin).
+- Davette ad en az 2 karakter; aynı e-posta (409) alanın altında söyleniyor.
+- Sınav formunda süre 1–600 dk, saklama 1–3650 gün; soruda aynı seçenek iki kez yazılamıyor.
+- Ajansız / göstergeli devam gerekçesi en az 10 karakter.
+- Denetim kaydında başlangıç tarihi bitişten sonraysa istek gönderilmiyor.
+- Bütün gönderim düğmeleri istek sürerken ikinci kez çalışmıyor.
+
+## K-48 · Sunucu metinlerinin dili (UI1)
+
+Önyüz TR/EN olduğu hâlde hata başlıkları, ayrıntılar, ajan göstergesi uyarıları ve olay gerekçeleri yalnızca Türkçe geliyordu.
+
+- **Dil başlıktan.** İstemci her istekte `Accept-Language: tr` ya da `en` gönderiyor. `UiLanguageMiddleware` en yüksek öncelikli `tr`/`en` etiketini seçip `ApiLanguage`'a istek boyunca (AsyncLocal) yazıyor. Başlık yoksa, tanınmıyorsa ya da istek dışındaysa (arka plan görevi, SignalR bildirimi, test) **Türkçe**. `CultureInfo` değişmiyor: sayı, tarih ve ayrıştırma bugünkü gibi; işletim sisteminin dili de etkilemiyor.
+- **Metinler kodda Türkçe kalıyor.** İngilizce karşılıklar tek yerde: `Api/Localization/ServerTexts.cs` (birebir sözlük + değişkenli cümleler için kalıp). `ProblemDetails` oluşturulurken (`CustomizeProblemDetails`) istek İngilizceyse `title` ve `detail` çevriliyor; karşılığı olmayan metin Türkçe kalıyor, boşalmıyor.
+- **Unutulmaz.** `ServerLocalizationTests` kaynak koddaki her sabit Türkçe hata metnini (`title:`, `detail:`, `Fail(...)`, `Invalid(...)`, `Error = ...`) tarıyor; İngilizcesi yoksa test kırılıyor. Yeni bir hata metni eklendiğinde `ServerTexts`'e de eklenmeli.
+- **Ajan uyarıları** (`IndicatorAdvice`) iki dilde yazıldı. **Olay gerekçeleri** veritabanında Türkçe saklanıyor (kayıtlı değer değişmiyor); inceleme ve rapor yanıtında `ReasonFormatter.Localize` İngilizceye çeviriyor ("3. dakikada 8 sn telefon görüldü" → "In minute 3, for 8 s, phone seen").
+- Sınav düzeyi CSV başlıkları da isteğin diline göre. Rıza metinleri sürümlü ve değiştirilemez olduğu için (K-32) bu kapsamda çevrilmedi; İngilizce rıza metni gerekirse ayrı bir sürüm olarak eklenmeli.
+
+## K-49 · Yönetim özellikleri: e-posta, platform ayarları, davet, sınava özel risk, toplu rapor, bildirimler (UI1)
+
+| Konu | Karar |
+|---|---|
+| Gerçek e-posta | `SMTP_HOST` tanımlıysa `SmtpEmailSender` (MailKit 4.18.2), değilse eskisi gibi `LoggingEmailSender`. Ayarlar ortam değişkeninden: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_SECURITY` (`StartTls`/`Ssl`/`None`), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` (host varken zorunlu, yoksa açılışta hata). 15 sn zaman aşımı; gönderim hatası loglanıyor, isteği bozmuyor (davet/sıfırlama yine 2xx, hesap varlığı sızmasın). Bağlantı loga yazılmıyor. Şablonlar (`EmailTemplates`) iki dilli, düz metin + HTML, ad ve bağlantı HTML kaçışlı |
+| Platform ayarları | Tek satırlık `platform_settings` tablosu: alternatif sınav yöntemi metni (≤4000), destek e-postası ve telefonu, ajan indirme adresleri (Windows, macOS). `GET /api/platform-settings` her giriş yapmış kullanıcıya (aday alternatif yöntem ekranında okuyor), `PUT` yalnızca Admin (`Manage`). Adresler yalnızca `https://`, ≤500; telefon `^[0-9 +()\-]{3,40}$`; boş metin "ayarlanmadı" (null). Her değişiklik denetim kaydına (`settings.update`) |
+| Son giriş | `users.last_login_at` başarılı girişte yazılıyor; `GET /api/users` dönüyor |
+| Daveti yeniden gönder | `POST /api/users/{id}/invite` (Admin): yeni bağlantı üretir, eskisini geçersiz kılar, süresi yeniden 72 saat. Davet kabul edilmişse ya da kullanıcı pasifse 409; aynı kullanıcıya dakikada bir (`users.invite_sent_at`), erkense 429. Denetim: `user.invite_resend` |
+| Sınava özel risk ayarı | `GET/PUT/DELETE /api/exams/{examId}/risk-settings` (Admin). Varsayılan `riskconfig.json`; sınav yalnızca farklı olan olay türlerini (`risk_settings.exam_id` dolu satırlar) ve isterse oturum eşiğini (`exams.risk_session_threshold`) saklıyor. Ağırlık 0–100, azalma 0–5/dk, tek başına eşik boş ya da 0–1000, oturum eşiği 1–1000. **Sınavda ilk oturum açılınca kilitli (409):** aynı sınavdaki adaylar aynı ayarla puanlanır, geçmiş skorların hangi ayarla hesaplandığını ayrıca saklamak gerekmez. Olay kaydı, inceleme ve rapor `ExamRiskService.EngineForExamAsync` ile oturumun sınavının motorunu kullanıyor. Denetim: `exam.risk_settings` |
+| Sınav düzeyi rapor | `GET /api/reports/exams/{examId}` (`ReviewRead`, değerlendirici yalnızca atandığı sınav): atanan/başlayan/süren/tamamlanan/inceleme bekleyen/karar verilen sayıları, riskli oturum, ortalama ve en yüksek skor, ortalama doğru, karar dağılımı, olay türü sayıları, dakika başına olay yoğunluğu. `?format=Csv` bütün oturumlar tek dosya: UTF-8 BOM, `;` ayraç, `= + - @` ile başlayan hücreler `'` ile metne çevriliyor (CSV enjeksiyonu). Denetim: `report.exam_view` / `report.exam_export` |
+| Bildirim zili | `GET /api/notifications`: ayrı tablo yok, her istekte güncel veriden türetiliyor, en fazla 20. Değerlendirici: atandığı sınavlarda inceleme bekleyen dosyalar. Admin: inceleme bekleyen sınavlar, yaklaşan ama sorusu ya da adayı olmayan sınavlar, süresi dolan davetler. Aday: açık ya da yakında açılacak sınavları, kayıt fotoğrafı yoksa uyarı. Okundu bilgisi istemcide (bildirim kimliği kararlı, ör. `review:{sessionId}`) |
+
+Göç: `UI1_YonetimAyarlari` (`users.invite_sent_at`, `users.last_login_at`, `exams.risk_session_threshold`, `platform_settings`). Erişim matrisi testine yeni uçlar eklendi.
 
 ---
 
@@ -1407,3 +1458,4 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |
 | S-29 | Sorular kamera/mikrofon açılmadan önyüzde gizleniyor, ama sunucu `InProgress`'te soruları yine döndürüyor; değiştirilmiş bir istemci kamera açmadan soruları okuyabilir | Yağmur (S4), Esma (E4) | Sunucuda da kontrol: oturum uç `GET /api/sessions/{id}` soruları ancak son birkaç saniyede kare gelmişse döndürsün. K-24'ü değiştirdiği için ekip kararı gerekiyor |
 | S-30 | Risk ağırlıkları şu an platform geneli ve salt okunur (`riskconfig.json`, K-41); Stitch 29 sınav başına düzenleme gösteriyordu | Ayşe | **Çözüldü (UI1):** `GET/PUT/DELETE /api/exams/{id}/risk-settings`; ilk oturumdan sonra kilitli, böylece bir sınavın bütün skorları aynı ayarla (K-49) |
+| S-31 | API'nin hata metinleri (ProblemDetails) yalnızca Türkçe; İngilizce arayüzde istemci genel metin gösteriyor | Ekip | **Çözüldü (UI1):** istemci `Accept-Language` gönderiyor, sunucu `title`/`detail`'ı çeviriyor (K-48) |

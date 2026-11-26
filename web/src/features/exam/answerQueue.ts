@@ -57,7 +57,7 @@ function answerKey(answer: Pick<PendingAnswer, 'sessionId' | 'seq'>): string {
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('Cevap kuyruğu okunamadı.'))
+    request.onerror = () => reject(request.error ?? new Error('answer queue read failed'))
   })
 }
 
@@ -72,7 +72,7 @@ function openDb(): Promise<IDBDatabase> {
       }
     }
     request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('Cevap kuyruğu açılamadı.'))
+    request.onerror = () => reject(request.error ?? new Error('answer queue open failed'))
   })
 }
 

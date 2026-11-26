@@ -10,33 +10,105 @@
   pointer-events: none;
 }
 
+/* Renkler temadan: koyu temada da okunur (eski sürümde açık renk sabit yazılıydı). */
 .toast {
-  padding: var(--space-3) var(--space-4);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: 550;
+  line-height: 1.45;
   pointer-events: auto;
-  animation: toast-in var(--duration) var(--ease-out);
 }
 
-.toast-success {
-  border-color: rgb(79 122 99 / 35%);
-  background: #eef4ef;
+.toast-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-info-text);
+}
+
+.toast-success .toast-icon {
   color: var(--color-success-text);
 }
 
-.toast-error {
-  border-color: rgb(179 38 30 / 30%);
-  background: #fbeeec;
+.toast-error .toast-icon {
   color: var(--color-danger-text);
 }
 
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+.toast-success {
+  border-color: color-mix(in srgb, var(--color-success) 30%, var(--color-border));
+}
+
+.toast-error {
+  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+}
+
+.toast-message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-close {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: -2px -2px 0 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.toast-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Kalan süre: alttaki ince çizgi sağdan sola erir (yalnızca transform). */
+.toast-timer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.25;
+  transform-origin: left;
+  animation: toast-timer linear forwards;
+}
+
+.toast-success .toast-timer {
+  color: var(--color-success);
+}
+
+.toast-error .toast-timer {
+  color: var(--color-danger);
+}
+
+@keyframes toast-timer {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-timer {
+    animation: none;
   }
 }

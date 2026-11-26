@@ -1,7 +1,8 @@
-import { MailPlus, Search, UserRoundX, UserRoundCheck, Users } from 'lucide-react'
+import { MailPlus, Search, Send, UserRoundX, UserRoundCheck, Users } from 'lucide-react'
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { createUser, listUsers, updateUser, type InviteStatus, type UserRole, type UserSummary } from '../../api/admin'
+import { resendInvite } from '../../api/management'
 import { ROLE_LABEL } from '../../auth/roles'
 import { useAuth } from '../../auth/useAuth'
 import { Alert } from '../../components/Alert'
@@ -14,25 +15,168 @@ import { Skeleton } from '../../components/Skeleton'
 import { StatusBadge, type BadgeTone } from '../../components/StatusBadge'
 import { useToast } from '../../components/useToast'
 import { useResource } from '../../hooks/useResource'
-import { formatDate } from '../../lib/format'
+import { common } from '../../i18n/common'
+import { getLang, getLocale } from '../../i18n/lang'
+import { defineMessages, useMessages } from '../../i18n/messages'
+import { formatDate, formatDateTime } from '../../lib/format'
+import { MAX_EMAIL_LENGTH, validateEmail } from '../../pages/auth/passwordRules'
 import './admin.css'
 
 const ROLES: UserRole[] = ['Candidate', 'Reviewer', 'Admin']
-const PLURAL: Record<UserRole, string> = { Candidate: 'Adaylar', Reviewer: 'Değerlendiriciler', Admin: 'Yöneticiler' }
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MIN_NAME = 2
+const MAX_NAME = 200
 
-const INVITE: Record<InviteStatus, { label: string; tone: BadgeTone }> = {
-  Accepted: { label: 'Hesap etkin', tone: 'success' },
-  Pending: { label: 'Davet bekliyor', tone: 'info' },
-  Expired: { label: 'Davetin süresi doldu', tone: 'warning' },
-}
+const INVITE_TONE: Record<InviteStatus, BadgeTone> = { Accepted: 'success', Pending: 'info', Expired: 'warning' }
+
+const messages = defineMessages({
+  tr: {
+    plural: { Candidate: 'Adaylar', Reviewer: 'Değerlendiriciler', Admin: 'Yöneticiler' } as Record<UserRole, string>,
+    invite: { Accepted: 'Hesap etkin', Pending: 'Davet bekliyor', Expired: 'Davetin süresi doldu' } as Record<InviteStatus, string>,
+    roleHint: {
+      Candidate: 'Atandığı sınavlara girer',
+      Reviewer: 'Dosyaları inceler, karar verir',
+      Admin: 'Sınav, kullanıcı ve ayarları yönetir',
+    } as Record<UserRole, string>,
+    failed: 'Kullanıcılar yüklenemedi.',
+    roleChanged: (name: string, role: string) => `${name} artık ${role}.`,
+    roleFailed: 'Rol değiştirilemedi.',
+    deactivated: 'Hesap pasife alındı.',
+    reactivated: 'Hesap yeniden etkinleştirildi.',
+    updateFailed: 'Hesap güncellenemedi.',
+    admin: 'Yönetim',
+    title: 'Kullanıcılar',
+    description: 'Hesap açın, rolleri yönetin, gerekirse hesabı pasife alın.',
+    info: [
+      'Davet, kullanıcının e-posta adresine 72 saat geçerli bir şifre belirleme bağlantısı gönderir. Kullanıcı şifresini belirleyince hesap etkin olur.',
+      'Bağlantı gelmezse ya da süresi dolarsa "Daveti yeniden gönder" yeni bir bağlantı gönderir; eski bağlantı geçersiz olur.',
+      'Pasife alınan kullanıcı giriş yapamaz; kayıtları silinmez.',
+      'Rol değişikliği ve pasife alma denetim kaydına yazılır.',
+    ],
+    inviteUser: 'Kullanıcı davet et',
+    filterBy: 'Role göre süz',
+    all: 'Tümü',
+    search: 'Kullanıcı ara',
+    searchPlaceholder: 'Ad ya da e-postayla ara',
+    listFailed: 'Kullanıcılar yüklenemedi',
+    noMatch: 'Eşleşen kullanıcı yok',
+    none: 'Henüz kullanıcı yok',
+    noMatchText: 'Aramayı ya da filtreyi değiştirin.',
+    noneText: '"Kullanıcı davet et" ile ilk hesabı açın.',
+    user: 'Kullanıcı',
+    role: 'Rol',
+    status: 'Durum',
+    added: 'Eklenme',
+    lastLogin: 'Son giriş',
+    neverSignedIn: 'Henüz giriş yok',
+    addedOn: (date: string) => `Eklenme: ${date}`,
+    resend: 'Daveti yeniden gönder',
+    resent: (name: string) => `${name} için yeni davet bağlantısı gönderildi.`,
+    resendFailed: 'Davet gönderilemedi.',
+    action: 'İşlem',
+    roleOf: (name: string) => `${name} rolü`,
+    inactive: 'Pasif',
+    you: 'Siz',
+    deactivate: 'Pasife al',
+    activate: 'Etkinleştir',
+    invited: (name: string) => `${name} için davet e-postası gönderildi.`,
+    deactivateTitle: 'Hesap pasife alınsın mı?',
+    activateTitle: 'Hesap etkinleştirilsin mi?',
+    deactivateText: (name: string) =>
+      `${name} giriş yapamayacak; açık oturumu en geç 15 dakika içinde kapanır. Kayıtları silinmez, istediğinizde yeniden etkinleştirebilirsiniz.`,
+    activateText: (name: string) => `${name} yeniden giriş yapabilecek.`,
+    nameRequired: 'Ad soyad zorunludur.',
+    nameShort: `Ad soyad en az ${MIN_NAME} karakter olmalıdır.`,
+    exists: 'Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var.',
+    createFailed: 'Kullanıcı oluşturulamadı.',
+    inviteHow: (
+      <>
+        Kullanıcının e-posta adresine <strong>72 saat geçerli</strong> bir şifre belirleme bağlantısı gider. Kullanıcı şifresini belirleyince hesabı etkin olur.
+      </>
+    ),
+    emailNote: 'E-posta gelmezse kullanıcı listesinden daveti yeniden gönderebilirsiniz.',
+    name: 'Ad soyad',
+    email: 'E-posta',
+    send: 'Davet gönder',
+  },
+  en: {
+    plural: { Candidate: 'Candidates', Reviewer: 'Reviewers', Admin: 'Administrators' },
+    invite: { Accepted: 'Account active', Pending: 'Invitation pending', Expired: 'Invitation expired' },
+    roleHint: {
+      Candidate: 'Takes the exams they are assigned',
+      Reviewer: 'Reviews files and decides',
+      Admin: 'Manages exams, users and settings',
+    },
+    failed: 'Users could not be loaded.',
+    roleChanged: (name: string, role: string) => `${name} is now ${/^[aeiou]/i.test(role) ? 'an' : 'a'} ${role}.`,
+    roleFailed: 'The role could not be changed.',
+    deactivated: 'Account deactivated.',
+    reactivated: 'Account reactivated.',
+    updateFailed: 'The account could not be updated.',
+    admin: 'Administration',
+    title: 'Users',
+    description: 'Open accounts, manage roles and deactivate accounts when needed.',
+    info: [
+      'An invitation sends the user a password setup link valid for 72 hours. The account becomes active once they set a password.',
+      'If the email does not arrive or the link expires, "Resend invitation" sends a new link; the old link stops working.',
+      'A deactivated user cannot sign in; their records are not deleted.',
+      'Role changes and deactivations are written to the audit log.',
+    ],
+    inviteUser: 'Invite user',
+    filterBy: 'Filter by role',
+    all: 'All',
+    search: 'Search users',
+    searchPlaceholder: 'Search by name or email',
+    listFailed: 'Users could not be loaded',
+    noMatch: 'No matching users',
+    none: 'No users yet',
+    noMatchText: 'Change the search or the filter.',
+    noneText: 'Open the first account with "Invite user".',
+    user: 'User',
+    role: 'Role',
+    status: 'Status',
+    added: 'Added',
+    lastLogin: 'Last sign-in',
+    neverSignedIn: 'Never signed in',
+    addedOn: (date: string) => `Added ${date}`,
+    resend: 'Resend invitation',
+    resent: (name: string) => `A new invitation link was sent to ${name}.`,
+    resendFailed: 'The invitation could not be sent.',
+    action: 'Action',
+    roleOf: (name: string) => `${name}’s role`,
+    inactive: 'Inactive',
+    you: 'You',
+    deactivate: 'Deactivate',
+    activate: 'Activate',
+    invited: (name: string) => `An invitation email was sent to ${name}.`,
+    deactivateTitle: 'Deactivate this account?',
+    activateTitle: 'Activate this account?',
+    deactivateText: (name: string) =>
+      `${name} will not be able to sign in; any open session ends within 15 minutes. Records are not deleted and you can reactivate the account at any time.`,
+    activateText: (name: string) => `${name} will be able to sign in again.`,
+    nameRequired: 'Full name is required.',
+    nameShort: `Full name must be at least ${MIN_NAME} characters.`,
+    exists: 'A user with this email address already exists.',
+    createFailed: 'The user could not be created.',
+    inviteHow: (
+      <>
+        The user receives a password setup link <strong>valid for 72 hours</strong>. Their account becomes active once they set a password.
+      </>
+    ),
+    emailNote: 'If the email does not arrive, you can resend the invitation from the user list.',
+    name: 'Full name',
+    email: 'Email',
+    send: 'Send invitation',
+  },
+})
 
 const load = (signal: AbortSignal) => listUsers(undefined, signal)
 
 /** Kullanıcılar (Stitch 23) ve davet (Stitch 24). Hesabı yönetici açar; kullanıcıya şifre belirleme bağlantısı gider (K-20). */
 export function UsersPage() {
+  const m = useMessages(messages)
+  const c = useMessages(common)
   const { user: me } = useAuth()
-  const { data, error, loading, reload } = useResource(load, 'Kullanıcılar yüklenemedi.')
+  const { data, error, loading, reload } = useResource(load, m.failed)
   const showToast = useToast()
   const [role, setRole] = useState<UserRole | 'all'>('all')
   const [query, setQuery] = useState('')
@@ -40,14 +184,15 @@ export function UsersPage() {
   const [inviting, setInviting] = useState(false)
   const [toggling, setToggling] = useState<UserSummary | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const locale = getLocale()
 
   const rows = useMemo(() => {
-    const term = deferredQuery.trim().toLocaleLowerCase('tr-TR')
+    const term = deferredQuery.trim().toLocaleLowerCase(locale)
     return (data ?? [])
       .filter((user) => role === 'all' || user.role === role)
-      .filter((user) => !term || user.fullName.toLocaleLowerCase('tr-TR').includes(term) || user.email.toLocaleLowerCase('tr-TR').includes(term))
-      .sort((a, b) => a.fullName.localeCompare(b.fullName, 'tr'))
-  }, [data, role, deferredQuery])
+      .filter((user) => !term || user.fullName.toLocaleLowerCase(locale).includes(term) || user.email.toLocaleLowerCase(locale).includes(term))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName, getLang()))
+  }, [data, role, deferredQuery, locale])
 
   const counts = useMemo(() => {
     const result: Record<UserRole | 'all', number> = { all: data?.length ?? 0, Candidate: 0, Reviewer: 0, Admin: 0 }
@@ -56,28 +201,45 @@ export function UsersPage() {
   }, [data])
 
   const changeRole = async (user: UserSummary, next: UserRole) => {
+    if (busy) return
     setBusy(user.id)
     try {
       await updateUser(user.id, { role: next })
-      showToast(`${user.fullName} artık ${ROLE_LABEL[next].toLocaleLowerCase('tr-TR')}.`, 'success')
+      showToast(m.roleChanged(user.fullName, ROLE_LABEL[next].toLocaleLowerCase(locale)), 'success')
       reload()
     } catch (caught) {
-      showToast(caught instanceof ApiError ? caught.message : 'Rol değiştirilemedi.', 'error')
+      showToast(caught instanceof ApiError ? caught.message : m.roleFailed, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const resend = async (user: UserSummary) => {
+    if (busy) return
+    setBusy(user.id)
+    try {
+      await resendInvite(user.id)
+      showToast(m.resent(user.fullName), 'success')
+      reload()
+    } catch (caught) {
+      // 429: dakikada bir; 409: davet kabul edilmiş ya da hesap pasif. Sunucunun metni ne yapılacağını söylüyor.
+      showToast(caught instanceof ApiError ? caught.message : m.resendFailed, caught instanceof ApiError && caught.status === 429 ? 'info' : 'error')
+      if (caught instanceof ApiError && caught.status === 409) reload()
     } finally {
       setBusy(null)
     }
   }
 
   const toggleActive = async () => {
-    if (!toggling) return
+    if (!toggling || busy) return
     setBusy(toggling.id)
     try {
       await updateUser(toggling.id, { isActive: !toggling.isActive })
-      showToast(toggling.isActive ? 'Hesap pasife alındı.' : 'Hesap yeniden etkinleştirildi.', 'success')
+      showToast(toggling.isActive ? m.deactivated : m.reactivated, 'success')
       setToggling(null)
       reload()
     } catch (caught) {
-      showToast(caught instanceof ApiError ? caught.message : 'Hesap güncellenemedi.', 'error')
+      showToast(caught instanceof ApiError ? caught.message : m.updateFailed, 'error')
       setToggling(null)
     } finally {
       setBusy(null)
@@ -87,44 +249,43 @@ export function UsersPage() {
   return (
     <div className="admin-page">
       <PageHeader
-        breadcrumbs={[{ label: 'Yönetim' }]}
-        title="Kullanıcılar"
-        description="Hesap açın, rolleri yönetin, gerekirse hesabı pasife alın."
+        breadcrumbs={[{ label: m.admin }]}
+        title={m.title}
+        description={m.description}
         info={
           <ul>
-            <li>Davet, kullanıcının e-posta adresine 72 saat geçerli bir şifre belirleme bağlantısı gönderir. Kullanıcı şifresini belirleyince hesap etkin olur.</li>
-            <li>Bağlantının süresi dolarsa durum "Davetin süresi doldu" olur.</li>
-            <li>Pasife alınan kullanıcı giriş yapamaz; kayıtları silinmez.</li>
-            <li>Rol değişikliği ve pasife alma denetim kaydına yazılır.</li>
+            {m.info.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
         }
         actions={
           <Button icon={<MailPlus size={18} aria-hidden="true" />} onClick={() => setInviting(true)}>
-            Kullanıcı davet et
+            {m.inviteUser}
           </Button>
         }
       />
 
       <div className="admin-toolbar">
-        <div className="chip-tabs" role="group" aria-label="Role göre süz">
+        <div className="chip-tabs" role="group" aria-label={m.filterBy}>
           {(['all', ...ROLES] as const).map((key) => (
             <button key={key} type="button" className="chip-tab" aria-pressed={role === key} onClick={() => setRole(key)}>
-              {key === 'all' ? 'Tümü' : PLURAL[key]} <span className="chip-count">{counts[key]}</span>
+              {key === 'all' ? m.all : m.plural[key]} <span className="chip-count">{counts[key]}</span>
             </button>
           ))}
         </div>
         <label className="search-field">
           <Search size={18} aria-hidden="true" />
-          <span className="visually-hidden">Kullanıcı ara</span>
-          <input type="search" placeholder="Ad ya da e-postayla ara" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <span className="visually-hidden">{m.search}</span>
+          <input type="search" placeholder={m.searchPlaceholder} maxLength={200} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
       </div>
 
       {error ? (
-        <Alert tone="danger" title="Kullanıcılar yüklenemedi">
+        <Alert tone="danger" title={m.listFailed}>
           {error}{' '}
           <Button variant="ghost" onClick={reload}>
-            Yeniden dene
+            {c.retry}
           </Button>
         </Alert>
       ) : null}
@@ -132,20 +293,20 @@ export function UsersPage() {
       {loading && !data ? (
         <Skeleton height="20rem" radius="lg" />
       ) : rows.length === 0 ? (
-        <EmptyState icon={Users} title={data?.length ? 'Eşleşen kullanıcı yok' : 'Henüz kullanıcı yok'}>
-          {data?.length ? 'Aramayı ya da filtreyi değiştirin.' : '"Kullanıcı davet et" ile ilk hesabı açın.'}
+        <EmptyState icon={Users} title={data?.length ? m.noMatch : m.none}>
+          {data?.length ? m.noMatchText : m.noneText}
         </EmptyState>
       ) : (
         <div className="table-card">
           <table className="data-table">
             <thead>
               <tr>
-                <th scope="col">Kullanıcı</th>
-                <th scope="col">Rol</th>
-                <th scope="col">Durum</th>
-                <th scope="col">Eklenme</th>
+                <th scope="col">{m.user}</th>
+                <th scope="col">{m.role}</th>
+                <th scope="col">{m.status}</th>
+                <th scope="col">{m.lastLogin}</th>
                 <th scope="col">
-                  <span className="visually-hidden">İşlem</span>
+                  <span className="visually-hidden">{m.action}</span>
                 </th>
               </tr>
             </thead>
@@ -157,7 +318,7 @@ export function UsersPage() {
                     <td>
                       <span className="person">
                         <span className="assign-avatar" aria-hidden="true">
-                          {user.fullName.slice(0, 1).toLocaleUpperCase('tr-TR')}
+                          {user.fullName.slice(0, 1).toLocaleUpperCase(locale)}
                         </span>
                         <span className="assign-person">
                           <strong>{user.fullName}</strong>
@@ -168,7 +329,7 @@ export function UsersPage() {
                     <td>
                       <select
                         className="select select-sm"
-                        aria-label={`${user.fullName} rolü`}
+                        aria-label={m.roleOf(user.fullName)}
                         value={user.role}
                         disabled={self || busy === user.id}
                         onChange={(event) => void changeRole(user, event.target.value as UserRole)}
@@ -182,27 +343,39 @@ export function UsersPage() {
                     </td>
                     <td>
                       {user.isActive ? (
-                        <StatusBadge tone={INVITE[user.inviteStatus].tone} dot>
-                          {INVITE[user.inviteStatus].label}
+                        <StatusBadge tone={INVITE_TONE[user.inviteStatus]} dot>
+                          {m.invite[user.inviteStatus]}
                         </StatusBadge>
                       ) : (
                         <StatusBadge tone="neutral" dot>
-                          Pasif
+                          {m.inactive}
                         </StatusBadge>
                       )}
                     </td>
-                    <td className="numeric">{formatDate(user.createdAt)}</td>
+                    <td>
+                      <span className="assign-person">
+                        <span className="numeric">{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : m.neverSignedIn}</span>
+                        <span className="admin-row-sub">{m.addedOn(formatDate(user.createdAt))}</span>
+                      </span>
+                    </td>
                     <td className="cell-actions">
                       {self ? (
-                        <span className="admin-row-sub">Siz</span>
+                        <span className="admin-row-sub">{m.you}</span>
                       ) : (
-                        <Button
+                        <span className="row-actions">
+                          {user.isActive && user.inviteStatus !== 'Accepted' ? (
+                            <Button variant="ghost" icon={<Send size={16} aria-hidden="true" />} loading={busy === user.id} onClick={() => void resend(user)}>
+                              {m.resend}
+                            </Button>
+                          ) : null}
+                          <Button
                           variant="ghost"
                           icon={user.isActive ? <UserRoundX size={16} aria-hidden="true" /> : <UserRoundCheck size={16} aria-hidden="true" />}
                           onClick={() => setToggling(user)}
                         >
-                          {user.isActive ? 'Pasife al' : 'Etkinleştir'}
+                          {user.isActive ? m.deactivate : m.activate}
                         </Button>
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -218,23 +391,19 @@ export function UsersPage() {
         onClose={() => setInviting(false)}
         onInvited={(name) => {
           setInviting(false)
-          showToast(`${name} için davet e-postası gönderildi.`, 'success')
+          showToast(m.invited(name), 'success')
           reload()
         }}
       />
 
-      <Modal open={toggling !== null} title={toggling?.isActive ? 'Hesap pasife alınsın mı?' : 'Hesap etkinleştirilsin mi?'} onClose={() => setToggling(null)}>
-        <p>
-          {toggling?.isActive
-            ? `${toggling?.fullName} giriş yapamayacak; açık oturumu en geç 15 dakika içinde kapanır. Kayıtları silinmez, istediğinizde yeniden etkinleştirebilirsiniz.`
-            : `${toggling?.fullName} yeniden giriş yapabilecek.`}
-        </p>
+      <Modal open={toggling !== null} title={toggling?.isActive ? m.deactivateTitle : m.activateTitle} onClose={() => setToggling(null)}>
+        <p>{toggling?.isActive ? m.deactivateText(toggling.fullName) : m.activateText(toggling?.fullName ?? '')}</p>
         <div className="modal-actions">
           <Button variant="secondary" onClick={() => setToggling(null)}>
-            Vazgeç
+            {c.cancel}
           </Button>
           <Button variant={toggling?.isActive ? 'danger' : 'primary'} loading={busy === toggling?.id} onClick={() => void toggleActive()}>
-            {toggling?.isActive ? 'Pasife al' : 'Etkinleştir'}
+            {toggling?.isActive ? m.deactivate : m.activate}
           </Button>
         </div>
       </Modal>
@@ -250,6 +419,8 @@ interface InviteDialogProps {
 
 /** Kullanıcı oluştur ve davet et (Stitch 24). */
 function InviteDialog({ open, onClose, onInvited }: InviteDialogProps) {
+  const m = useMessages(messages)
+  const c = useMessages(common)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<UserRole>('Candidate')
@@ -265,57 +436,83 @@ function InviteDialog({ open, onClose, onInvited }: InviteDialogProps) {
     setMessage(null)
   }
 
+  const validateName = (value: string) => (!value.trim() ? m.nameRequired : value.trim().length < MIN_NAME ? m.nameShort : undefined)
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const next = {
-      fullName: fullName.trim() ? undefined : 'Ad soyad zorunludur.',
-      email: !email.trim() ? 'E-posta zorunludur.' : EMAIL_PATTERN.test(email.trim()) ? undefined : 'Geçerli bir e-posta adresi girin.',
-    }
+    if (pending) return
+    const next = { fullName: validateName(fullName), email: validateEmail(email) }
     setErrors(next)
     if (next.fullName || next.email) return
     setPending(true)
     setMessage(null)
     try {
-      await createUser({ fullName: fullName.trim(), email: email.trim(), role })
+      await createUser({ fullName: fullName.trim().replace(/\s+/g, ' '), email: email.trim(), role })
       onInvited(fullName.trim())
       reset()
     } catch (caught) {
-      setMessage(caught instanceof ApiError ? caught.message : 'Kullanıcı oluşturulamadı.')
+      // 409: aynı e-posta. Alanın altında söylenir; kullanıcı neyi düzelteceğini görür.
+      if (caught instanceof ApiError && caught.status === 409) setErrors((current) => ({ ...current, email: m.exists }))
+      else setMessage(caught instanceof ApiError ? caught.message : m.createFailed)
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <Modal open={open} title="Kullanıcı davet et" onClose={() => (reset(), onClose())}>
+    <Modal open={open} title={m.inviteUser} onClose={() => (reset(), onClose())}>
       <form onSubmit={submit} noValidate>
         <div className="invite-how">
           <MailPlus size={18} aria-hidden="true" />
-          <p>
-            Kullanıcının e-posta adresine <strong>72 saat geçerli</strong> bir şifre belirleme bağlantısı gider. Kullanıcı şifresini belirleyince hesabı etkin
-            olur.
-          </p>
+          <p>{m.inviteHow}</p>
         </div>
-        <p className="form-note">Not: Gerçek e-posta gönderimi henüz kurulu değil; şimdilik bağlantı sunucu kaydına yazılıyor (S-15).</p>
-        <Input label="Ad soyad" value={fullName} error={errors.fullName} maxLength={200} onChange={(event) => setFullName(event.target.value)} />
-        <Input label="E-posta" type="email" autoComplete="off" value={email} error={errors.email} onChange={(event) => setEmail(event.target.value)} />
+        <p className="form-note">{m.emailNote}</p>
+        <Input
+          label={m.name}
+          value={fullName}
+          error={errors.fullName}
+          maxLength={MAX_NAME}
+          autoComplete="off"
+          onChange={(event) => {
+            setFullName(event.target.value)
+            if (errors.fullName) setErrors((current) => ({ ...current, fullName: validateName(event.target.value) }))
+          }}
+        />
+        <Input
+          label={m.email}
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={MAX_EMAIL_LENGTH}
+          value={email}
+          error={errors.email}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            if (errors.email) setErrors((current) => ({ ...current, email: validateEmail(event.target.value) }))
+          }}
+          onBlur={() => {
+            if (email) setErrors((current) => ({ ...current, email: validateEmail(email) }))
+          }}
+        />
         <fieldset className="role-picker">
-          <legend className="field-label">Rol</legend>
+          <legend className="field-label">{m.role}</legend>
           {ROLES.map((item) => (
             <label key={item} className={['role-option', role === item && 'is-selected'].filter(Boolean).join(' ')}>
               <input type="radio" name="invite-role" value={item} checked={role === item} onChange={() => setRole(item)} />
               <strong>{ROLE_LABEL[item]}</strong>
-              <span>{item === 'Candidate' ? 'Atandığı sınavlara girer' : item === 'Reviewer' ? 'Dosyaları inceler, karar verir' : 'Sınav, kullanıcı ve ayarları yönetir'}</span>
+              <span>{m.roleHint[item]}</span>
             </label>
           ))}
         </fieldset>
         {message ? <Alert tone="danger">{message}</Alert> : null}
         <div className="modal-actions">
           <Button variant="secondary" onClick={() => (reset(), onClose())}>
-            Vazgeç
+            {c.cancel}
           </Button>
           <Button type="submit" loading={pending} icon={<MailPlus size={18} aria-hidden="true" />}>
-            Davet gönder
+            {m.send}
           </Button>
         </div>
       </form>

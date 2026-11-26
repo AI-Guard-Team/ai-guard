@@ -15,12 +15,35 @@ import {
 import { captureFrames } from '../camera/useCamera'
 import { chosenOptions, enqueue, flushAnswers, listPending, nextSeq, removePending, type PendingAnswer } from './answerQueue'
 import { remainingMs } from './remainingTime'
+import { defineMessages, pick } from '../../i18n/messages'
+
+const messages = defineMessages({
+  tr: {
+    savedLocally: 'Cevap bu cihaza kaydedildi. Bağlantı gelince gönderilecek.',
+    saveFailed: 'Cevap kaydedilemedi.',
+    notFound: 'Oturum bulunamadı.',
+    loadFailed: 'Oturum alınamadı.',
+    cameraFirst: 'Önce kamerayı açın.',
+    verifyFailed: 'Kimlik doğrulanamadı. Yüzünüzün net göründüğünden emin olup yeniden deneyin.',
+    submitFailed: 'Sınav teslim edilemedi.',
+  },
+  en: {
+    savedLocally: 'Your answer was saved on this device. It will be sent when the connection returns.',
+    saveFailed: 'The answer could not be saved.',
+    notFound: 'Session not found.',
+    loadFailed: 'The session could not be loaded.',
+    cameraFirst: 'Turn on the camera first.',
+    verifyFailed: 'Your identity could not be verified. Make sure your face is clearly visible and try again.',
+    submitFailed: 'The exam could not be submitted.',
+  },
+})
 
 export const ANSWERABLE = new Set(['InProgress', 'Disconnected'])
 export const RUNNING = new Set(['InProgress', 'PermissionPending', 'Disconnected'])
 export const FINISHED = new Set(['Completed', 'Decided'])
 
-export const SAVED_LOCALLY = 'Cevap bu cihaza kaydedildi. Bağlantı gelince gönderilecek.'
+/** Çevrimdışı bekleyen cevap bildirimi; geçerli dilde. */
+export const savedLocally = () => pick(messages).savedLocally
 
 function keptForLater(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504)
@@ -95,7 +118,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
         offline.current = true
         return 'stop'
       }
-      setError(messageOf(caught, 'Cevap kaydedilemedi.'))
+      setError(messageOf(caught, pick(messages).saveFailed))
       await removePending(answer)
       return 'drop'
     }
@@ -104,7 +127,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
   const flush = useCallback(async (): Promise<boolean> => {
     const { stopped } = await flushAnswers(await listPending(sessionId), deliver)
     await refreshSelections()
-    if (stopped && offline.current) setNotice(SAVED_LOCALLY)
+    if (stopped && offline.current) setNotice(savedLocally())
     return !stopped
   }, [deliver, refreshSelections, sessionId])
 
@@ -127,7 +150,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
     try {
       let next = await getSession(sessionId)
       if (!next) {
-        setError('Oturum bulunamadı.')
+        setError(pick(messages).notFound)
         return
       }
       const pendingAnswers = await listPending(sessionId)
@@ -150,10 +173,10 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
       if (keptForLater(caught)) {
         offline.current = true
         setConnected(false)
-        setNotice(SAVED_LOCALLY)
+        setNotice(savedLocally())
         return
       }
-      setError(messageOf(caught, 'Oturum alınamadı.'))
+      setError(messageOf(caught, pick(messages).loadFailed))
     } finally {
       setLoading(false)
     }
@@ -191,7 +214,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
       try {
         await refreshSelections()
         const sent = await deliver(answer)
-        if (sent === 'stop' && offline.current) setNotice(SAVED_LOCALLY)
+        if (sent === 'stop' && offline.current) setNotice(savedLocally())
       } finally {
         sending.current.delete(answer.seq)
         await refreshSelections()
@@ -203,7 +226,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
   const verifyAgain = async () => {
     const video = videoRef.current
     if (!cameraLive || !video) {
-      setError('Önce kamerayı açın.')
+      setError(pick(messages).cameraFirst)
       return
     }
     setPending(true)
@@ -216,7 +239,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
       stopCamera()
       await pull()
     } catch (caught) {
-      setError(messageOf(caught, 'Kimlik doğrulanamadı. Yüzünüzün net göründüğünden emin olup yeniden deneyin.'))
+      setError(messageOf(caught, pick(messages).verifyFailed))
     } finally {
       setPending(false)
     }
@@ -232,7 +255,7 @@ export function useExamSession(sessionId: string, videoRef: RefObject<HTMLVideoE
       await pull()
       return true
     } catch (caught) {
-      setError(messageOf(caught, 'Sınav teslim edilemedi.'))
+      setError(messageOf(caught, pick(messages).submitFailed))
       return false
     } finally {
       setPending(false)

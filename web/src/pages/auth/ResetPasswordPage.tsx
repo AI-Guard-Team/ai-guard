@@ -1,18 +1,51 @@
 import { ArrowRight } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { resetPassword } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { Alert, FormAlert } from '../../components/Alert'
 import { Button } from '../../components/Button'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { AuthLayout } from '../../layouts/AuthLayout'
+import { authCopy } from './authCopy'
 import { NewPasswordFields } from './NewPasswordFields'
 import { validateNewPassword, type NewPasswordErrors } from './passwordRules'
+import { useUrlToken } from './token'
+
+const messages = defineMessages({
+  tr: {
+    missingTitle: 'Bağlantı eksik',
+    missingText: 'Bu sayfa e-postadaki sıfırlama bağlantısıyla açılır. Bağlantının süresi dolduysa yenisini isteyin.',
+    newLink: 'Yeni bağlantı iste',
+    doneTitle: 'Şifreniz yenilendi',
+    doneText: 'Güvenliğiniz için açık olan bütün oturumlarınız kapatıldı. Yeni şifrenizle giriş yapın.',
+    failed: 'Şifre yenilenemedi. Lütfen tekrar deneyin.',
+    invalidLink: 'Bağlantı geçersiz ya da süresi dolmuş. Yeni bir sıfırlama bağlantısı isteyin.',
+    title: 'Yeni şifre belirleyin',
+    description: 'Hesabınız için yeni bir şifre seçin.',
+    expired: 'Bağlantının süresi mi doldu? Yenisini isteyin',
+    submit: 'Şifreyi yenile',
+  },
+  en: {
+    missingTitle: 'Link incomplete',
+    missingText: 'This page opens from the reset link in your email. If the link has expired, request a new one.',
+    newLink: 'Request a new link',
+    doneTitle: 'Your password has been reset',
+    doneText: 'For your security, all your open sessions were signed out. Sign in with your new password.',
+    failed: 'The password could not be reset. Please try again.',
+    invalidLink: 'The link is invalid or has expired. Request a new reset link.',
+    title: 'Choose a new password',
+    description: 'Pick a new password for your account.',
+    expired: 'Link expired? Request a new one',
+    submit: 'Reset password',
+  },
+})
 
 /** E-postadaki bağlantıyla yeni şifre belirleme (MIMARI-KARARLAR K-33). */
 export function ResetPasswordPage() {
-  const [params] = useSearchParams()
-  const token = params.get('token')?.trim() ?? ''
+  const m = useMessages(messages)
+  const copy = useMessages(authCopy)
+  const token = useUrlToken()
   const [password, setPasswordValue] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<NewPasswordErrors>({})
@@ -22,21 +55,18 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthLayout kicker="Şifre yenileme" title="Bağlantı eksik">
-        <Alert tone="warning">Bu sayfa e-postadaki sıfırlama bağlantısıyla açılır. Bağlantının süresi dolduysa yenisini isteyin.</Alert>
-        <Link to="/forgot-password">Yeni bağlantı iste</Link>
+      <AuthLayout title={m.missingTitle}>
+        <Alert tone="warning">{m.missingText}</Alert>
+        <Link to="/forgot-password">{m.newLink}</Link>
       </AuthLayout>
     )
   }
 
   if (done) {
     return (
-      <AuthLayout kicker="Şifre yenileme"
-        title="Şifreniz yenilendi"
-        description="Güvenliğiniz için açık olan bütün oturumlarınız kapatıldı. Yeni şifrenizle giriş yapın."
-      >
+      <AuthLayout title={m.doneTitle} description={m.doneText}>
         <Link className="button button-primary button-lg button-block" to="/login">
-          Giriş sayfasına git
+          {copy.goToLogin}
           <ArrowRight size={18} aria-hidden="true" />
         </Link>
       </AuthLayout>
@@ -45,6 +75,7 @@ export function ResetPasswordPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    if (pending) return
     const next = validateNewPassword(password, confirm)
     setErrors(next)
     setFormError(null)
@@ -55,29 +86,21 @@ export function ResetPasswordPage() {
       await resetPassword(token, password)
       setDone(true)
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : 'Şifre yenilenemedi. Lütfen tekrar deneyin.')
+      // 400: kural dışı şifre ya da geçersiz/süresi dolmuş bağlantı; sunucu nedeni Türkçe veriyor.
+      if (error instanceof ApiError && error.status === 400 && !error.title) setFormError(m.invalidLink)
+      else setFormError(error instanceof ApiError ? error.message : m.failed)
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <AuthLayout kicker="Şifre yenileme"
-      title="Yeni şifre belirleyin"
-      description="Hesabınız için yeni bir şifre seçin."
-      footer={<Link to="/forgot-password">Bağlantının süresi mi doldu? Yenisini isteyin</Link>}
-    >
+    <AuthLayout title={m.title} description={m.description} footer={<Link to="/forgot-password">{m.expired}</Link>}>
       <form onSubmit={handleSubmit} noValidate>
         <FormAlert message={formError} />
-        <NewPasswordFields
-          password={password}
-          confirm={confirm}
-          errors={errors}
-          onPasswordChange={setPasswordValue}
-          onConfirmChange={setConfirm}
-        />
+        <NewPasswordFields password={password} confirm={confirm} errors={errors} onPasswordChange={setPasswordValue} onConfirmChange={setConfirm} />
         <Button type="submit" size="lg" block loading={pending}>
-          {pending ? 'Kaydediliyor…' : 'Şifreyi yenile'}
+          {pending ? copy.saving : m.submit}
         </Button>
       </form>
     </AuthLayout>

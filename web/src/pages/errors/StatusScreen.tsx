@@ -1,5 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { LanguageToggle } from '../../components/LanguageToggle'
+import { ThemeToggle } from '../../components/ThemeToggle'
 import './StatusScreen.css'
 
 interface StatusScreenProps {
@@ -28,5 +30,16 @@ export function StatusScreen({ icon: Icon, code, title, children, actions, stand
     </section>
   )
 
-  return standalone ? <main className="status-page">{body}</main> : body
+  return standalone ? (
+    <main className="status-page">
+      {/* Kabuk dışında açılan sayfada da dil ve tema seçilebilsin. */}
+      <div className="status-prefs">
+        <LanguageToggle tone="light" />
+        <ThemeToggle tone="light" />
+      </div>
+      {body}
+    </main>
+  ) : (
+    body
+  )
 }

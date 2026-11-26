@@ -1,6 +1,9 @@
 import { useEffect, type ReactNode } from 'react'
 import { Button } from './Button'
+import { defineMessages, useMessages } from '../i18n/messages'
 import './Modal.css'
+
+const messages = defineMessages({ tr: { close: 'Kapat' }, en: { close: 'Close' } })
 
 interface ModalProps {
   open: boolean
@@ -10,6 +13,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, title, onClose, children }: ModalProps) {
+  const m = useMessages(messages)
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
@@ -27,7 +31,7 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
         <header>
           <h2 id="modal-title">{title}</h2>
           <Button variant="ghost" onClick={onClose}>
-            Kapat
+            {m.close}
           </Button>
         </header>
         {children}

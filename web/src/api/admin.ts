@@ -15,6 +15,8 @@ export interface UserSummary {
   isActive: boolean
   inviteStatus: InviteStatus
   createdAt: string
+  /** Son başarılı giriş (K-49); hiç girmediyse null. */
+  lastLoginAt: string | null
 }
 
 export interface Created {

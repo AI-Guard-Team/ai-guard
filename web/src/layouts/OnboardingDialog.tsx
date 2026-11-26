@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { Role } from '../auth/roles'
 import { Button } from '../components/Button'
+import { defineMessages, useMessages } from '../i18n/messages'
 import { ONBOARDING, type OnboardingStep } from './onboardingSteps'
 import './OnboardingDialog.css'
 
@@ -22,11 +23,38 @@ const ICONS: Record<OnboardingStep['icon'], typeof ListChecks> = {
   info: Info,
 }
 
-const ROLE_TITLE: Record<Role, string> = {
-  Candidate: 'Aday portalına hoş geldiniz',
-  Reviewer: 'Değerlendirici paneline hoş geldiniz',
-  Admin: 'Yönetim paneline hoş geldiniz',
-}
+const messages = defineMessages({
+  tr: {
+    title: {
+      Candidate: 'Aday portalına hoş geldiniz',
+      Reviewer: 'Değerlendirici paneline hoş geldiniz',
+      Admin: 'Yönetim paneline hoş geldiniz',
+    } as Record<Role, string>,
+    close: 'Tanıtımı kapat',
+    dontShow: 'Bir daha gösterme',
+    stepOf: (current: number, total: number) => `Adım ${current} / ${total}`,
+    stepLabel: (n: number, title: string) => `${n}. adım: ${title}`,
+    back: 'Geri',
+    skip: 'Atla',
+    next: 'İleri',
+    start: 'Başlayalım',
+  },
+  en: {
+    title: {
+      Candidate: 'Welcome to the candidate portal',
+      Reviewer: 'Welcome to the reviewer workspace',
+      Admin: 'Welcome to administration',
+    },
+    close: 'Close the tour',
+    dontShow: 'Don’t show this again',
+    stepOf: (current: number, total: number) => `Step ${current} of ${total}`,
+    stepLabel: (n: number, title: string) => `Step ${n}: ${title}`,
+    back: 'Back',
+    skip: 'Skip',
+    next: 'Next',
+    start: 'Let’s begin',
+  },
+})
 
 interface OnboardingDialogProps {
   role: Role
@@ -40,6 +68,7 @@ interface OnboardingDialogProps {
  * yeniden açılır. Odak pencereye alınır, Esc kapatır; adım geçişi hareket azaltma tercihinde anında olur.
  */
 export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps) {
+  const m = useMessages(messages)
   const steps = ONBOARDING[role]
   const [index, setIndex] = useState(0)
   const [direction, setDirection] = useState(1)
@@ -82,7 +111,7 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
-            <button type="button" className="onboarding-close" aria-label="Tanıtımı kapat" onClick={close}>
+            <button type="button" className="onboarding-close" aria-label={m.close} onClick={close}>
               <X size={18} aria-hidden="true" />
             </button>
 
@@ -104,7 +133,7 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
 
             <div className="onboarding-body">
               <p className="onboarding-eyebrow" id="onboarding-title">
-                {ROLE_TITLE[role]}
+                {m.title[role]}
               </p>
               <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
@@ -121,27 +150,27 @@ export function OnboardingDialog({ role, open, onClose }: OnboardingDialogProps)
 
               <label className="onboarding-dismiss">
                 <input type="checkbox" checked={dontShowAgain} onChange={(event) => setDontShowAgain(event.target.checked)} />
-                Bir daha gösterme
+                {m.dontShow}
               </label>
               <div className="onboarding-footer">
-                <ol className="onboarding-dots" aria-label={`Adım ${index + 1} / ${steps.length}`}>
+                <ol className="onboarding-dots" aria-label={m.stepOf(index + 1, steps.length)}>
                   {steps.map((item, dot) => (
                     <li key={item.title}>
-                      <button type="button" aria-label={`${dot + 1}. adım: ${item.title}`} aria-current={dot === index ? 'step' : undefined} onClick={() => go(dot)} />
+                      <button type="button" aria-label={m.stepLabel(dot + 1, item.title)} aria-current={dot === index ? 'step' : undefined} onClick={() => go(dot)} />
                     </li>
                   ))}
                 </ol>
                 <div className="onboarding-actions">
                   {index > 0 ? (
                     <Button variant="ghost" onClick={() => go(index - 1)}>
-                      Geri
+                      {m.back}
                     </Button>
                   ) : (
                     <Button variant="ghost" onClick={close}>
-                      Atla
+                      {m.skip}
                     </Button>
                   )}
-                  <Button onClick={() => (last ? close() : go(index + 1))}>{last ? 'Başlayalım' : 'İleri'}</Button>
+                  <Button onClick={() => (last ? close() : go(index + 1))}>{last ? m.start : m.next}</Button>
                 </div>
               </div>
             </div>

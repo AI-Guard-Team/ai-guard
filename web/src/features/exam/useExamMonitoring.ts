@@ -4,9 +4,20 @@ import { reportPermission, sendAudio, sendBrowserEvent, sendFrame } from '../../
 import { watchBrowserEvents } from './browserEvents'
 import { createBrowserCapture, isStreamLive, openExamStream, stopStream } from './mediaCapture'
 import { startMediaMonitor } from './mediaMonitor'
+import { defineMessages, pick } from '../../i18n/messages'
 
-const DENIED = 'Kamera ve mikrofon izni verilmedi. Tarayıcının adres çubuğundaki kamera simgesinden izin verip yeniden deneyin.'
-const UNSUPPORTED = 'Bu tarayıcı kamera ve mikrofona erişime izin vermiyor. Güncel Chrome, Edge, Firefox ya da Safari kullanın.'
+const messages = defineMessages({
+  tr: {
+    denied: 'Kamera ve mikrofon izni verilmedi. Tarayıcının adres çubuğundaki kamera simgesinden izin verip yeniden deneyin.',
+    unsupported: 'Bu tarayıcı kamera ve mikrofona erişime izin vermiyor. Güncel Chrome, Edge, Firefox ya da Safari kullanın.',
+    resumeFailed: 'Sınava dönülemedi. Yeniden deneyin.',
+  },
+  en: {
+    denied: 'Camera and microphone permission was not granted. Allow it from the camera icon in the address bar and try again.',
+    unsupported: 'This browser does not allow access to the camera and microphone. Use an up-to-date Chrome, Edge, Firefox or Safari.',
+    resumeFailed: 'Could not return to the exam. Try again.',
+  },
+})
 
 interface Options {
   sessionId: string | undefined
@@ -81,7 +92,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
         } catch {
           // İzin reddedildi ya da kamera/mikrofon kullanılamıyor: izlenemeyen sınav sürmemeli (FR-17).
           if (!cancelled) {
-            setError(DENIED)
+            setError(pick(messages).denied)
             await revoke()
           }
           return
@@ -110,7 +121,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
         if (ended || cancelled) return
         ended = true
         stopMonitor?.()
-        setError(DENIED)
+        setError(pick(messages).denied)
         void revoke()
       }
 
@@ -157,7 +168,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
   const requestPermission = useCallback(async () => {
     if (!sessionId) return
     if (!supported()) {
-      setError(UNSUPPORTED)
+      setError(pick(messages).unsupported)
       return
     }
     setRequesting(true)
@@ -170,11 +181,11 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
       } catch (caught) {
         stopStream(stream)
         streamRef.current = null
-        setError(caught instanceof ApiError ? caught.message : 'Sınava dönülemedi. Yeniden deneyin.')
+        setError(caught instanceof ApiError ? caught.message : pick(messages).resumeFailed)
       }
       refresh.current()
     } catch {
-      setError(DENIED)
+      setError(pick(messages).denied)
     } finally {
       setRequesting(false)
     }
@@ -185,7 +196,7 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
     live: live && state === 'InProgress',
     // Sorular yalnızca kamera ve mikrofon açıkken (S4). Bağlantı kesikken akış açık kaldığı için sorular da görünüyor.
     ready: live && (state === 'InProgress' || state === 'Disconnected'),
-    error: supported() ? error : UNSUPPORTED,
+    error: supported() ? error : pick(messages).unsupported,
     requesting,
     requestPermission,
   }

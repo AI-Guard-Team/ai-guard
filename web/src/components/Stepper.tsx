@@ -1,5 +1,8 @@
 import { Check } from 'lucide-react'
+import { defineMessages, useMessages } from '../i18n/messages'
 import './Stepper.css'
+
+const messages = defineMessages({ tr: { done: ' (tamamlandı)' }, en: { done: ' (completed)' } })
 
 interface StepperProps {
   steps: readonly string[]
@@ -10,6 +13,7 @@ interface StepperProps {
 
 /** Çok adımlı akış göstergesi (DESIGN.md "Adım göstergesi"). Tamamlanan adımlar onay işaretiyle. */
 export function Stepper({ steps, current, label }: StepperProps) {
+  const m = useMessages(messages)
   return (
     <ol className="stepper" aria-label={label}>
       {steps.map((step, index) => {
@@ -21,7 +25,7 @@ export function Stepper({ steps, current, label }: StepperProps) {
             </span>
             <span className="stepper-label">
               {step}
-              {state === 'done' ? <span className="visually-hidden"> (tamamlandı)</span> : null}
+              {state === 'done' ? <span className="visually-hidden">{m.done}</span> : null}
             </span>
           </li>
         )

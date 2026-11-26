@@ -1,5 +1,11 @@
-import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useId, useState, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react'
+import { defineMessages, useMessages } from '../i18n/messages'
 import './Input.css'
+
+const messages = defineMessages({
+  tr: { show: 'Göster', hide: 'Gizle', showLabel: (label: string) => `${label}: göster`, hideLabel: (label: string) => `${label}: gizle`, capsLock: 'Caps Lock açık.' },
+  en: { show: 'Show', hide: 'Hide', showLabel: (label: string) => `Show ${label.toLowerCase()}`, hideLabel: (label: string) => `Hide ${label.toLowerCase()}`, capsLock: 'Caps Lock is on.' },
+})
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
@@ -49,20 +55,37 @@ type PasswordInputProps = Omit<InputProps, 'type' | 'trailing'>
  * metaforları (göz, kamera) yasaklıyor ve metin ekran okuyucuda da anlaşılır.
  */
 export function PasswordInput(props: PasswordInputProps) {
+  const m = useMessages(messages)
   const [visible, setVisible] = useState(false)
+  // Caps Lock açıkken şifre fark edilmeden yanlış yazılır; kullanıcı alan içindeyken uyarılır.
+  const [capsLock, setCapsLock] = useState(false)
+  const trackCapsLock = (event: KeyboardEvent<HTMLInputElement>) => setCapsLock(event.getModifierState?.('CapsLock') ?? false)
   return (
     <Input
       {...props}
       type={visible ? 'text' : 'password'}
+      hint={capsLock ? m.capsLock : props.hint}
+      onKeyDown={(event) => {
+        trackCapsLock(event)
+        props.onKeyDown?.(event)
+      }}
+      onKeyUp={(event) => {
+        trackCapsLock(event)
+        props.onKeyUp?.(event)
+      }}
+      onBlur={(event) => {
+        setCapsLock(false)
+        props.onBlur?.(event)
+      }}
       trailing={
         <button
           type="button"
           className="field-toggle"
           aria-pressed={visible}
-          aria-label={visible ? `${props.label}: gizle` : `${props.label}: göster`}
+          aria-label={visible ? m.hideLabel(props.label) : m.showLabel(props.label)}
           onClick={() => setVisible((current) => !current)}
         >
-          {visible ? 'Gizle' : 'Göster'}
+          {visible ? m.hide : m.show}
         </button>
       }
     />

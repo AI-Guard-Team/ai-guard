@@ -10,6 +10,8 @@ import { Skeleton } from '../../components/Skeleton'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useNow } from '../../hooks/useNow'
 import { useResource } from '../../hooks/useResource'
+import { common } from '../../i18n/common'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { AssignmentsTab } from './AssignmentsTab'
 import { PHASE_LABEL, PHASE_TONE, windowPhase } from './examWindow'
 import { ExamGeneralForm } from './ExamGeneralForm'
@@ -19,18 +21,65 @@ import './admin.css'
 
 type Step = 'general' | 'questions' | 'assignments' | 'risk'
 
-const STEPS: { key: Step; label: string; hint: string; icon: typeof BookOpenCheck }[] = [
-  { key: 'general', label: 'Genel bilgiler', hint: 'Ad, tür, süre ve erişim penceresi', icon: BookOpenCheck },
-  { key: 'questions', label: 'Sorular', hint: 'Çoktan seçmeli sorular', icon: ListChecks },
-  { key: 'assignments', label: 'Atamalar', hint: 'Adaylar ve değerlendiriciler', icon: Users },
-  { key: 'risk', label: 'Risk ayarları', hint: 'Olay ağırlıkları ve eşik', icon: ShieldAlert },
+const STEPS: { key: Step; icon: typeof BookOpenCheck }[] = [
+  { key: 'general', icon: BookOpenCheck },
+  { key: 'questions', icon: ListChecks },
+  { key: 'assignments', icon: Users },
+  { key: 'risk', icon: ShieldAlert },
 ]
+
+const messages = defineMessages({
+  tr: {
+    steps: {
+      general: { label: 'Genel bilgiler', hint: 'Ad, tür, süre ve erişim penceresi' },
+      questions: { label: 'Sorular', hint: 'Çoktan seçmeli sorular' },
+      assignments: { label: 'Atamalar', hint: 'Adaylar ve değerlendiriciler' },
+      risk: { label: 'Risk ayarları', hint: 'Olay ağırlıkları ve eşik' },
+    } as Record<Step, { label: string; hint: string }>,
+    failed: 'Sınav yüklenemedi.',
+    saved: 'Kaydedildi',
+    start: 'Başlangıç',
+    generalFirst: 'Önce genel bilgiler',
+    assigned: (candidates: number, reviewers: number) => `${candidates} aday · ${reviewers} değerlendirici`,
+    platformWide: 'Varsayılan ya da sınava özel',
+    admin: 'Yönetim',
+    exams: 'Sınavlar',
+    newExam: 'Yeni sınav',
+    exam: 'Sınav',
+    newDescription: 'Önce genel bilgileri kaydedin; ardından soruları ve atamaları ekleyin.',
+    openFailed: 'Sınav açılamadı',
+    stepsLabel: 'Sınav adımları',
+  },
+  en: {
+    steps: {
+      general: { label: 'General details', hint: 'Name, type, duration and access window' },
+      questions: { label: 'Questions', hint: 'Multiple-choice questions' },
+      assignments: { label: 'Assignments', hint: 'Candidates and reviewers' },
+      risk: { label: 'Risk settings', hint: 'Event weights and threshold' },
+    },
+    failed: 'The exam could not be loaded.',
+    saved: 'Saved',
+    start: 'Start here',
+    generalFirst: 'General details first',
+    assigned: (candidates: number, reviewers: number) => `${candidates} candidates · ${reviewers} reviewers`,
+    platformWide: 'Default or exam-specific',
+    admin: 'Administration',
+    exams: 'Exams',
+    newExam: 'New exam',
+    exam: 'Exam',
+    newDescription: 'Save the general details first, then add questions and assignments.',
+    openFailed: 'The exam could not be opened',
+    stepsLabel: 'Exam steps',
+  },
+})
 
 /**
  * Sınav oluşturma ve düzenleme (Stitch 26–29, Prompt G): solda dört adımlı içindekiler, sağda seçili adım.
  * Yeni sınavda yalnızca "Genel bilgiler" açık; kaydedilince sınavın kendi adresine geçilir ve diğer adımlar açılır.
  */
 export function ExamEditorPage() {
+  const m = useMessages(messages)
+  const c = useMessages(common)
   const { examId, step = 'general' } = useParams()
   const isNew = !examId
   const now = useNow(60_000)
@@ -43,7 +92,7 @@ export function ExamEditorPage() {
     },
     [examId],
   )
-  const { data, error, loading, reload } = useResource(load, 'Sınav yüklenemedi.')
+  const { data, error, loading, reload } = useResource(load, m.failed)
 
   if (!STEPS.some((item) => item.key === step)) return <Navigate to={examId ? `/admin/exams/${examId}` : '/admin/exams/new'} replace />
   if (isNew && step !== 'general') return <Navigate to="/admin/exams/new" replace />
@@ -58,10 +107,10 @@ export function ExamEditorPage() {
     risk: false,
   }
   const progress: Record<Step, string> = {
-    general: exam ? 'Kaydedildi' : 'Başlangıç',
-    questions: exam ? `${exam.questionCount} soru` : 'Önce genel bilgiler',
-    assignments: exam ? `${candidates} aday · ${reviewers} değerlendirici` : 'Önce genel bilgiler',
-    risk: 'Platform geneli',
+    general: exam ? m.saved : m.start,
+    questions: exam ? c.questions(exam.questionCount) : m.generalFirst,
+    assignments: exam ? m.assigned(candidates, reviewers) : m.generalFirst,
+    risk: m.platformWide,
   }
   const phase = exam ? windowPhase(exam, now.getTime()) : null
   const current = STEPS.find((item) => item.key === step)!
@@ -69,23 +118,23 @@ export function ExamEditorPage() {
   return (
     <div className="admin-page">
       <PageHeader
-        breadcrumbs={[{ label: 'Yönetim' }, { label: 'Sınavlar', to: '/admin/exams' }]}
-        title={isNew ? 'Yeni sınav' : (exam?.name ?? 'Sınav')}
-        description={isNew ? 'Önce genel bilgileri kaydedin; ardından soruları ve atamaları ekleyin.' : current.hint}
+        breadcrumbs={[{ label: m.admin }, { label: m.exams, to: '/admin/exams' }]}
+        title={isNew ? m.newExam : (exam?.name ?? m.exam)}
+        description={isNew ? m.newDescription : m.steps[current.key].hint}
         actions={phase ? <StatusBadge tone={PHASE_TONE[phase]} dot>{PHASE_LABEL[phase]}</StatusBadge> : null}
       />
 
       {error && !data ? (
-        <Alert tone="danger" title="Sınav açılamadı">
+        <Alert tone="danger" title={m.openFailed}>
           {error}{' '}
           <Button variant="ghost" onClick={reload}>
-            Yeniden dene
+            {c.retry}
           </Button>
         </Alert>
       ) : null}
 
       <div className="editor">
-        <nav className="editor-steps" aria-label="Sınav adımları">
+        <nav className="editor-steps" aria-label={m.stepsLabel}>
           <ol>
             {STEPS.map((item, index) => {
               const disabled = isNew && item.key !== 'general'
@@ -97,7 +146,7 @@ export function ExamEditorPage() {
                   </span>
                   <span className="editor-step-text">
                     <span className="editor-step-label">
-                      {index + 1}. {item.label}
+                      {index + 1}. {m.steps[item.key].label}
                     </span>
                     <span className="editor-step-hint">{progress[item.key]}</span>
                   </span>
@@ -120,7 +169,7 @@ export function ExamEditorPage() {
           </ol>
         </nav>
 
-        <section className="editor-body" aria-label={current.label}>
+        <section className="editor-body" aria-label={m.steps[current.key].label}>
           {!isNew && loading && !data ? (
             <Skeleton height="24rem" radius="lg" />
           ) : step === 'general' ? (
@@ -130,7 +179,7 @@ export function ExamEditorPage() {
           ) : step === 'assignments' ? (
             <AssignmentsTab examId={exam.id} assignments={data?.assignments ?? []} onChanged={reload} />
           ) : (
-            <RiskTab />
+            <RiskTab examId={exam.id} />
           )}
         </section>
       </div>

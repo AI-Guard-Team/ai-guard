@@ -1,5 +1,6 @@
 import type { ExamSummary } from '../../api/exams'
 import type { BadgeTone } from '../../components/StatusBadge'
+import { defineMessages, live } from '../../i18n/messages'
 
 export type WindowPhase = 'upcoming' | 'open' | 'closing' | 'closed'
 
@@ -16,12 +17,12 @@ export function windowPhase(exam: Pick<ExamSummary, 'windowStartAt' | 'windowEnd
   return now > latest ? 'closing' : 'open'
 }
 
-export const PHASE_LABEL: Record<WindowPhase, string> = {
-  upcoming: 'Planlandı',
-  open: 'Erişime açık',
-  closing: 'Son başlangıç geçti',
-  closed: 'Sona erdi',
-}
+export const PHASE_LABEL: Record<WindowPhase, string> = live(
+  defineMessages<Record<WindowPhase, string>>({
+    tr: { upcoming: 'Planlandı', open: 'Erişime açık', closing: 'Son başlangıç geçti', closed: 'Sona erdi' },
+    en: { upcoming: 'Scheduled', open: 'Open', closing: 'Latest start passed', closed: 'Ended' },
+  }),
+)
 
 export const PHASE_TONE: Record<WindowPhase, BadgeTone> = {
   upcoming: 'info',
