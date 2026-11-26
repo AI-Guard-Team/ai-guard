@@ -37,7 +37,8 @@ builder.Services.AddJwtAuthentication();
 builder.Services.AddControllers().AddJsonOptions(o =>
     // Enum'lar kartlardaki adlarla ("TAB_BLUR", "InProgress"); sayı olarak kabul edilmiyor (K-05).
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false)));
-builder.Services.AddProblemDetails();
+// K-48: istek İngilizceyse hata başlığı ve ayrıntısı çevriliyor (metinler kodda Türkçe).
+builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = context => AIGuard.Api.Localization.ServerTexts.Localize(context.ProblemDetails));
 
 // A4: değerlendirici bildirimleri (/hubs/review). Enum'lar REST yanıtlarıyla aynı biçimde (ad olarak).
 builder.Services.AddSignalR().AddJsonProtocol(o =>
@@ -66,6 +67,9 @@ builder.Services.AddHostedService<AIGuard.Api.DataProtection.DataRetentionWorker
 builder.Services.AddExceptionHandler<AIGuard.Api.Sessions.SessionTransitionExceptionHandler>();
 
 var app = builder.Build();
+
+// K-48: arayüz dili Accept-Language'dan; hata işleyiciden önce ki beklenmeyen hata da doğru dilde dönsün.
+app.UseMiddleware<AIGuard.Api.Localization.UiLanguageMiddleware>();
 
 // Yakalanmayan istisnalar ProblemDetails olarak; durum geçişi hatası 409 (E4).
 app.UseExceptionHandler();
