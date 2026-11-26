@@ -100,6 +100,14 @@ services:
       # X-Forwarded-For yalnızca web (nginx) container'ından kabul edilsin (K-16). Başka biri başlığı
       # yazsa da yok sayılır; aday IP değişimini gizleyemez.
       ForwardedHeaders__KnownNetworks__0: 172.30.47.10/32
+      # E-posta (K-49): SMTP_HOST boşsa gönderim yok, bağlantı loga yazılır.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURITY: ${SMTP_SECURITY:-StartTls}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      Web__BaseUrl: ${Web__BaseUrl:-http://localhost:5173}
     volumes:
       # Varsayılan yapılandırma dosyaları (GAB 3.3.7). İmajda zaten var; buradan bağlanınca pilot oturumda
       # ağırlıklar (S-10) imajı yeniden derlemeden değiştirilebiliyor: düzenle + "docker compose restart api".
