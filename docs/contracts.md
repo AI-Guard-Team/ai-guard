@@ -1,6 +1,7 @@
 # Görüntü/Ses Servisi (vision) – JSON Sözleşmesi
 
-> **Durum:** TASLAK v0.4 · 26 Kasım 2026 · Hazırlayan: Dilan Özmen
+> **Durum:** TASLAK v0.5 · 26 Kasım 2026 · Hazırlayan: Dilan Özmen
+> v0.5 (D4, api): olay bölümleri (süreyle, bitişte tek kayıt), `startedAt`/`durationSec` tanımı, bakış serisinde tekil yüz kaybı kuralı, `MONITORING_GAP`'in tek bölüm olması (MIMARI-KARARLAR K-45)
 > v0.4 (D4): `analyze/frame` uygulandı: görev başına alanlar, `null` kuralları, telefon eşiği, kimlik eşiği, kanıt karesi, yaw/pitch işareti, süre
 > v0.3 (D2): boyut sınırları, `qualityScore` tanımı, `verify` karar kuralları, `referenceVector` doğrulaması
 > Onaylayacaklar: Ayşe Nur Kendirci (A3, D4/D5 entegrasyonu), Esma İrem Öztürk
@@ -207,6 +208,14 @@ D1 benchmark'ına göre (yüz 9 + ArcFace 11 + YOLO 79 ms) ~100 ms bekleniyordu;
 **Kamera denemesinden notlar (D4, K-28):** |yaw| ≈ 50–60°'de yüz yer yer kayboluyor (`faceCount` 1 → 0 → 1). Arka uç tekil bir `faceCount = 0` ölçümünü `GAZE_AWAY` serisini bozan değil **sürdüren** saymalı; aksi hâlde başını çok çeviren aday iki kuralın arasından kayabilir (denemede sağa dönüş `GAZE_AWAY` yerine `FACE_MISSING` üretti). Kulağa yakın tutulan telefon bulunamıyor (Deney 2'de ayrı koşul). Kamera ortalanmamışsa dinlenmede yaw birkaç derece kayık (D3 protokolü).
 
 Arka uç olayı `EventService.RecordSystemEventAsync` ile `SystemEvent(Type, StartedAt, DurationSec, Confidence, Payload)` olarak kaydeder (K-16). Kaynak `EventCatalog`'dan belirlenir. `payload` en fazla 4 KB JSON olabilir; kanıt karesi payload'a konmaz, `EvidenceFrame` olarak ayrıca saklanır (A5). Servis yanıt vermezse veya `503` dönerse arka uç `MONITORING_GAP` üretir (K-16, FR-26).
+
+### Olay bölümleri ve `MONITORING_GAP` (arka uç, K-45)
+
+- **Bölümün bitişinde tek kayıt.** Art arda gelen tespitler aynı bölüme katılır; bölüm koşul bitince süresiyle **bir kez** yazılır (`CONNECTION_LOST` ve `PERMISSION_REVOKED` ile aynı kalıp). Telefon ve kimlik kontrolü yapılmayan kareler o bölümü ne uzatır ne keser. 10 sn başarılı ölçüm gelmezse ya da oturum biterse (teslim, otomatik teslim) açık bölümler o ana kadarki hâliyle yazılır; iptal edilen oturumda yazılmaz.
+- **`startedAt` / `durationSec`.** Zamanlar sunucunun karenin alındığı an. `startedAt` = koşulun sağlandığı **ilk** ölçüm (`FACE_MISSING`'de üç kaybın ilki); `durationSec` = ilk ölçümden koşulun sağlandığı **son** ölçüme. Tek ölçümlük olay 0 sn'dir.
+- **Bakış serisinde tekil yüz kaybı.** `GAZE_AWAY` serisinin içine giren 1–2 ardışık `faceCount = 0` ölçümü seriyi sıfırlamaz, sürdürür, ama 5'e sayılmaz: `G G 0 G G` olay değildir, `G G 0 G G G` `GAZE_AWAY`'dir. 3. ardışık kayıpta bakış serisi kapanır, `FACE_MISSING` başlar.
+- **`MONITORING_GAP` tek bölüm.** Bağlantı hatası, zaman aşımı (3 sn), 401, 503, 500, `VALIDATION_ERROR`, tanınmayan kod ya da sözleşmeye uymayan yanıtta boşluk açılır; ilk başarılı yanıtta süresiyle **tek kayıt** olarak yazılır, her kare için ayrı olay yazılmaz. **422 `INVALID_IMAGE` boşluk değildir**: adayın karesidir, o kare atlanır ve bölümlere dokunmaz.
+- **Kanıt karesi.** Bölümün ilk `evidenceFrame`'i olay yazılırsa şifreli saklanıp olaya bağlanır (bölüm başına en fazla bir kare); olay oluşmazsa kare saklanmaz.
 
 ---
 
