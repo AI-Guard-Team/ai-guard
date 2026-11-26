@@ -1225,6 +1225,12 @@ Kullanıcı geri bildirimi: "sitenin amacı belli değil", "nerede olduğumu anl
 | Kayıt fotoğrafı akışı | Önce "Önce açık rızanız gerekiyor" kartı; metin ve onay açılır pencerede; onaydan sonra sürükle-bırak fotoğraf alanı. Her yeni yükleme için rıza yeniden veriliyor | Yağmur'un satır içi rıza kutusu |
 | Skor gerekçesi | Şelale yerine olay türüne göre sıralı yatay çubuk (tek renk, değer çubuk ucunda, üzerine gelince ayrıntı). "Seçilen olay" yerine "Olay ayrıntısı": açılışta en etkili olay seçili, yanlış alarm düğmesi bu kartta | — |
 | Davet | Davet penceresi bağlantının 72 saat geçerli olduğunu ve e-posta gönderiminin henüz kurulmadığını (S-15) yazıyor | — |
+| Aday raporu kaymaz | Rapor ızgarası ve bölümleri `minmax(0, 1fr)`; uzun sözcük (ör. boşluksuz not) satır kırıyor. Önce sayfa 18 bin piksele genişliyordu. PDF ve Excel indirme tarayıcıda denendi | — |
+| Erişim penceresi | Başlangıç bitişi geçerse bitiş, pencerenin uzunluğunu koruyarak birlikte kayar | — |
+| Boşluklar | Sayfa başlığı bandı, karşılama, kartlar sıkılaştırıldı; ana ekranlar 1440×900'de kaydırmadan sığıyor | — |
+| Deneme verisi | `DevDataSeeder` aday1–aday12 (10 aday daha, hepsi örnek sınava atanmış); `DevDataSeederTests` sayıları `ExtraCandidates` ile | 2 aday |
+
+Uçtan uca deneme (tarayıcı, gerçek API): giriş, yenilemede oturumun kalması, yazarak tarih/sayı girme, soru ekleme, aday ve değerlendirici atama, kaydedilen değerlerin doğruluğu (saklama 60, süre 45), raporlarda sınav seçme ve rapor açma, sınav listesinde arama: hepsi geçti.
 
 Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; servis çalışmıyorsa API 15 sn zaman aşımını bekliyor (`VisionFaceService`). Rıza geri alma ucu ölçüldü: 26 ms. Ekranda yükleme sırasında "birkaç saniye sürebilir" yazıyor.
 

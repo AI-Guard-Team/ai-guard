@@ -2,8 +2,9 @@
 
 .report-page {
   display: grid;
+  grid-template-columns: minmax(0, 210mm);
+  justify-content: center;
   gap: var(--space-5);
-  justify-items: center;
 }
 
 .report-toolbar {
@@ -24,6 +25,7 @@
 
 .report-sheet {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--space-8);
   width: 100%;
@@ -76,6 +78,9 @@
 
 .report-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  overflow-wrap: anywhere;
   gap: var(--space-4);
 }
 
@@ -126,6 +131,7 @@
 
 .report-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
@@ -209,4 +215,11 @@
     padding: 0;
     border: 0;
   }
+}
+
+.report-toolbar .review-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
 }

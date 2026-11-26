@@ -240,7 +240,7 @@
 /* ---------- 20–21: oturum detayı ---------- */
 
 .case-header {
-  padding: var(--space-6) var(--space-8);
+  padding: var(--space-5) var(--space-6);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   background:
@@ -623,6 +623,7 @@
 /* Notlar: çizgili defter kâğıdı. */
 .notes {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -636,6 +637,7 @@
 
 .notes-text {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .notes-form {

@@ -59,7 +59,17 @@ export function ExamGeneralForm({ exam, onSaved }: ExamGeneralFormProps) {
   const setDate = (key: 'windowStartAt' | 'windowEndAt', text: string) => {
     ;(key === 'windowStartAt' ? setStartText : setEndText)(text)
     const date = new Date(text)
-    if (text && !Number.isNaN(date.getTime()) && date.getFullYear() > 1999) set(key, date.toISOString())
+    if (!text || Number.isNaN(date.getTime()) || date.getFullYear() < 2000) return
+    set(key, date.toISOString())
+    // Başlangıç bitişi geçerse bitiş, pencerenin uzunluğunu koruyarak birlikte kayar.
+    if (key === 'windowStartAt') {
+      const span = new Date(form.windowEndAt).getTime() - new Date(form.windowStartAt).getTime()
+      if (date.getTime() >= new Date(form.windowEndAt).getTime() && span > 0) {
+        const end = new Date(date.getTime() + span)
+        set('windowEndAt', end.toISOString())
+        setEndText(toLocalInput(end))
+      }
+    }
   }
   const setNumber = (key: 'durationMinutes' | 'retentionDays', text: string) => {
     ;(key === 'durationMinutes' ? setDurationText : setRetentionText)(text)

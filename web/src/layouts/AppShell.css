@@ -210,7 +210,7 @@
 
 .app-content {
   min-width: 0;
-  padding: var(--space-10) clamp(var(--space-6), 4vw, var(--space-12)) var(--space-16);
+  padding: var(--space-6) clamp(var(--space-5), 3vw, var(--space-10)) var(--space-10);
 }
 
 .app-page {

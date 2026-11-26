@@ -26,6 +26,9 @@ public sealed class DevDataSeeder(
 {
     public const int MinimumSeedPasswordLength = 12;
 
+    /// <summary>aday1 ve aday2 dışında eklenen deneme adayı sayısı (aday3…aday12).</summary>
+    public const int ExtraCandidates = 10;
+
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         // Program.cs zaten kontrol ediyor; yanlışlıkla başka yerden çağrılırsa diye burada da.
@@ -78,6 +81,10 @@ public sealed class DevDataSeeder(
         var reviewer = CreateUser("Örnek Değerlendirici", "reviewer@aiguard.local", UserRole.Reviewer);
         var candidate1 = CreateUser("Örnek Aday 1", "aday1@aiguard.local", UserRole.Candidate);
         var candidate2 = CreateUser("Örnek Aday 2", "aday2@aiguard.local", UserRole.Candidate);
+        // Listeleri, aramayı ve atamaları gerçekçi denemek için daha fazla aday (UI1, K-43).
+        var moreCandidates = Enumerable.Range(3, ExtraCandidates)
+            .Select(i => CreateUser($"Örnek Aday {i}", $"aday{i}@aiguard.local", UserRole.Candidate))
+            .ToList();
 
         var exam = new Exam
         {
@@ -99,13 +106,20 @@ public sealed class DevDataSeeder(
         exam.Assignments.Add(new ExamAssignment { User = reviewer, Role = AssignmentRole.Reviewer });
         exam.Assignments.Add(new ExamAssignment { User = candidate1, Role = AssignmentRole.Candidate });
         exam.Assignments.Add(new ExamAssignment { User = candidate2, Role = AssignmentRole.Candidate });
+        foreach (var candidate in moreCandidates)
+        {
+            exam.Assignments.Add(new ExamAssignment { User = candidate, Role = AssignmentRole.Candidate });
+        }
+
 
         db.Users.AddRange(admin, reviewer, candidate1, candidate2);
+        db.Users.AddRange(moreCandidates);
         db.Exams.Add(exam);
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "Örnek veri yüklendi (4 kullanıcı, 1 sınav). Şifre {PasswordState}.",
+            "Örnek veri yüklendi ({UserCount} kullanıcı, 1 sınav). Şifre {PasswordState}.",
+            4 + ExtraCandidates,
             password is null ? "TANIMLI DEĞİL: kullanıcılar giriş yapamaz" : "Seed:DefaultPassword değerinden");
     }
 }
