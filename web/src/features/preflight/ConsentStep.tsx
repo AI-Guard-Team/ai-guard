@@ -54,7 +54,7 @@ const messages = defineMessages({
 /** Sunucunun reddi rıza metninin eskimesinden mi; dilden bağımsız, ham gövdeden okunur. */
 function staleConsentText(error: ApiError): boolean {
   const title = (error.body as { title?: unknown } | undefined)?.title
-  return error.status === 400 && typeof title === 'string' && title.includes('Rıza metni')
+  return error.status === 400 && typeof title === 'string' && (title.includes('Rıza metni') || title.includes('consent text is out of date'))
 }
 
 interface ConsentStepProps {

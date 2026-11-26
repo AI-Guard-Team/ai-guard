@@ -9,7 +9,6 @@ import { useAuth } from '../../auth/useAuth'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { Input, PasswordInput } from '../../components/Input'
-import { getLang } from '../../i18n/lang'
 import { defineMessages, useMessages } from '../../i18n/messages'
 import { AuthLayout } from '../../layouts/AuthLayout'
 import { authCopy } from './authCopy'
@@ -91,8 +90,8 @@ export function LoginPage() {
       if (error instanceof ApiError && error.status === 401) {
         setMessage({ tone: 'danger', text: m.wrong })
       } else if (error instanceof ApiError && error.status === 429) {
-        // Sunucu kalan dakikayı Türkçe "detail" içinde veriyor (K-20: 5 hatalı denemede 15 dk); İngilizcede genel açıklama.
-        setMessage({ tone: 'warning', title: m.locked, text: getLang() === 'tr' ? error.message : m.lockedText })
+        // Sunucu kalan dakikayı "detail" içinde, isteğin dilinde veriyor (K-20, K-48); yoksa genel açıklama.
+        setMessage({ tone: 'warning', title: m.locked, text: error.message || m.lockedText })
       } else if (error instanceof ApiError) {
         setMessage({ tone: 'danger', text: error.message })
       } else {

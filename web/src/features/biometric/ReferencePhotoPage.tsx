@@ -126,7 +126,7 @@ const messages = defineMessages({
 /** Sunucunun reddi rıza metninin eskimesinden mi (A3: "Rıza metni güncel değil"); dilden bağımsız, ham gövdeden okunur. */
 function staleConsentText(error: ApiError): boolean {
   const title = (error.body as { title?: unknown } | undefined)?.title
-  return error.status === 400 && typeof title === 'string' && title.includes('Rıza metni')
+  return error.status === 400 && typeof title === 'string' && (title.includes('Rıza metni') || title.includes('consent text is out of date'))
 }
 
 /** Kayıt fotoğrafı ve biyometrik rıza (Stitch ekran 8; A3 uçları, K-27, K-36). */

@@ -1,5 +1,6 @@
 import { tokenStore } from '../auth/tokenStore'
 import { ApiError, apiRequest, refreshTokens, statusMessage } from './client'
+import { getLang } from '../i18n/lang'
 import { defineMessages, pick } from '../i18n/messages'
 
 const messages = defineMessages({
@@ -168,9 +169,18 @@ export type ReportFormat = 'Xlsx' | 'Pdf'
  * Raporu dosya olarak indirir. Uç yetki istediği için düz bağlantı olamaz; belirteçle çekilip tarayıcıya
  * dosya olarak verilir. Sunucunun verdiği dosya adı korunur.
  */
-export async function downloadCandidateReport(examId: string, sessionId: string, format: ReportFormat): Promise<void> {
-  const path = `/api/reports/exams/${examId}/sessions/${sessionId}?format=${format}`
-  const send = () => fetch(path, { headers: { Authorization: `Bearer ${tokenStore.get()?.accessToken ?? ''}` } })
+export function downloadCandidateReport(examId: string, sessionId: string, format: ReportFormat): Promise<void> {
+  return downloadFile(`/api/reports/exams/${examId}/sessions/${sessionId}?format=${format}`, `aday-raporu.${format === 'Pdf' ? 'pdf' : 'xlsx'}`)
+}
+
+/** Sınavın bütün oturumları tek CSV (K-49); sütun başlıkları arayüz dilinde. */
+export function downloadExamCsv(examId: string): Promise<void> {
+  return downloadFile(`/api/reports/exams/${examId}?format=Csv`, 'sinav-raporu.csv')
+}
+
+async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const send = () =>
+    fetch(path, { headers: { Authorization: `Bearer ${tokenStore.get()?.accessToken ?? ''}`, 'Accept-Language': getLang() } })
   let response = await send().catch(() => {
     throw new ApiError(0, statusMessage(0))
   })
@@ -179,7 +189,7 @@ export async function downloadCandidateReport(examId: string, sessionId: string,
 
   const disposition = response.headers.get('Content-Disposition') ?? ''
   const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
-  const fileName = match ? decodeURIComponent(match[1]) : `aday-raporu.${format === 'Pdf' ? 'pdf' : 'xlsx'}`
+  const fileName = match ? decodeURIComponent(match[1]) : fallbackName
   const url = URL.createObjectURL(await response.blob())
   const link = document.createElement('a')
   link.href = url

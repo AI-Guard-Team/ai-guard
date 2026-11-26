@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { tokenStore } from '../auth/tokenStore'
 import { authHeader, jsonResponse, mockFetch } from '../test/fetch'
+import { setLang } from '../i18n/lang'
 import { ApiError, apiRequest } from './client'
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  setLang('tr')
 })
 
 describe('apiRequest', () => {
@@ -72,6 +74,26 @@ describe('apiRequest', () => {
     mockFetch(() => jsonResponse(503))
 
     await expect(apiRequest('/api/x', { auth: false })).rejects.toThrow('Sunucuda bir hata oluştu. Lütfen daha sonra tekrar deneyin.')
+  })
+
+  it('arayüz dilini Accept-Language ile gönderir ve sunucunun İngilizce metnini gösterir (K-48)', async () => {
+    setLang('en')
+    const fetchMock = mockFetch(() => jsonResponse(401, { title: 'Sign-in failed.', detail: 'Incorrect email or password.' }))
+
+    const error = (await apiRequest('/api/auth/login', { method: 'POST', body: {}, auth: false }).catch((e: unknown) => e)) as ApiError
+
+    expect((fetchMock.mock.calls[0][1]!.headers as Record<string, string>)['Accept-Language']).toBe('en')
+    expect(error.message).toBe('Incorrect email or password.')
+    expect(error.title).toBe('Sign-in failed.')
+  })
+
+  it('ASP.NET varsayılan başlığını kullanıcıya göstermez', async () => {
+    mockFetch(() => jsonResponse(400, { title: 'One or more validation errors occurred.' }))
+
+    const error = (await apiRequest('/api/x', { auth: false }).catch((e: unknown) => e)) as ApiError
+
+    expect(error.title).toBeUndefined()
+    expect(error.message).toBe('Gönderilen bilgiler geçersiz.')
   })
 
   it('FormData gövdesinde Content-Type başlığı yazmaz', async () => {

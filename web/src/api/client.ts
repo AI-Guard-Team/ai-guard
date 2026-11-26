@@ -19,22 +19,38 @@ export class ApiError extends Error {
   }
 
   /**
-   * Sunucunun Türkçe kısa nedeni (ProblemDetails "title"); ASP.NET'in İngilizce varsayılan başlığıysa undefined.
-   * Arayüz İngilizceyken de undefined: sunucu metinleri yalnızca Türkçe (K-46).
+   * Sunucunun kısa nedeni (ProblemDetails "title"), isteğin dilinde (K-48); ASP.NET'in kendi varsayılan
+   * başlığıysa ("Bad Request" gibi, bizim metnimiz değil) undefined.
    */
   get title(): string | undefined {
-    return getLang() === 'tr' ? userFacingTitle(this.body) : undefined
+    return userFacingTitle(this.body)
   }
 }
 
-// ASP.NET'in varsayılan başlıkları ("Bad Request", "One or more validation errors occurred.") yalnızca
-// ASCII; bizim uçlarımızın başlıkları Türkçe. Türkçe harf içermeyen başlık kullanıcıya gösterilmez.
-const TURKISH_LETTER = /[çğıöşüÇĞİÖŞÜ]/
+// ASP.NET'in varsayılan başlıkları: bizim uçlarımızın metni değil, kullanıcıya gösterilmez.
+const FRAMEWORK_TITLES = new Set([
+  'Bad Request',
+  'Unauthorized',
+  'Forbidden',
+  'Not Found',
+  'Method Not Allowed',
+  'Not Acceptable',
+  'Conflict',
+  'Payload Too Large',
+  'Request Entity Too Large',
+  'Unsupported Media Type',
+  'Unprocessable Entity',
+  'Too Many Requests',
+  'Internal Server Error',
+  'Service Unavailable',
+  'One or more validation errors occurred.',
+  'An error occurred while processing your request.',
+])
 
 function userFacingTitle(body: unknown): string | undefined {
   if (!body || typeof body !== 'object') return undefined
   const { title } = body as { title?: unknown }
-  return typeof title === 'string' && TURKISH_LETTER.test(title) ? title : undefined
+  return typeof title === 'string' && title && !FRAMEWORK_TITLES.has(title) ? title : undefined
 }
 
 export interface RequestOptions {
@@ -83,9 +99,8 @@ export function statusMessage(status: number): string {
 }
 
 function errorMessage(status: number, body: unknown): string {
-  // Sunucu metinleri Türkçe; arayüz İngilizceyken duruma göre İngilizce genel metin gösterilir.
-  if (getLang() !== 'tr') return statusMessage(status)
-  // Önce "detail" (ayrıntı ve ne yapılacağı), yoksa Türkçe "title"; İngilizce varsayılan başlık gösterilmez.
+  // Sunucu metinleri isteğin dilinde geliyor (Accept-Language, K-48). Önce "detail" (ayrıntı ve ne
+  // yapılacağı), yoksa "title"; ASP.NET'in varsayılan başlığı gösterilmez, duruma göre genel metin.
   if (body && typeof body === 'object') {
     const { detail, message } = body as { detail?: unknown; message?: unknown }
     if (typeof detail === 'string' && detail) return detail
@@ -111,7 +126,8 @@ function requestBody(body: unknown): BodyInit | undefined {
 }
 
 async function send(path: string, options: RequestOptions, accessToken: string | null): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' }
+  // Sunucu hata metinlerini, ajan uyarılarını ve gerekçeleri bu dilde döner (K-48).
+  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': getLang() }
   const body = requestBody(options.body)
   if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json'
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
