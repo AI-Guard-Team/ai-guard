@@ -1,6 +1,7 @@
 # Görüntü/Ses Servisi (vision) – JSON Sözleşmesi
 
-> **Durum:** TASLAK v0.3 · 21 Kasım 2026 · Hazırlayan: Dilan Özmen
+> **Durum:** TASLAK v0.4 · 26 Kasım 2026 · Hazırlayan: Dilan Özmen
+> v0.4 (D4): `analyze/frame` uygulandı: görev başına alanlar, `null` kuralları, telefon eşiği, kimlik eşiği, kanıt karesi, yaw/pitch işareti, süre
 > v0.3 (D2): boyut sınırları, `qualityScore` tanımı, `verify` karar kuralları, `referenceVector` doğrulaması
 > Onaylayacaklar: Ayşe Nur Kendirci (A3, D4/D5 entegrasyonu), Esma İrem Öztürk
 > Kaynaklar: D1, D2, D4, D5, A2, A3, E1b, S2 kartları; MIMARI-KARARLAR K-13, K-16, K-17
@@ -143,10 +144,13 @@ Eşikler: canlılık 0,5 (Silent-Face `test.py` kararının tek sayı karşılı
   "referenceVector": [0.0123, "... 512 değer"]
 }
 ```
-- `tasks`: arka uç zamanlamayı bu alanla belirler (D4):
+- `frame`: base64 kare, en fazla 1 MiB (1 398 104 karakter; aşan istek `VALIDATION_ERROR`). S4'teki tarayıcı saniyede bir, en fazla 640 px genişlikte, JPEG 0,8 gönderiyor. Çözülemezse **422 `INVALID_IMAGE`** (hiçbir model çalışmaz).
+- `tasks`: en az bir görev; `face`, `pose`, `phone`, `identity` dışındaki değer `VALIDATION_ERROR`. Arka uç zamanlamayı bu alanla belirler (D4):
   - `face` + `pose`: her kare (saniyede 1)
   - `phone`: 3 saniyede bir
-  - `identity`: 60 saniyede bir; **yalnızca bu durumda `referenceVector` zorunludur**.
+  - `identity`: 60 saniyede bir; **yalnızca bu durumda `referenceVector` zorunludur** (S-21), yoksa `VALIDATION_ERROR`.
+- `referenceVector`: `verify` ile aynı kural (Bölüm 4): 512 değer, sonlu olmayan değer ya da sıfır vektör `VALIDATION_ERROR`, birim uzunlukta değilse yeniden normalize edilir. `identity` yokken gönderilirse yine doğrulanır, kullanılmaz.
+- `sessionId` ve `ts` yalnızca yanıtta aynen geri döner; servis durumsuz (S-20).
 
 **Yanıt 200**
 ```json
@@ -163,10 +167,32 @@ Eşikler: canlılık 0,5 (Silent-Face `test.py` kararının tek sayı karşılı
   "processingMs": 142
 }
 ```
-- İstenmeyen görevlerin alanları `null` döner. `faceCount = 0` ise `yaw`/`pitch`/`gazeAway` `null`.
-- `yaw` (sağ-sol) ve `pitch` (yukarı-aşağı) derece cinsinden, birden fazla yüz varsa en büyük yüz için.
-- `gazeAway`: tek ölçüm için `|yaw| > 30` veya `|pitch| > 20` (eşikler `config.yaml`'da).
-- `evidenceFrame`: **yalnızca bu karede şüpheli bir durum varsa** dolu, yoksa `null`. Şüpheli durumlar: `faceCount ≠ 1`, `gazeAway`, `phone.detected` veya `identity.matched = false`. Arka uç, olay oluşursa kareyi şifreleyip saklar, oluşmazsa atar.
+Görevler ve alanlar (kod: `vision/app/frame_service.py` `analyze`; eşikler ve gerekçeleri `vision/config.yaml`):
+
+| Görev | Alanlar | Kural |
+|---|---|---|
+| `face` | `faceCount` | MediaPipe Face Landmarker'ın bulduğu yüz sayısı; en fazla 4 yüz aranır (4 "4 ya da daha fazla" demek) |
+| `pose` | `yaw`, `pitch`, `gazeAway` | En büyük yüzün kafa yönü, derece. `gazeAway` = `\|yaw\| > frame.gaze_yaw_deg` (30) veya `\|pitch\| > frame.gaze_pitch_deg` (20); sınır değer sapma değil. Yüz yoksa üçü de `null` |
+| `phone` | `phone.detected`, `phone.confidence` | YOLO11n, yalnızca COCO 67. sınıf (cell phone). `confidence` (0–1) karedeki en yüksek telefon skoru; `detected` = `confidence ≥ frame.phone_confidence` (0,5). Yüzden bağımsız |
+| `identity` | `identity.similarity`, `identity.matched` | En büyük yüzün ArcFace vektörüyle `referenceVector` arasındaki kosinüs benzerliği (−1…1); `matched` = `similarity ≥ verify.match_threshold` (D2 ile aynı eşik, tek yerde; sınır değer eşleşir). Yüz yoksa `identity` `null`. **Canlılık bu uçta yok** |
+
+- İstenmeyen görevlerin alanları `null` döner; o görevlerin modelleri çalışmaz. `processingMs` her zaman doludur (karenin çözülmesi dahil, ağ hariç).
+- Sayılar yuvarlanmaz; dönen değer ile karar sınırda çelişmesin.
+- **Yaw/pitch işareti** (D4'te LFW geometrisiyle ve kamerayla doğrulandı, K-28): `yaw > 0` aday kendi soluna dönmüş (aynalanmamış karede burun görüntünün sağına kaymış), `yaw < 0` kendi sağına; `pitch > 0` aşağı, `pitch < 0` yukarı bakıyor. Tarayıcının gönderdiği kare aynalı değil. Kural mutlak değerle çalıştığı için işaret yalnızca bilgi.
+- `evidenceFrame`: **yalnızca bu karede şüpheli bir durum varsa** dolu, yoksa `null`. Şüpheli durumlar: `faceCount ≠ 1`, `gazeAway = true`, `phone.detected = true` veya `identity.matched = false`; istenmeyen görev (alanı `null`) şüphe sayılmaz. Değer **gelen karenin kendisi**, yeniden sıkıştırılmadan (`frame` ile aynı base64). Arka uç, olay oluşursa kareyi şifreleyip saklar, oluşmazsa atar.
+- Günlüğe yalnızca uç, sonuç kodu (`OK` ya da hata kodu) ve süre yazılır; görüntü, vektör ve ölçümler yazılmaz (K-27).
+- Hatalar: 401 `UNAUTHORIZED`, 422 `VALIDATION_ERROR` / `INVALID_IMAGE`, 503 `MODELS_NOT_READY` (Bölüm 1).
+
+**Süre** (`processingMs`; 640×480 JPEG 0,8 kare, tek yüz, `VISION_ORT_THREADS=1`, i5-12450H, prizde, iki tur × 100 ölçüm):
+
+| Görevler | Ortalama | p95 |
+|---|---:|---:|
+| `face` + `pose` (her kare) | 11 ms | 12–14 ms |
+| `face` + `pose` + `identity` | 23–24 ms | 26–27 ms |
+| `face` + `pose` + `phone` | 102–107 ms | 116–139 ms |
+| Dördü birlikte | 112–126 ms | 123–149 ms |
+
+D1 benchmark'ına göre (yüz 9 + ArcFace 11 + YOLO 79 ms) ~100 ms bekleniyordu; fark YOLO'da (~90–95 ms). Pilde dördü birlikte ortalama 125–155 ms ölçüldü. Saniyede bir kare için kart hedefleri (yüz 150, eşleştirme 200, telefon 300 ms) karşılanıyor. Telefon 3 sn'de bir çalıştığı için aday başına ortalama yük ~50 ms/sn (13 + ~100 / 3 + ~13 / 60).
 
 ### Olay kuralları (arka uçta uygulanır — S-20)
 
@@ -177,6 +203,8 @@ Eşikler: canlılık 0,5 (Silent-Face `test.py` kararının tek sayı karşılı
 | `GAZE_AWAY` | Art arda en az **5** ölçümde `gazeAway = true` |
 | `PHONE` | `phone.detected = true` |
 | `IDENTITY_MISMATCH` | `identity.matched = false` |
+
+**Kamera denemesinden notlar (D4, K-28):** |yaw| ≈ 50–60°'de yüz yer yer kayboluyor (`faceCount` 1 → 0 → 1). Arka uç tekil bir `faceCount = 0` ölçümünü `GAZE_AWAY` serisini bozan değil **sürdüren** saymalı; aksi hâlde başını çok çeviren aday iki kuralın arasından kayabilir (denemede sağa dönüş `GAZE_AWAY` yerine `FACE_MISSING` üretti). Kulağa yakın tutulan telefon bulunamıyor (Deney 2'de ayrı koşul). Kamera ortalanmamışsa dinlenmede yaw birkaç derece kayık (D3 protokolü).
 
 Arka uç olayı `EventService.RecordSystemEventAsync` ile `SystemEvent(Type, StartedAt, DurationSec, Confidence, Payload)` olarak kaydeder (K-16). Kaynak `EventCatalog`'dan belirlenir. `payload` en fazla 4 KB JSON olabilir; kanıt karesi payload'a konmaz, `EvidenceFrame` olarak ayrıca saklanır (A5). Servis yanıt vermezse veya `503` dönerse arka uç `MONITORING_GAP` üretir (K-16, FR-26).
 
