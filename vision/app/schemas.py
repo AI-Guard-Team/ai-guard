@@ -10,6 +10,20 @@ VECTOR_DIM = 512  # ArcFace çıktı boyutu
 Vector = list[float]
 
 
+def unit_vector(v: Vector) -> Vector:
+    """referenceVector kuralı (verify ve analyze/frame'de aynı, K-29 8. kural).
+
+    Sıfır ya da sonlu olmayan vektörle benzerlik tanımsız; bu bizim isteğimizin hatası (VALIDATION_ERROR).
+    Birim uzunlukta değilse yeniden normalize edilir: kosinüs benzerliği yalnızca yöne bakar.
+    """
+    if not all(math.isfinite(x) for x in v):
+        raise ValueError("referenceVector sonlu olmayan değer içeriyor")
+    norm = math.sqrt(math.fsum(x * x for x in v))
+    if norm < 1e-6:
+        raise ValueError("referenceVector sıfır vektör")
+    return [x / norm for x in v]
+
+
 # ---------- /internal/face/enroll ----------
 class EnrollRequest(BaseModel):
     # Üst sınır api'deki 5 MB'ın base64 karşılığı; aşan istek VALIDATION_ERROR (contracts.md 1. bölüm).
@@ -40,14 +54,7 @@ class VerifyRequest(BaseModel):
     @field_validator("referenceVector")
     @classmethod
     def unit_reference(cls, v: Vector) -> Vector:
-        # Sıfır ya da sonlu olmayan vektörle benzerlik tanımsız; bu bizim isteğimizin hatası (VALIDATION_ERROR).
-        # Birim uzunlukta değilse yeniden normalize edilir: kosinüs benzerliği yalnızca yöne bakar.
-        if not all(math.isfinite(x) for x in v):
-            raise ValueError("referenceVector sonlu olmayan değer içeriyor")
-        norm = math.sqrt(math.fsum(x * x for x in v))
-        if norm < 1e-6:
-            raise ValueError("referenceVector sıfır vektör")
-        return [x / norm for x in v]
+        return unit_vector(v)
 
 
 class VerifyResponse(BaseModel):
@@ -64,10 +71,16 @@ Task = Literal["face", "pose", "phone", "identity"]
 
 class AnalyzeFrameRequest(BaseModel):
     sessionId: str = Field(min_length=1)
-    frame: str = Field(min_length=1)
+    frame: Frame  # verify'daki karelerle aynı sınır (api'deki 1 MiB)
     ts: str
     tasks: list[Task] = Field(min_length=1)
+    # Yalnızca identity görevinde zorunlu (S-21); gelirse verify'daki kuralla doğrulanıp normalize edilir.
     referenceVector: Vector | None = Field(default=None, min_length=VECTOR_DIM, max_length=VECTOR_DIM)
+
+    @field_validator("referenceVector")
+    @classmethod
+    def unit_reference(cls, v: Vector | None) -> Vector | None:
+        return None if v is None else unit_vector(v)
 
     @model_validator(mode="after")
     def identity_needs_vector(self):
