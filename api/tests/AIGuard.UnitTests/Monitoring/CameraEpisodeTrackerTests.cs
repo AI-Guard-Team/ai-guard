@@ -22,6 +22,9 @@ public class CameraEpisodeTrackerTests
 
     internal static FrameMeasurement NoFace(byte[]? evidence = null) => new(0, null, null, null, null, null, evidence ?? [0]);
 
+    /// <summary>Yüz var ama kafa yönü yok (dönüşüm matrisi gelmedi, K-45).</summary>
+    internal static FrameMeasurement NoPose(int faces = 1) => new(faces, null, null, null, null, null, faces == 1 ? null : [2]);
+
     private static DateTimeOffset At(int second) => T0.AddSeconds(second);
 
     /// <summary>Ölçümleri sırayla verir; çıkan bölümleri toplar.</summary>
@@ -43,6 +46,7 @@ public class CameraEpisodeTrackerTests
             'G' => Face(gaze: true),
             'F' => Face(),
             '0' => NoFace(),
+            'P' => NoPose(),
             _ => throw new ArgumentException(pattern),
         }).ToArray());
 
@@ -181,6 +185,65 @@ public class CameraEpisodeTrackerTests
 
         Assert.Equal(4, episode.DurationSec);
         Assert.Equal(0, Payload(episode).GetProperty("faceLostMeasurements").GetInt32());
+    }
+
+    // ---------- yüz var, kafa yönü yok ----------
+
+    [Fact]
+    public void Missing_head_pose_inside_the_series_continues_it_but_is_not_counted()
+    {
+        Assert.Empty(Feed("GGPGGF"));
+    }
+
+    [Fact]
+    public void Missing_head_pose_does_not_reset_the_gaze_series()
+    {
+        var episode = Assert.Single(Feed("GGPGGGF"));
+
+        Assert.Equal(EventType.GAZE_AWAY, episode.Type);
+        Assert.Equal(At(0), episode.StartedAt);
+        Assert.Equal(5, episode.DurationSec);
+        Assert.Equal(5, Payload(episode).GetProperty("measurements").GetInt32());
+        Assert.Equal(1, Payload(episode).GetProperty("poseMissingMeasurements").GetInt32());
+        Assert.Equal(0, Payload(episode).GetProperty("faceLostMeasurements").GetInt32());
+    }
+
+    [Fact]
+    public void Lost_face_and_missing_pose_bridge_together_and_are_reported_separately()
+    {
+        var episode = Assert.Single(Feed("GG0PGGGF"));
+
+        Assert.Equal(1, Payload(episode).GetProperty("faceLostMeasurements").GetInt32());
+        Assert.Equal(1, Payload(episode).GetProperty("poseMissingMeasurements").GetInt32());
+    }
+
+    [Fact]
+    public void Third_measurement_without_a_known_gaze_ends_the_series_at_the_last_gaze()
+    {
+        var gaze = Assert.Single(Feed("GGGGGPPP"));
+
+        Assert.Equal(EventType.GAZE_AWAY, gaze.Type);
+        Assert.Equal(At(4), gaze.StartedAt.AddSeconds(gaze.DurationSec));
+        Assert.Equal(0, Payload(gaze).GetProperty("poseMissingMeasurements").GetInt32());
+
+        // Yüz orada: FACE_MISSING yok; yeni bakış serisi baştan sayılıyor.
+        Assert.Empty(Feed("GGGGF"));
+    }
+
+    [Fact]
+    public void Missing_pose_is_a_present_face_for_the_face_count_rules()
+    {
+        // Yüz geri geldi (kafa yönü olmasa da): FACE_MISSING kapanıyor.
+        var missing = Assert.Single(Feed("000P"));
+        Assert.Equal(EventType.FACE_MISSING, missing.Type);
+        Assert.Equal(2, missing.DurationSec);
+
+        // Arada kafa yönü olmayan yüz, yüz kaybı serisini bölüyor.
+        Assert.Empty(Feed("00P00F"));
+
+        // İki yüz, kafa yönü yok: MULTIPLE_FACES yine işliyor.
+        var multiple = Assert.Single(Feed(NoPose(faces: 2), Face()));
+        Assert.Equal(EventType.MULTIPLE_FACES, multiple.Type);
     }
 
     [Fact]

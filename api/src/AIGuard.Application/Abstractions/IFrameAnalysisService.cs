@@ -10,9 +10,10 @@ public sealed record IdentityReading(bool Matched, double Similarity);
 
 /// <summary>
 /// Bir karenin ölçümü. face ve pose her karede istendiği için <see cref="FaceCount"/> her zaman dolu;
-/// yüz yoksa kafa yönü alanları <c>null</c>. İstenmeyen görevin alanı da <c>null</c>.
+/// yüz yoksa kafa yönü alanları <c>null</c>. Yüz varken de üçü birden <c>null</c> olabilir (dönüşüm matrisi
+/// gelmedi); bakış serisi bu ölçümü saymıyor (K-45). İstenmeyen görevin alanı da <c>null</c>.
 /// </summary>
-/// <param name="EvidenceFrame">Karede şüpheli bir durum varsa gelen karenin kendisi; yoksa <c>null</c>.</param>
+/// <param name="EvidenceFrame">Vision karede şüpheli bir durum bildirdiyse API'nin gönderdiği karenin baytları; yoksa <c>null</c>.</param>
 public sealed record FrameMeasurement(
     int FaceCount,
     double? Yaw,

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -155,7 +156,81 @@ public class VisionFrameAnalysisServiceTests
         Assert.Null(m.Yaw);
         Assert.Null(m.Identity);
         Assert.Equal(new PhoneReading(true, 0.9), m.Phone);
-        Assert.Equal([1, 2, 3], m.EvidenceFrame);
+        Assert.Equal([0xFF, 0xD8, 0xFF], m.EvidenceFrame); // gönderilen kare, yanıttaki base64 değil
+    }
+
+    [Fact]
+    public async Task Evidence_is_the_frame_the_api_sent_and_the_response_value_is_not_decoded()
+    {
+        // Bozuk base64 de olsa "dolu" sayılıyor; kanıt API'nin kendi baytları.
+        var (service, _) = Create(HttpStatusCode.OK, Response(evidenceFrame: "%%%"));
+        byte[] frame = [0xFF, 0xD8, 0xFF, 0xE0];
+
+        var result = await service.AnalyzeAsync(Session, frame, Ts, false, null);
+
+        Assert.Equal(FrameAnalysisStatus.Ok, result.Status);
+        Assert.Same(frame, result.Measurement!.EvidenceFrame);
+    }
+
+    [Fact]
+    public async Task Empty_evidence_frame_means_no_evidence()
+    {
+        var (service, _) = Create(HttpStatusCode.OK, Response(evidenceFrame: ""));
+
+        Assert.Null((await Analyze(service)).Measurement!.EvidenceFrame);
+    }
+
+    [Fact]
+    public async Task Face_without_head_pose_is_a_measurement_not_a_contract_violation()
+    {
+        // Dönüşüm matrisi gelmedi: yüz var, yaw/pitch/gazeAway null (K-45).
+        var (service, _) = Create(HttpStatusCode.OK, Response(faceCount: 2, yaw: null, pitch: null, gazeAway: null));
+
+        var result = await Analyze(service);
+
+        Assert.Equal(FrameAnalysisStatus.Ok, result.Status);
+        var m = result.Measurement!;
+        Assert.Equal(2, m.FaceCount);
+        Assert.Null(m.Yaw);
+        Assert.Null(m.Pitch);
+        Assert.Null(m.GazeAway);
+    }
+
+    [Fact]
+    public async Task Timestamp_is_formatted_independently_of_the_current_culture()
+    {
+        var (service, handler) = Create(HttpStatusCode.OK, Response());
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            // th-TH: Budist takvimi (2569); invariant olmasa yıl değişirdi.
+            CultureInfo.CurrentCulture = new CultureInfo("th-TH");
+            await Analyze(service);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+
+        Assert.Equal("2026-11-24T10:15:30.250Z", handler.Body!.Value.GetProperty("ts").GetString());
+    }
+
+    [Fact]
+    public async Task Unreadable_success_body_is_a_gap_not_an_exception()
+    {
+        // Geçersiz charset: ReadFromJsonAsync InvalidOperationException fırlatıyor.
+        var (service, _) = Create((_, _) =>
+        {
+            var content = new ByteArrayContent(Encoding.UTF8.GetBytes(Response()));
+            content.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=bogus-charset");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        });
+
+        var result = await Analyze(service);
+
+        Assert.Equal(FrameAnalysisStatus.Unavailable, result.Status);
+        Assert.Equal(200, result.HttpStatus);
+        Assert.Equal("INVALID_RESPONSE", result.Code);
     }
 
     [Fact]
@@ -238,9 +313,10 @@ public class VisionFrameAnalysisServiceTests
 
     public static TheoryData<string, bool, bool> ContractViolations() => new()
     {
-        // Yüz var ama kafa yönü yok.
+        // Yüz var, kafa yönü yarım dolu (üçü birden null olması sözleşmeye uygun, ayrı test).
         { Response(gazeAway: null), false, false },
         { Response(yaw: null), false, false },
+        { Response(yaw: null, pitch: null), false, false },
         // Telefon istendi ama alan yok ya da aralık dışı.
         { Response(), true, false },
         { Response(phone: new { detected = true, confidence = 1.5 }), true, false },
@@ -248,9 +324,8 @@ public class VisionFrameAnalysisServiceTests
         { Response(), false, true },
         { Response(identity: new { similarity = 1.2, matched = true }), false, true },
         { Response(identity: new { similarity = 0.4 }), false, true },
-        // Başka oturumun yanıtı, bozuk kanıt karesi, negatif yüz sayısı.
+        // Başka oturumun yanıtı, negatif yüz sayısı.
         { Response(sessionId: Guid.NewGuid().ToString()), false, false },
-        { Response(evidenceFrame: "%%%"), false, false },
         { Response(faceCount: -1), false, false },
         { "{}", false, false },
     };

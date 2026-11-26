@@ -37,7 +37,8 @@ public sealed record CameraEpisode(
 /// <item>FACE_MISSING: art arda en az 3 ölçümde faceCount = 0.</item>
 /// <item>GAZE_AWAY: bir seride en az 5 gazeAway = true. Seriye giren 1–2 ardışık "yüz yok" ölçümü seriyi
 /// sürdürür ama sayılmaz (D4 kamera denemesi, K-28: baş çok dönünce MediaPipe yüzü ara ara kaybediyor);
-/// 3. ardışık "yüz yok"ta seri kapanır, FACE_MISSING başlar.</item>
+/// 3. ardışık "yüz yok"ta seri kapanır, FACE_MISSING başlar. "Yüz var ama kafa yönü yok" ölçümü de aynı muameleyi
+/// görür (sayılmaz, sıfırlamaz); bakışı bilinmeyen ardışık ölçümler toplamda 3'e ulaşınca seri kapanır.</item>
 /// <item>MULTIPLE_FACES: faceCount ≥ 2. PHONE: phone.detected. IDENTITY_MISMATCH: identity.matched = false.
 /// Görevi çalışmayan kare (alan <c>null</c>) bölüme dokunmuyor.</item>
 /// </list>
@@ -50,6 +51,11 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
     private Run? _multiple;
     private Run? _phone;
     private Run? _identity;
+
+    // Açık bakış serisinin son G'sinden beri gelen, bakışı bilinmeyen ardışık ölçümler: yüz yok ya da yüz var
+    // ama kafa yönü yok. Sonraki G'de köprü olarak seriye ekleniyor; toplamı eşiğe ulaşırsa seri kapanıyor.
+    private int _pendingFaceLost;
+    private int _pendingPoseMissing;
 
     /// <summary>Son başarılı ölçümün anı.</summary>
     public DateTimeOffset? LastMeasurementAt { get; private set; }
@@ -129,8 +135,15 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
         {
             var zeros = Continue(ref _zeros, at, m);
 
-            // Üçüncü ardışık kayıp: bakış serisi biter, FACE_MISSING başlar (başlangıcı ilk kayıp).
-            if (zeros.Count >= options.FaceMissingMeasurements)
+            // Seriden önce gelen kayıplar köprü değil; yalnızca açık seride sayılıyor.
+            if (_gaze is not null)
+            {
+                _pendingFaceLost++;
+            }
+
+            // Üçüncü ardışık kayıp (ya da bakışı bilinmeyen üçüncü ölçüm): bakış serisi biter, FACE_MISSING başlar
+            // (başlangıcı ilk kayıp).
+            if (zeros.Count >= options.FaceMissingMeasurements || PendingUnknown >= options.FaceMissingMeasurements)
             {
                 Emit(closed, CloseGaze(EpisodeEnd.Condition));
             }
@@ -138,9 +151,8 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
             return;
         }
 
-        // Yüz geri geldi. Eşiğe ulaşmış kayıp serisi FACE_MISSING olarak kapanır; ulaşmamışsa ve bakış
-        // serisi sürüyorsa kayıplar o seriye köprü oluyor.
-        var bridged = 0;
+        // Yüz geri geldi. Eşiğe ulaşmış kayıp serisi FACE_MISSING olarak kapanır; ulaşmamışsa ve bakış serisi
+        // sürüyorsa kayıplar bekleyen köprü olarak duruyor.
         if (_zeros is not null)
         {
             if (_zeros.Count >= options.FaceMissingMeasurements)
@@ -149,19 +161,36 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
             }
             else
             {
-                bridged = _zeros.Count;
                 _zeros = null;
             }
         }
 
-        if (m.GazeAway == true)
+        if (m.GazeAway is null)
         {
-            // Yeni seride köprü yok: kayıplar seriden önce geldiyse seriye ait değil.
+            // Yüz var ama kafa yönü yok (dönüşüm matrisi gelmedi): tekil yüz kaybı gibi, bakış serisinde sayılmıyor
+            // ve seriyi sıfırlamıyor. Yüz sayısı kuralları yukarıda ve Apply'da normal işliyor.
             if (_gaze is not null)
             {
-                _gaze.Bridged += bridged;
+                _pendingPoseMissing++;
+                if (PendingUnknown >= options.FaceMissingMeasurements)
+                {
+                    Emit(closed, CloseGaze(EpisodeEnd.Condition));
+                }
             }
 
+            return;
+        }
+
+        if (m.GazeAway == true)
+        {
+            // Yeni seride köprü yok: bekleyenler yalnızca açık seride birikiyor.
+            if (_gaze is not null)
+            {
+                _gaze.Bridged += _pendingFaceLost;
+                _gaze.PoseMissing += _pendingPoseMissing;
+            }
+
+            (_pendingFaceLost, _pendingPoseMissing) = (0, 0);
             var run = Continue(ref _gaze, at, m);
             run.Max = Math.Max(run.Max, Math.Abs(m.Yaw ?? 0));
             run.Second = Math.Max(run.Second, Math.Abs(m.Pitch ?? 0));
@@ -184,10 +213,15 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
         return run.ToEpisode(EventType.FACE_MISSING, null, new { measurements = run.Count, closedBy });
     }
 
+    private int PendingUnknown => _pendingFaceLost + _pendingPoseMissing;
+
     private CameraEpisode? CloseGaze(string closedBy)
     {
         var run = _gaze;
         _gaze = null;
+
+        // Son G'den sonraki bekleyen ölçümler seriye ait değil (bitiş son G).
+        (_pendingFaceLost, _pendingPoseMissing) = (0, 0);
         if (run is null || run.Count < options.GazeAwayMeasurements)
         {
             return null;
@@ -197,6 +231,7 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
         {
             measurements = run.Count,
             faceLostMeasurements = run.Bridged,
+            poseMissingMeasurements = run.PoseMissing,
             maxAbsYaw = Round(run.Max),
             maxAbsPitch = Round(run.Second),
             closedBy,
@@ -274,6 +309,9 @@ public sealed class CameraEpisodeTracker(CameraMonitorOptions options)
 
         /// <summary>GAZE_AWAY: seriyi sürdüren ama sayılmayan "yüz yok" ölçümleri.</summary>
         public int Bridged { get; set; }
+
+        /// <summary>GAZE_AWAY: seriyi sürdüren ama sayılmayan "yüz var, kafa yönü yok" ölçümleri.</summary>
+        public int PoseMissing { get; set; }
 
         public Run Extend(DateTimeOffset at, byte[]? evidence)
         {

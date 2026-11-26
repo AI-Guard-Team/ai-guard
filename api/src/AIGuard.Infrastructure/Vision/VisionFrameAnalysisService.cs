@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -67,7 +68,8 @@ public sealed class VisionFrameAnalysisService(HttpClient http) : IFrameAnalysis
         {
             ["sessionId"] = sessionId,
             ["frame"] = Convert.ToBase64String(frame),
-            ["ts"] = ts.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            // Kültürden bağımsız: th-TH gibi kültürlerde takvim yılı ve saat ayırıcısı değişirdi.
+            ["ts"] = ts.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
             ["tasks"] = tasks,
         };
         if (identity)
@@ -115,8 +117,13 @@ public sealed class VisionFrameAnalysisService(HttpClient http) : IFrameAnalysis
             {
                 return FrameAnalysisResult.Unavailable(status, "UNREADABLE_RESPONSE");
             }
+            catch (InvalidOperationException)
+            {
+                // Gövde okunamadı (ör. geçersiz charset); kare isteği 500 almasın, boşluk sayılsın.
+                return FrameAnalysisResult.Unavailable(status, "INVALID_RESPONSE");
+            }
 
-            var measurement = body is null ? null : ToMeasurement(body, sessionId, phone, identity);
+            var measurement = body is null ? null : ToMeasurement(body, sessionId, frame, phone, identity);
             return measurement is null
                 ? FrameAnalysisResult.Unavailable(status, "INVALID_RESPONSE")
                 : FrameAnalysisResult.Ok(measurement);
@@ -124,17 +131,21 @@ public sealed class VisionFrameAnalysisService(HttpClient http) : IFrameAnalysis
     }
 
     /// <summary>Yanıtı sözleşmeye göre doğrular; uymuyorsa <c>null</c> (sözleşme kayması, boşluk sayılıyor).</summary>
-    private static FrameMeasurement? ToMeasurement(FrameResponse b, Guid sessionId, bool phoneRequested, bool identityRequested)
+    /// <param name="frame">Gönderilen kare: şüpheli karede kanıt olarak bu saklanıyor (yanıttaki base64 çözülmüyor).</param>
+    private static FrameMeasurement? ToMeasurement(
+        FrameResponse b, Guid sessionId, byte[] frame, bool phoneRequested, bool identityRequested)
     {
         if (b.SessionId != sessionId || b.FaceCount is not { } faces || faces < 0)
         {
             return null;
         }
 
-        // Yüz varsa kafa yönü dolu olmalı; yüz yoksa üçü de null (sözleşme), değerlere bakılmıyor.
+        // Yüz yoksa üçü de null (sözleşme), değerlere bakılmıyor. Yüz varken ya üçü birden dolu ve geçerli, ya da
+        // üçü birden null (dönüşüm matrisi gelmedi): bu ölçüm bakış serisinde sayılmıyor (K-45). Yarım dolu yanıt
+        // sözleşmeye aykırı.
         bool? gazeAway = null;
         double? yaw = null, pitch = null;
-        if (faces > 0)
+        if (faces > 0 && (b.GazeAway is not null || b.Yaw is not null || b.Pitch is not null))
         {
             if (b.GazeAway is not { } gaze || !IsFinite(b.Yaw) || !IsFinite(b.Pitch))
             {
@@ -171,18 +182,9 @@ public sealed class VisionFrameAnalysisService(HttpClient http) : IFrameAnalysis
             return null;
         }
 
-        byte[]? evidence = null;
-        if (!string.IsNullOrEmpty(b.EvidenceFrame))
-        {
-            try
-            {
-                evidence = Convert.FromBase64String(b.EvidenceFrame);
-            }
-            catch (FormatException)
-            {
-                return null;
-            }
-        }
+        // Sözleşmeye göre evidenceFrame gelen karenin kendisi; yalnızca "dolu mu" diye bakılıyor, kanıt olarak
+        // API'nin aldığı ve biçimini doğruladığı baytlar saklanıyor (vision'ın döndürdüğüne güvenilmiyor).
+        var evidence = string.IsNullOrEmpty(b.EvidenceFrame) ? null : frame;
 
         return new FrameMeasurement(faces, yaw, pitch, gazeAway, phone, identity, evidence);
     }
