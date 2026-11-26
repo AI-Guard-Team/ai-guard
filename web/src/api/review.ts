@@ -1,34 +1,25 @@
-import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import { tokenStore } from '../auth/tokenStore'
-import { apiRequest, refreshTokens } from './client'
+import { ApiError, apiRequest, refreshTokens } from './client'
 
-// Adlar ve biçimler arka uçtaki A4 sözleşmesiyle aynı (K-31). Sabit listeler JSON'da metin olarak gelir.
+// Değerlendirici ve rapor uçları (A4, K-31; A5, K-32). Ad ve alanlar sunucudaki ReviewModels ile birebir.
 
 export type SessionFlag = 'Risky' | 'Indicated' | 'NoAgent' | 'MonitoringGap' | 'PermissionGap'
 export type ReviewStatus = 'NotStarted' | 'AwaitingReview' | 'Completed' | 'Decided'
+export type ReviewDecisionType = 'Clean' | 'Suspicious' | 'Violation'
 export type ReviewSort = 'Priority' | 'Score' | 'StartedAt'
-export type DecisionType = 'Clean' | 'Suspicious' | 'Violation'
-
-export interface ExamSummary {
-  id: string
-  name: string
-  type: string
-  durationMinutes: number
-  windowStartAt: string
-  windowEndAt: string
-}
+export type EventSource = 'Camera' | 'Audio' | 'Browser' | 'Device' | 'Network' | 'System'
 
 export interface ReviewSessionRow {
   sessionId: string
   candidateId: string
   candidateName: string
   startedAt: string
-  endedAt?: string | null
+  endedAt: string | null
   riskScore: number
   flags: SessionFlag[]
   status: ReviewStatus
-  decision?: DecisionType | null
-  topReason?: string | null
+  decision: ReviewDecisionType | null
+  topReason: string | null
 }
 
 export interface ReviewSessionList {
@@ -39,16 +30,16 @@ export interface ReviewSessionList {
 export interface ReviewEvent {
   id: string
   type: string
-  source: string
+  source: EventSource
   startedAt: string
   durationSec: number
-  confidence?: number | null
-  reason?: string | null
+  confidence: number | null
+  reason: string | null
   contribution: number
   isFalseAlarm: boolean
-  falseAlarmMarkedBy?: string | null
-  falseAlarmMarkedAt?: string | null
-  evidenceUrl?: string | null
+  falseAlarmMarkedBy: string | null
+  falseAlarmMarkedAt: string | null
+  evidenceUrl: string | null
 }
 
 export interface ScorePoint {
@@ -56,9 +47,9 @@ export interface ScorePoint {
   score: number
 }
 
-export interface ReviewDecision {
-  decision: DecisionType
-  note?: string | null
+export interface ReviewDecisionView {
+  decision: ReviewDecisionType
+  note: string | null
   reviewerName: string
   decidedAt: string
 }
@@ -79,103 +70,116 @@ export interface ReviewSessionDetail {
   state: string
   status: ReviewStatus
   createdAt: string
-  startedAt?: string | null
-  endedAt?: string | null
+  startedAt: string | null
+  endedAt: string | null
   riskScore: number
   flags: SessionFlag[]
-  decision?: ReviewDecision | null
+  decision: ReviewDecisionView | null
   notes: ReviewNote[]
   events: ReviewEvent[]
   scoreHistory: ScorePoint[]
-  monitoringDataDeletedAt?: string | null
+  monitoringDataDeletedAt: string | null
 }
 
-export interface SessionListFilter {
-  /** `true`: yalnızca riskli; `false`: yalnızca riskli olmayan; `undefined`: hepsi. */
+export interface ExamResultView {
+  questionCount: number
+  correct: number
+  wrong: number
+  blank: number
+  unmonitored: number
+}
+
+export interface EventTypeSummary {
+  type: string
+  count: number
+  falseAlarms: number
+  contribution: number
+}
+
+export interface CandidateReport {
+  sessionId: string
+  examId: string
+  examName: string
+  examType: string
+  durationMinutes: number
+  candidateId: string
+  candidateName: string
+  candidateEmail: string
+  state: string
+  status: ReviewStatus
+  createdAt: string
+  startedAt: string | null
+  endedAt: string | null
+  result: ExamResultView | null
+  riskScore: number
+  flags: SessionFlag[]
+  topReasons: string[]
+  events: EventTypeSummary[]
+  verificationAttempts: number
+  decision: ReviewDecisionView | null
+  notes: ReviewNote[]
+  monitoringDataDeletedAt: string | null
+}
+
+export interface ReviewListFilter {
   risky?: boolean
   flags?: SessionFlag[]
   sort?: ReviewSort
 }
 
-/** Atandığı sınavlar (değerlendiriciye yalnızca atandıkları döner). */
-export function listReviewExams(): Promise<ExamSummary[]> {
-  return apiRequest<ExamSummary[]>('/api/exams')
-}
-
-export function getReviewExam(examId: string): Promise<ExamSummary> {
-  return apiRequest<ExamSummary>(`/api/exams/${examId}`)
-}
-
-export function listReviewSessions(examId: string, filter: SessionListFilter = {}, signal?: AbortSignal): Promise<ReviewSessionList> {
+export function getReviewSessions(examId: string, filter: ReviewListFilter = {}, signal?: AbortSignal): Promise<ReviewSessionList> {
   const query = new URLSearchParams()
   if (filter.risky !== undefined) query.set('risky', String(filter.risky))
-  filter.flags?.forEach((flag) => query.append('flags', flag))
+  for (const flag of filter.flags ?? []) query.append('flags', flag)
   if (filter.sort) query.set('sort', filter.sort)
-  const search = query.toString()
-  return apiRequest<ReviewSessionList>(`/api/review/exams/${examId}/sessions${search ? `?${search}` : ''}`, { signal })
+  const suffix = query.toString() ? `?${query}` : ''
+  return apiRequest<ReviewSessionList>(`/api/review/exams/${examId}/sessions${suffix}`, { signal })
 }
 
-/** Yanıttaki kanıt bağlantıları 5 dakika geçerli; süresi dolunca detay yeniden istenmeli. */
 export function getReviewSession(sessionId: string, signal?: AbortSignal): Promise<ReviewSessionDetail> {
   return apiRequest<ReviewSessionDetail>(`/api/review/sessions/${sessionId}`, { signal })
 }
 
-/** Yalnızca riskli veya işaretli olarak tamamlanmış oturumda ve bir kez verilir. */
-export function decideSession(sessionId: string, decision: DecisionType, note: string): Promise<void> {
-  return apiRequest(`/api/review/sessions/${sessionId}/decision`, {
-    method: 'POST',
-    body: { decision, note: note.trim() || null },
-  })
+export function decide(sessionId: string, decision: ReviewDecisionType, note: string | null): Promise<void> {
+  return apiRequest(`/api/review/sessions/${sessionId}/decision`, { method: 'POST', body: { decision, note } })
 }
 
-export function addSessionNote(sessionId: string, text: string): Promise<ReviewNote> {
-  return apiRequest<ReviewNote>(`/api/review/sessions/${sessionId}/notes`, { method: 'POST', body: { text } })
+export function addNote(sessionId: string, text: string): Promise<void> {
+  return apiRequest(`/api/review/sessions/${sessionId}/notes`, { method: 'POST', body: { text } })
 }
 
-/** Olay silinmez; skordan çıkar. Geri alınamaz. */
 export function markFalseAlarm(eventId: string): Promise<void> {
   return apiRequest(`/api/events/${eventId}/false-alarm`, { method: 'POST' })
 }
 
-/** `SessionReadyForReview` mesajı: aday adı yok, panel mesajı alınca listeyi yeniden çeker. */
-export interface SessionReadyMessage {
-  sessionId: string
-  examId: string
-  riskScore: number
-  flags: SessionFlag[]
-  endedAt?: string | null
+export function getCandidateReport(examId: string, sessionId: string, signal?: AbortSignal): Promise<CandidateReport> {
+  return apiRequest<CandidateReport>(`/api/reports/exams/${examId}/sessions/${sessionId}`, { signal })
 }
 
-export const REVIEW_HUB_PATH = '/hubs/review'
-export const SESSION_READY_MESSAGE = 'SessionReadyForReview'
-
-/** Belirtecin bitişine bu kadar kala (sn) bağlanmadan önce yenilenir. */
-const TOKEN_REFRESH_MARGIN_SEC = 60
-
-function expiresSoon(accessToken: string): boolean {
-  try {
-    const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: unknown }
-    return typeof payload.exp === 'number' && payload.exp - Date.now() / 1000 < TOKEN_REFRESH_MARGIN_SEC
-  } catch {
-    return false
-  }
-}
-
-async function currentAccessToken(): Promise<string> {
-  const access = tokenStore.get()?.accessToken
-  if (access && expiresSoon(access)) await refreshTokens()
-  return tokenStore.get()?.accessToken ?? ''
-}
+export type ReportFormat = 'Xlsx' | 'Pdf'
 
 /**
- * Bildirim bağlantısı. Tarayıcı WebSocket'te başlık gönderemediği için belirteç `access_token` sorgusuyla gider.
- * Sunucu belirteç dolunca bağlantıyı kapatır (K-31); otomatik yeniden bağlanma her denemede
- * `accessTokenFactory`'yi çağırdığı için süresi dolmak üzere olan belirteç önce yenilenir.
+ * Raporu dosya olarak indirir. Uç yetki istediği için düz bağlantı olamaz; belirteçle çekilip tarayıcıya
+ * dosya olarak verilir. Sunucunun verdiği dosya adı korunur.
  */
-export function createReviewConnection(): HubConnection {
-  return new HubConnectionBuilder()
-    .withUrl(REVIEW_HUB_PATH, { accessTokenFactory: currentAccessToken })
-    .withAutomaticReconnect()
-    .configureLogging(LogLevel.None)
-    .build()
+export async function downloadCandidateReport(examId: string, sessionId: string, format: ReportFormat): Promise<void> {
+  const path = `/api/reports/exams/${examId}/sessions/${sessionId}?format=${format}`
+  const send = () => fetch(path, { headers: { Authorization: `Bearer ${tokenStore.get()?.accessToken ?? ''}` } })
+  let response = await send().catch(() => {
+    throw new ApiError(0, 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.')
+  })
+  if (response.status === 401 && (await refreshTokens())) response = await send()
+  if (!response.ok) throw new ApiError(response.status, 'Rapor indirilemedi. Lütfen tekrar deneyin.')
+
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
+  const fileName = match ? decodeURIComponent(match[1]) : `aday-raporu.${format === 'Pdf' ? 'pdf' : 'xlsx'}`
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }

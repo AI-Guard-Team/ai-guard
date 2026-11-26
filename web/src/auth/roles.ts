@@ -8,9 +8,9 @@ export function isRole(value: unknown): value is Role {
 }
 
 export const ROLE_HOME: Record<Role, string> = {
-  Admin: '/admin',
-  Reviewer: '/review',
-  Candidate: '/exams',
+  Admin: '/overview',
+  Reviewer: '/overview',
+  Candidate: '/overview',
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -22,10 +22,21 @@ export const ROLE_LABEL: Record<Role, string> = {
 export interface MenuItem {
   to: string
   label: string
+  /** true: yalnızca tam adreste etkin görünür (alt sayfalarda değil). */
+  end?: boolean
 }
 
+const OVERVIEW: MenuItem = { to: '/overview', label: 'Genel bakış' }
+
 export const ROLE_MENU: Record<Role, MenuItem[]> = {
-  Admin: [{ to: '/admin', label: 'Yönetim' }],
-  Reviewer: [{ to: '/review', label: 'İncelemeler' }],
-  Candidate: [{ to: '/exams', label: 'Sınavlarım' }],
+  Admin: [
+    OVERVIEW,
+    { to: '/admin/exams', label: 'Sınavlar' },
+    { to: '/admin/users', label: 'Kullanıcılar' },
+    { to: '/admin/reports', label: 'Raporlar' },
+    { to: '/admin/settings', label: 'Ayarlar' },
+    { to: '/admin/audit', label: 'Denetim kaydı' },
+  ],
+  Reviewer: [OVERVIEW, { to: '/review', label: 'İncelemeler' }],
+  Candidate: [OVERVIEW, { to: '/exams', label: 'Sınavlarım' }, { to: '/profile/photo', label: 'Kayıt fotoğrafı' }],
 }

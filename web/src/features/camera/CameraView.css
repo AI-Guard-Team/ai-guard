@@ -1,0 +1,57 @@
+.camera-view {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
+  background: var(--color-sidebar);
+  isolation: isolate;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease-out);
+}
+
+.camera-view.is-live .camera-video {
+  opacity: 1;
+}
+
+/* Yumuşak kılavuz çizgisi: yüzün ortalanacağı oval (DESIGN.md "yumuşak kılavuz çizgiler"). */
+.camera-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42%;
+  aspect-ratio: 3 / 4;
+  border: 2px dashed rgb(247 242 224 / 80%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 100vmax rgb(13 28 48 / 28%);
+  transform: translate(-50%, -52%);
+  pointer-events: none;
+}
+
+.camera-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-sidebar-text);
+  text-align: center;
+}
+
+.camera-placeholder svg {
+  color: var(--palette-sky);
+}
+
+.camera-placeholder p {
+  max-width: 24rem;
+  font-size: var(--font-size-sm);
+}

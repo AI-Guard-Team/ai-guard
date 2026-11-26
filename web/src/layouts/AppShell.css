@@ -1,0 +1,301 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
+  transition: grid-template-columns var(--duration) var(--ease-out);
+}
+
+/* Daraltılmış menü (yalnızca masaüstü): renkli simgeler kalır; adlar ipucunda. */
+@media (min-width: 1024px) {
+  /* Daraltılmış menü: yalnızca renkli simgeler; adlar ipucunda. */
+  .app-shell[data-collapsed] {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+  }
+
+  .app-shell[data-collapsed] .app-nav-label,
+  .app-shell[data-collapsed] .app-nav-title,
+  .app-shell[data-collapsed] .brand-text,
+  .app-shell[data-collapsed] .app-user-text,
+  .app-shell[data-collapsed] .theme-toggle span,
+  .app-shell[data-collapsed] .app-signout {
+    display: none;
+  }
+
+  .app-shell[data-collapsed] .app-nav-link,
+  .app-shell[data-collapsed] .app-help,
+  .app-shell[data-collapsed] .theme-toggle,
+  .app-shell[data-collapsed] .app-user {
+    justify-content: center;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .app-shell[data-collapsed] .app-sidebar {
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .app-shell[data-collapsed] .app-sidebar-brand {
+    display: flex;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+.app-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Yan menü: lacivert ---------- */
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  height: 100dvh;
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  background: var(--gradient-navy);
+  color: var(--color-sidebar-text);
+  z-index: var(--z-sidebar);
+}
+
+.app-sidebar-brand {
+  padding: 0 var(--space-2);
+}
+
+.app-nav {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.app-nav-title {
+  padding: 0 var(--space-3) var(--space-2);
+  color: rgb(185 196 224 / 70%);
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+}
+
+.app-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-sidebar-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.app-nav-link:hover {
+  background: var(--color-sidebar-hover);
+  color: var(--color-sidebar-text-strong);
+}
+
+.app-nav-link[aria-current='page'] {
+  background: #fff;
+  color: var(--palette-navy);
+  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 45%);
+}
+
+
+
+.app-nav-link:focus-visible,
+.app-signout:focus-visible,
+.app-help:focus-visible,
+.app-menu-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(127 179 245 / 55%);
+}
+
+.app-sidebar-foot {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: auto;
+}
+
+.app-help {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-sidebar-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-help:hover {
+  background: var(--color-sidebar-hover);
+  color: #fff;
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 7%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.app-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--gradient-brand);
+  color: var(--palette-navy-deep);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.app-user-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.app-user-name {
+  overflow: hidden;
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-user-role {
+  color: var(--color-sidebar-text);
+  font-size: var(--font-size-xs);
+}
+
+.app-signout {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-sidebar-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.app-signout:hover {
+  background: var(--color-sidebar-hover);
+  color: #fff;
+}
+
+/* ---------- İçerik ---------- */
+
+.app-content {
+  min-width: 0;
+  padding: var(--space-6) clamp(var(--space-5), 3vw, var(--space-10)) var(--space-10);
+}
+
+.app-page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.app-topbar,
+.app-scrim {
+  display: none;
+}
+
+/* ---------- Tablet ve telefon: menü çekmece olur ---------- */
+
+@media (max-width: 1023px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: calc(var(--z-sidebar) - 1);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: var(--topbar-height);
+    padding: 0 var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+
+  .app-menu-button {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .app-shell[data-collapsed] {
+    grid-template-columns: 1fr;
+  }
+
+  .app-collapse {
+    display: none;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(var(--sidebar-width), 86vw);
+    transform: translateX(-100%);
+    transition: transform var(--duration) var(--ease-out);
+  }
+
+  .app-shell[data-menu-open] .app-sidebar {
+    transform: none;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-sidebar) - 1);
+    border: 0;
+    background: rgb(13 22 54 / 45%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration) var(--ease-out);
+  }
+
+  .app-shell[data-menu-open] .app-scrim {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .app-content {
+    padding: var(--space-6) var(--space-4) var(--space-12);
+  }
+}

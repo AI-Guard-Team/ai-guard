@@ -1,0 +1,64 @@
+.hold-confirm {
+  --hold-color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 3rem;
+  padding: 0 var(--space-5) 0 var(--space-3);
+  border: 1.5px solid var(--hold-color);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--hold-color);
+  font-weight: 600;
+  user-select: none;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.hold-confirm-success {
+  --hold-color: var(--color-success-text);
+}
+
+.hold-confirm-warning {
+  --hold-color: var(--color-warning-text);
+}
+
+.hold-confirm-danger {
+  --hold-color: var(--color-danger);
+}
+
+.hold-confirm:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.hold-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.hold-confirm-ring {
+  width: 1.75rem;
+  height: 1.75rem;
+  transform: rotate(-90deg);
+}
+
+.hold-confirm-ring circle {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.5;
+  opacity: 0.25;
+}
+
+.hold-confirm-ring .hold-confirm-progress {
+  opacity: 1;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+/* Basılı tutuldukça halka dolar; bırakılınca anında boşalır. Hareket azaltmada süre sıfırlanmaz: dolum bilgi taşıyor. */
+.hold-confirm.is-holding .hold-confirm-progress {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--hold-duration) linear !important;
+}

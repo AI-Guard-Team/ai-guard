@@ -42,6 +42,7 @@ public class AccessMatrixTests
         ["GET api/consent-texts/{type}/{version}"] = SignedIn,
 
         // Atandığı sınavı çözme, kendi rızasını verme ve geri alma: Aday.
+        ["GET api/me/biometric"] = AccessPolicies.TakeExam,
         ["POST api/me/photo"] = AccessPolicies.TakeExam,
         ["DELETE api/me/biometric-consent"] = AccessPolicies.TakeExam,
         ["POST api/exams/{examId:guid}/sessions"] = AccessPolicies.TakeExam,
@@ -69,6 +70,7 @@ public class AccessMatrixTests
         ["POST api/events/{id:guid}/false-alarm"] = $"{AccessPolicies.ReviewRead}+{AccessPolicies.ReviewDecide}",
 
         // Kullanıcı, sınav, ayar ve saklama süresi yönetimi: Yönetici.
+        ["GET api/risk-settings"] = AccessPolicies.Manage,
         ["GET api/users"] = AccessPolicies.Manage,
         ["POST api/users"] = AccessPolicies.Manage,
         ["PATCH api/users/{id:guid}"] = AccessPolicies.Manage,

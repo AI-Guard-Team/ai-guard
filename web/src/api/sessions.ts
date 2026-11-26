@@ -1,15 +1,21 @@
 import { apiRequest } from './client'
 
-export const SESSION_TEXT_VERSION = 'kvkk-session-v1'
-
-export function submitSessionConsent(sessionId: string, granted: boolean): Promise<void> {
+/**
+ * `POST /api/sessions/{id}/consent` (A3). `textVersion` ekranda gösterilen oturum rıza metninin sürümü
+ * (`GET /api/consent-texts/Session`); eskiyse sunucu 400 döner. Yanıt yeni durum: AgentPairing ya da Cancelled.
+ */
+export function submitSessionConsent(sessionId: string, granted: boolean, textVersion: string): Promise<{ state?: string } | undefined> {
   return apiRequest(`/api/sessions/${sessionId}/consent`, {
     method: 'POST',
-    body: { accepted: granted, textVersion: SESSION_TEXT_VERSION },
+    body: { accepted: granted, textVersion },
   })
 }
 
-export function verifyIdentity(sessionId: string, frames: Blob[]): Promise<{ passed?: boolean } | undefined> {
+/**
+ * `POST /api/sessions/{id}/verify` (A3). Başarılıysa sınav başlar (süre ve hak burada işlemeye başlar, K-24)
+ * ya da kesintiden dönülür. 422: canlı yüz yok / eşleşmedi, 429: çok sık deneme, 503: görüntü servisi yok.
+ */
+export function verifyIdentity(sessionId: string, frames: Blob[]): Promise<{ state?: string } | undefined> {
   const body = new FormData()
   frames.forEach((frame, index) => body.append('frames', frame, `kare-${index + 1}.jpg`))
   return apiRequest(`/api/sessions/${sessionId}/verify`, { method: 'POST', body })

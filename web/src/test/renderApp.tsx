@@ -1,6 +1,7 @@
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import App from '../App'
+import { preloadPages } from '../pageLoaders'
 import { AuthProvider } from '../auth/AuthProvider'
 import type { Role } from '../auth/roles'
 import { tokenStore } from '../auth/tokenStore'
@@ -11,20 +12,29 @@ export function signInAs(role: Role, name = 'Test Kullanıcı'): void {
   tokenStore.set({ accessToken: makeAccessToken({ sub: 'kullanici-1', role, name }), refreshToken: 'yenileme' })
 }
 
-export function renderApp(path: string, state?: unknown) {
+/**
+ * Uygulamayı verilen adreste açar ve tembel yüklenen sayfa parçaları (React.lazy) inene kadar bekler.
+ */
+export async function renderApp(path: string, state?: unknown) {
   const searchAt = path.indexOf('?')
   const entry =
     state === undefined
       ? path
       : { pathname: searchAt === -1 ? path : path.slice(0, searchAt), search: searchAt === -1 ? '' : path.slice(searchAt), state }
 
-  return render(
-    <MemoryRouter initialEntries={[entry]}>
-      <ToastProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </ToastProvider>
-    </MemoryRouter>,
-  )
+  // Parçalar önceden indirilir; act içinde çizilince Suspense aynı turda çözülür (sahte zamanlayıcıyla da çalışır).
+  await preloadPages()
+  let result!: ReturnType<typeof render>
+  await act(async () => {
+    result = render(
+      <MemoryRouter initialEntries={[entry]}>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+  })
+  return result
 }

@@ -5,6 +5,10 @@ import './styles/global.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider'
 import { ToastProvider } from './components/ToastProvider'
+import { initTheme } from './lib/theme'
+
+// Tema ilk çizimden önce: sayfa yanlış renkte görünüp sonra değişmesin (K-42).
+initTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

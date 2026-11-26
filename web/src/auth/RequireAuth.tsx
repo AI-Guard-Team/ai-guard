@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { ROLE_HOME, type Role } from './roles'
+import { tokenStore } from './tokenStore'
 import { useAuth } from './useAuth'
 
 export function RequireAuth({ roles }: { roles?: Role[] }) {
@@ -8,12 +9,14 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
 
   if (!user) {
     // Girişten sonra kullanıcıyı açmak istediği sayfaya geri götürebilmek için adres saklanır.
-    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+    const from = location.pathname + location.search
+    const target = tokenStore.endReason() === 'expired' ? '/session-expired' : '/login'
+    return <Navigate to={target} replace state={{ from }} />
   }
 
-  if (roles && !roles.includes(user.role)) {
-    return <Navigate to={ROLE_HOME[user.role]} replace />
-  }
+  // Rolün açamadığı sayfa kullanıcıya hiç gösterilmez; kendi ana sayfasına gider (kullanıcı isteği, K-44).
+  // Örn. yönetici sayfasında oturumu kapanıp aday olarak giren kişi yönetici adresine düşmez.
+  if (roles && !roles.includes(user.role)) return <Navigate to={ROLE_HOME[user.role]} replace />
 
   return <Outlet />
 }

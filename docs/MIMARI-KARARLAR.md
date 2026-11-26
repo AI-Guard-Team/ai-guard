@@ -44,6 +44,10 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Yüz doğrulama kararı | Herhangi bir karede 2+ yüz `MULTIPLE_FACES`, kullanılabilir kare yarıdan azsa `NO_FACE`, skorlar kullanılabilir karelerin ortalaması; eşikler `config.yaml`'da: benzerlik 0,164 (LFW, FAR %1), canlılık 0,5; görüntü 5 MiB / kare 1 MiB, kenar en fazla 6000 px (K-29) |
 | İnceleme ve rapor | Atanmış değerlendirici okur ve karar verir, Admin yalnızca okur; karar yalnızca işaretli tamamlanmış oturumda ve bir kez; yanlış alarm olayı silmez, skordan çıkarır; kanıt karesi 5 dakikalık imzalı bağlantıyla; işaretli oturum bitince SignalR bildirimi (K-31) |
 | Şifre sıfırlama | Bağlantı 30 dk, tek kullanımlık, özeti saklanıyor; istek her durumda 202 (e-posta sızmıyor); aynı hesaba 2 dk'da en fazla bir e-posta; sıfırlama kilidi kaldırıp bütün oturumları kapatıyor (K-33) |
+| Önyüz tasarımı | Renk, yazı, boşluk tek dosyada (`web/src/styles/theme.css`); bileşen stili bileşenin yanında; yazı tipleri pakette; nginx'te CSP ve güvenlik başlıkları; sayfalar tembel yükleniyor; yetkisiz rol 403 görüyor (K-35) |
+| Aday akışı ekranları | Sihirbaz sırası rıza → ajan → hazırlık → kimlik; süre kimlik doğrulanınca başladığı için kurallar ondan önce. Rıza metni ve sürümü sunucudan (K-37) |
+| Sınav ekranı | Yan menüsüz; mantık `useExamSession`'da, ekran bileşenleri yalnızca çizer; çevrimdışıyken cevaplama sürer, bekleyen sayısı görünür; "daha sonra dön" yalnızca istemcide (K-38) |
+| Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-36) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
 
 ---
@@ -1043,6 +1047,216 @@ K-31'deki uçların ekranı (FR-27–FR-33). Kod: `web/src/pages/Review*Page.tsx
 
 ---
 
+## K-35 · Önyüz tasarım sistemi (UI1)
+
+Stitch tasarımı ve `DESIGN.md` (Sıcak Minimalizm: fildişi zemin, bordo ana eylem, lacivert menü) web'e taşındı. Ekranlar üç PR'da geliyor: 1–6 (tema, kabuk, giriş, profil, hata sayfaları), 7–13 (aday sınav öncesi akışı, K-37), 14–15 (sınav ve kesinti, K-38).
+
+| Kural | Gerekçe |
+|---|---|
+| Renk, yazı, boşluk, gölge ve hareket değişkenleri yalnızca `web/src/styles/theme.css`'te; bileşenler anlamsal adları (`--color-primary`, `--color-text-muted`…) kullanır, renk kodu yazmaz | Renk değişince tek dosya değişsin |
+| Her bileşenin stili yanındaki `.css` dosyasında (`components/Button.css`), sayfa düzenleri `layouts/` altında | Modüler; kullanılmayan sayfanın stili inmez |
+| İkincil metin `#4B5B72` (DESIGN.md'deki `#798DA6` yalnızca çizgide); kehribar uyarı metni koyulaştırıldı | `#798DA6` fildişi zeminde 3:1, okunur metin için 4,5:1 gerekiyor (WCAG AA) |
+| Manrope + Inter `@fontsource-variable` paketinden, CDN yok; Vite yazı tipini `data:` olarak gömmüyor | CSP `font-src 'self'`; kullanıcının IP'si üçüncü tarafa gitmiyor |
+| Göz, kamera, kilit ikonu yok; şifre "Göster/Gizle" metniyle | DESIGN.md gözetim çağrıştıran metaforları yasaklıyor |
+| Ekranda gerçek olmayan iddia yok (Stitch'teki "ISO 27001 sertifikalı", "256-bit SSL", sahte grafikler çıkarıldı); şifre kuralı ekranda sunucunun kuralı (8–128 karakter) | Kullanıcıyı yanıltmamak |
+| Giriş dışındaki sayfalar `React.lazy` ile ayrı parça; kabuğun içinde ayrı `Suspense` | Adayın giriş sayfası sınav/kamera kodunu indirmiyor; sayfa değişince yan menü yerinde kalıyor |
+| Giriş ekranlarında form dikeyde ortalanmıyor, sabit üst boşluktan başlıyor | Ekranlar arası geçişte başlık kaymıyor (ölçülen CLS 0) |
+| Rolün açamayacağı sayfada 403 ekranı (eskiden sessizce ana sayfaya atılıyordu) | Kullanıcı nedenini görsün (Stitch ekran 6) |
+| Yenileme belirteci reddedilince "Oturum süresi doldu" ekranı; kullanıcının kendi çıkışında gösterilmiyor (`tokenStore.endReason`) | Kullanıcı neden çıkarıldığını bilsin; giriş sonrası kaldığı sayfaya dönsün |
+| Profilde şifre değişince aynı sekmede yeni şifreyle sessizce yeniden giriş | Sunucu bütün yenileme belirteçlerini iptal ediyor (K-20); aksi hâlde sekme 15 dk sonra düşerdi |
+| "Beni hatırla (30 gün)" eklenmedi | Belirteçler bilerek yalnızca bellekte; 30 günlük açık oturum sınav güvenliğiyle çelişiyor |
+
+**nginx güvenlik başlıkları** (`web/docker/nginx.conf`): `Content-Security-Policy` (yalnızca kendi kaynakları; `connect-src`'de ajanın yerel ucu `http://127.0.0.1:47321`, K-19), `Referrer-Policy: no-referrer` (davet ve sıfırlama bağlantısındaki belirteç başka siteye gitmesin), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` (kamera ve mikrofon yalnızca bu site), `Cross-Origin-Opener-Policy`. `/assets/` bir yıl önbellekte, `index.html` önbelleğe alınmıyor. Derlenmiş uygulama bu CSP ile denendi; ihlal yok.
+
+**Testlerde:** `renderApp` artık `async`; sayfa parçalarını önceden yükleyip `act` içinde çiziyor. Testte `await renderApp(...)` yazın. Windows'ta testleri `C:\` (büyük harf) yolundan çalıştırın; `c:\` ile vitest modülleri iki kez yükleyip "failed to find the current suite" hatası veriyor.
+
+---
+
+## K-36 · Aday listesi ve kayıt fotoğrafı durumu (UI1)
+
+Stitch "Sınavlarım" (ekran 7) ve "Kayıt fotoğrafı ve biyometrik rıza" (ekran 8) için. Kartlarda yok; ekip kararıyla ayrı API PR'ında.
+
+| Uç | Yetki | Yanıt |
+|---|---|---|
+| `GET /api/exams`, `GET /api/exams/{id}` | değişmedi | Mevcut alanlara ek: `mySession: { id, state, startedAt, endedAt } \| null` |
+| `GET /api/me/biometric` | `TakeExam` (aday) | `{ enrolled, enrolledAt, consentTextVersion }`; `Cache-Control: no-store` |
+
+- `mySession` yalnızca adaya dolu, değerlendirici ve yöneticide `null`; başka adayın oturumu dönmüyor.
+- En son oluşturulan oturum dönüyor, iptal edilmiş olsa da. Rızayı reddeden aday yeni oturum açabildiğini görsün (FR-10).
+- Liste tek ek sorguyla dolduruluyor (N+1 yok).
+- Biyometrik durum ucu vektörü ve fotoğrafı döndürmüyor. Rıza geri alınınca şablon silindiği için `enrolled: false` oluyor (K-27).
+
+---
+
+## K-37 · Aday akışı ekranları (UI1, Stitch 7–13)
+
+| Karar | Gerekçe |
+|---|---|
+| Sihirbaz adımları: Aydınlatma ve rıza → Güvenlik ajanı → **Hazırlık** → Kimlik doğrulama. Stitch'te "Başla" en sondaydı | Sunucuda süre ve hak kimlik doğrulaması başarılı olunca başlıyor (K-24). Kurallar doğrulamadan sonra gösterilseydi aday onları okurken süresi işlerdi |
+| Rıza metni ve sürümü `GET /api/consent-texts/{type}`'tan; rıza isteği bu sürümle gidiyor. Metin düz yazı olarak çiziliyor (HTML yorumlanmıyor) | Önyüz `kvkk-*-v1` sürümünü koda gömmüştü; A5'ten sonra metin değişirse her rıza 400 alırdı. Metni HTML olarak çizmek XSS'e kapı açardı |
+| Kayıt fotoğrafı formu `consent` ve `consentTextVersion` alanlarıyla gidiyor | Önyüz `biometricConsent` ve `textVersion` gönderiyordu; sunucu (`PhotoUploadForm`) bunları okumadığı için her yükleme "açık rıza gerekli" ile reddediliyordu |
+| `ApiError.title` Türkçe ProblemDetails başlığını veriyor; mesaj önce `detail`, yoksa Türkçe `title` | Fotoğraf, rıza ve doğrulama uçları nedeni `title`'da veriyor; önyüz bunu gösteremiyor, genel hata yazıyordu. İngilizce varsayılan başlıklar gösterilmiyor |
+| Sınav kartının durumu saf fonksiyonda (`features/exams/examStatus.ts`), kart yalnızca çiziyor | Kurallar (pencere, son başlangıç, hak, fotoğraf, iptal) tek yerde ve ayrı test ediliyor |
+| Tamamlanan sınavda yalnızca "Teslim edildi" görünüyor; karar ve risk adaya gösterilmiyor | Kararı değerlendirici veriyor; adaya bildirim ayrı bir iş (itiraz FR-32 yok) |
+| Rıza reddi onay penceresiyle; reddedilince "hakkınız kullanılmadı" bilgisi | FR-10; yanlışlıkla tıklamada oturum iptal olmasın |
+| Kamera kutusu açılmadan da 4:3 yer kaplıyor; yükleme yer tutucuları gerçek içerikle aynı yükseklikte | Sayfa kayması (ölçülen CLS 0) |
+| Ajan durumu sekme arka plandayken yoklanmıyor | Gereksiz istek ve pil tüketimi olmasın |
+
+Ortak parçalar: `hooks/useResource` (yükleme, iptal, yeniden deneme; geç gelen yanıt yenisinin üstüne yazmaz), `components/{Skeleton,EmptyState,Checkbox,Stepper}`, `features/camera/CameraView`, `features/consent/ConsentTextPanel`.
+
+---
+
+## K-38 · Sınav ekranı ve kesinti durumları (UI1, Stitch 14–15)
+
+| Karar | Gerekçe |
+|---|---|
+| Sınav ekranı uygulama kabuğunun dışında (`/exams/:sessionId`), yan menü yok | Aday yalnızca sınava odaklansın; yanlışlıkla başka sayfaya gidilmesin |
+| Oturum mantığı `features/exam/useExamSession.ts`'te (yenileme, IndexedDB kuyruğu, sıralı gönderim, kesintiden dönüş, teslim); ekran bileşenleri (`ExamTimer`, `QuestionCard`, `QuestionNavigator`, `ExamInterruptions`, `SubmitDialog`) yalnızca çizer | S3/S4'teki davranış aynen korundu; görünüm değişince mantık etkilenmesin |
+| "Seçimi temizle" `selectedOption: null` gönderiyor | Sunucu boş cevabı destekliyor (K-24); aday yanlış seçimi geri alabilsin |
+| "Daha sonra dön" işareti yalnızca istemcide, sunucuya gitmiyor | Sınav sonucuna etkisi yok; sunucu modeline alan eklemeye değmez. Sayfa yenilenince işaretler kaybolur |
+| Çevrimdışıyken aday cevaplamaya devam ediyor; üstte bant ve bekleyen cevap sayısı görünüyor | Stitch 15. Cevaplar IndexedDB'de bekliyor, bağlantı gelince sırayla gidiyor (S3) |
+| Teslim penceresi cevaplanan, boş ve işaretli soru sayısını söylüyor; bekleyen cevap varsa uyarıyor | Teslim geri alınamıyor; kuyruk gönderilemezse teslim tamamlanmıyor |
+| Süre son 5 dakikada kehribar, son dakikada kırmızı; süre dolunca sorular kapanıyor, "otomatik teslim ediliyor" yazıyor | Sunucu teslimi kendisi yapıyor (K-24 `SessionTimekeeper`) |
+| Teslimden sonra yalnızca "teslim edildi" ve cevaplanan sayısı; sonuç ve karar gösterilmiyor | Kararı değerlendirici veriyor |
+| Üst çubuğun yüksekliği sabit; teslim düğmesi durum belli olana kadar görünmez ama yer kaplıyor | Ölçülen CLS: masaüstü 0,005, telefon 0,0004 |
+
+---
+
+## K-39 · Modern kurumsal İK tasarım yönü (UI1)
+
+İlk denenen "resmî sınav evrakı" yönü (Fraunces, daktilo yazısı, kâğıt dokusu, mühür) ekipte eski nesil bulundu; yerine kullanıcının verdiği referansla (hiringcycle.ai) modern, kurumsal bir İK platformu yönü geçti. Ürün bilgisi ve tasarım ilkeleri `PRODUCT.md`'de.
+
+| Kural | Gerekçe |
+|---|---|
+| Yazı Plus Jakarta Sans (başlık 750–800, gövde), `@fontsource` paketinden; IBM Plex Mono yalnızca kod/kimlik için (`.mono`). Inter, Manrope, Fraunces kaldırıldı | Referanstaki geometrik ve dostane karakter; Türkçe karakter desteği; CSP `font-src 'self'` |
+| Renk: lacivert yan menü ve tanıtım panelleri (`--gradient-navy`), açık gök mavisi zemin, indigo `#4361EE` ana eylem; marka geçişi (gök mavisi → lila → gül) yalnızca giriş başlığında ve logoda | Kurumsal İK havası; geçişli yazı tek bir marka anında |
+| Kartlar beyaz, 18px köşe, yumuşak lacivert gölge; düğmeler hap biçimli; rozetler yumuşak renkli hap | Modern ve okunaklı |
+| Başlık üstüne küçük etiket konmaz; kartın kenarına renkli şerit konmaz | impeccable craft floor yasakları; vurgu tam çerçeve ya da zemin rengiyle |
+| Yön bulma: her sayfada yol çubuğu (`PageHeader.breadcrumbs`), başlığın yanında "i" bilgi düğmesi (`InfoTip`), başlığın altında tek cümle açıklama. Uzun açıklama sayfada değil, bilgi kutusunda | Kullanıcı nerede olduğunu ve ne yapacağını bilsin; sayfa metinle dolmasın |
+| İlk girişte rol bazlı 4 adımlık tanıtım (`OnboardingDialog`, `layouts/onboardingSteps.ts`), yan menüde "Tanıtımı yeniden göster". Görülme bilgisi tarayıcıda (`localStorage`); testlerde açılmaz | Kullanıcı isteği; metinler platformun gerçek davranışını anlatır. Lottie animasyonları sonra sol görsel alana gelecek |
+| Hareket: `motion` kütüphanesi; sayfa geçişi, tanıtım adımları, bilgi kutusu. `MotionConfig reducedMotion="user"` ile hareket azaltma tercihine uyuluyor | Tek tek dağınık efekt yerine birkaç anlamlı an |
+| Karar rozeti (`Seal`): yumuşak renkli daire, ikon ve yazı; eğim ve kenar yazısı yok. `ring`/`tilt` alanları geriye uyumluluk için duruyor | Eski mühür görünümü kaldırıldı, bileşen adı aynı |
+| Belge numarası uydurma sayaç değil: `docNumber(id)` = `AG-<yıl>-<kimliğin ilk 4 karakteri>` | Ekranda gerçek olmayan bilgi yok (K-35) |
+| Risk düzeyi sunucunun `Risky` işaretinden ("Eşik üstü/altı"); önyüz eşik tahmin etmiyor | Eşik `riskconfig.json`'da, tek kaynak sunucu |
+| Verisi olmayan öğe eklenmedi: inceleme listesinde satır başına sinyal şeridi ve "% yanlış alarm" (liste uçları dönmüyor), J/K kısayolları (kartta yok), risk eğrisinde eşik çizgisi (eşik API'den dönmüyor), karar seçeneklerinin tanım metinleri (kartta/GAB'da yok). Kanıt görüntülemesi tek tek denetime yazılmadığı için ekranda "dosyayı açmanız denetim kaydına yazıldı" (`review.view`) deniyor | Ekranda gerçek olmayan iddia yok; kapsam dışı özellik yok |
+
+---
+
+## K-40 · Ekip PR'larındaki dosyalarda yapılan değişiklikler (UI1, `feature/UI1-teslim-ve-degerlendirici`)
+
+Bu dal Yağmur'un son dalı `feature/UI1-sinav-ekrani`'nin (#33, altında #30, #31, #32) üstüne kurulu ve `dev`'i (Şeyma'nın #26'sı dahil) içine alıyor. Açık PR'lara (#30–#33) hiçbir commit atılmadı; aşağıdakiler yalnızca bu dalda. #30 ve #31 önce birleşirse bu dalın farkında yalnızca aşağıdaki değişiklikler ve yeni ekranlar kalır; #32 ve #33'ün içeriği bu dalda olduğu için o iki PR kapatılabilir.
+
+### Birleştirme (`dev` → bu dal)
+
+| Kimin | Dosya | Ne değişti | Neden |
+|---|---|---|---|
+| Şeyma (#26, S4) | `web/src/pages/ExamPage.tsx` → Yağmur'un `web/src/features/exam/ExamPage.tsx` | Eski sayfadaki `monitoring.ready` kontrolü yeni sınav ekranına taşındı: kamera ve mikrofon açılmadan sorular çizilmiyor, yerine "Sorular kamera ve mikrofon açılınca görünür…" bilgisi | #33 eski sayfayı siliyordu; birleşince bu S4 kuralı sessizce kaybolurdu (aday izin vermeden soruları görürdü) |
+| Şeyma (#26, S4) | `web/src/features/exam/examPage.test.tsx` | Şeyma'nın 3 yeni testi yeni ekrana uyarlandı: `renderExam` artık `await` ile (K-35), kalan süre `timer` rolünden okunuyor. Test silinmedi, beklenen davranış değişmedi | Yağmur `renderApp`'i `async` yaptı ve süreyi ayrı bileşene aldı |
+| Şeyma (S2 düzeltmesi) | `web/src/api/profile.ts` | Çakışmada Yağmur'un sürümü alındı | Aynı alan adı düzeltmesini (`consent`, `consentTextVersion`) Yağmur #32'de zaten yapmıştı; ayrıca rıza sürümünü sunucudan alıyor |
+| Şeyma (S2 düzeltmesi) | `web/src/pages/profilePhoto.test.tsx` | Silindi | Yağmur #32'de sayfayı `features/biometric/ReferencePhotoPage`'e taşıdı; aynı kontroller (alan adları dahil) `referencePhoto.test.tsx`'te |
+
+### Tasarım yönü (K-39)
+
+| Kimin | Dosya | Ne değişti | Eski kullanım bozuldu mu? |
+|---|---|---|---|
+| Yağmur (#30) | `styles/theme.css` | Değerler: Manrope → Fraunces, kart beyaz, gölge yok, köşe 8px. Yeni adlar eklendi (`--font-mono`, `--color-seal`, `--texture-paper`…); eski adların hepsi duruyor | Hayır; hiçbir ad silinmedi |
+| Yağmur (#30) | `styles/global.css`, `package.json` | Fraunces ve IBM Plex Mono paketleri eklendi, `@fontsource-variable/manrope` kaldırıldı | Hayır |
+| Yağmur (#30) | `styles/base.css` | Zemin dokusu, başlık ağırlığı; yeni yardımcı sınıflar `.mono`, `.kicker`, `.perforation` | Hayır |
+| Yağmur (#30) | `components/Panel.css`, `Button.css`, `Table.css`, `StatusBadge.css`, `PageHeader.css` | Yalnızca görünüm (gölge, köşe, tablo başlığı mono) | Hayır; sınıf adları aynı |
+| Yağmur (#30) | `components/StatusBadge.tsx`, `PageHeader.tsx` | İsteğe bağlı yeni alanlar: `stamp`, `kicker`; `PageHeader.title` artık `ReactNode` | Hayır; eski çağrılar aynen çalışıyor |
+| Yağmur (#30) | `auth/roles.ts`, `layouts/AppShell.tsx` | `MenuItem.end` alanı ve yeni sayfaların ikonları. Menü içeriği değişmedi; yeni bağlantı sayfası yazıldıkça ekleniyor | Hayır |
+| Yağmur (#30) | `layouts/AuthLayout.tsx/.css` | Sol paneldeki üç ilke listesi yerine "Adil sınav, şeffaf karar." ve mühür (Yağmur'un Prompt B'si); form kartı ve alt çizgili alanlar. **`kicker` alanı zorunlu oldu**; dört giriş sayfasına eklendi | Evet, `AuthLayout` kullanan yeni sayfa `kicker` vermeli |
+| Yağmur (#30) | `pages/auth/LoginPage.tsx` ve diğer üç giriş sayfası | Girişte açıklama satırı kaldırıldı, alt not kısaltıldı (Prompt B: "yazı çok az") | Hayır; testler aynı |
+| Yağmur (#33) | `features/exam/QuestionCard.tsx`, `QuestionNavigator.tsx`, `ExamTimer.tsx`, `ExamStatusChips.tsx`, `ExamPage.tsx/.css` | Yalnızca görünüm (Prompt D, optik form): kenarda büyük soru numarası, harfli baloncuk seçenekler, altta minyatür cevap kâğıdı (yan sütun yerine), üstte 3px süre çizgisi (`ExamTimeLine`), durum noktaları, "Kaydedildi" bilgisi sunucu onayından sonra 1,2 sn görünüp sönüyor (eski sürekli "kaydedildi · saat" satırı yerine; bekleyen cevap sayısı yine sürekli görünüyor). "Tam ekrana geç" yalnızca ikon (adı ekran okuyucuda ve ipucunda). İzin kaldırılınca bulanık boş kâğıt üstünde izin kartı; **soru metni çizilmiyor** (S4 kuralı korunuyor). `useExamSession`, `useExamMonitoring` ve cevap kuyruğu değişmedi | Hayır; Yağmur'un ve Şeyma'nın sınav testlerinin hepsi değişmeden geçiyor |
+| Yağmur (#30) | `layouts/AppShell.tsx/.css`, `components/BrandMark.css` | Yeni görünüm (K-39): lacivert geçişli yan menü, "Menü" başlığı, beyaz etkin öğe, "Tanıtımı yeniden göster", ilk girişte tanıtım penceresi, sayfa geçiş hareketi. Menü içeriği ve rol mantığı değişmedi | Hayır; kabuk testleri geçiyor |
+| Yağmur (#30) | `components/PageHeader.tsx` | Yeni alanlar `breadcrumbs`, `info`; `kicker` artık tek öğeli yol çubuğu olarak gösteriliyor | Hayır |
+| Yağmur (#30) | `layouts/AuthLayout.tsx` | `kicker` yeniden isteğe bağlı ve gösterilmiyor; sol panel yeniden üç ilke + başlık (Yağmur'un ilk sürümündeki ilkeler geri geldi) | Hayır |
+| Yağmur (#30) | `pages/RoleHomePage.tsx` | Silindi; yerine gerçek ana sayfalar (yönetici: Sınavlar, değerlendirici: İncelemeler). `auth/roles.ts`'te yöneticinin ana sayfası `/admin/exams`, menüye beş yönetici sayfası eklendi | Hayır; yer tutucuydu |
+| Yağmur (#30) | `App.test.tsx` | İki beklenti güncellendi: yöneticinin kökten düştüğü başlık "Yönetim" yerine "Sınavlar"; çıkış testinde `/api/auth/logout` ilk istek değil (ana sayfa önce sınavları istiyor), istekler arasında aranıyor | Davranış aynı, yalnızca ana sayfa gerçek |
+| Yağmur (#32) | `features/preflight/PreflightPage.tsx`, `preflight.css` | Yol çubuğu ve "Neden bu adımlar?" bilgi kutusu; sağda "Sınava giriş kartı" (Prompt C'nin modern hâli): sınav adı, aday, süre ve adımlar. Adım göstergesi (`Stepper`) kartın içine dikey taşındı; adlar ve sıra aynı. Adım bileşenleri ve akış mantığı değişmedi | Hayır; sihirbaz testlerinin hepsi geçiyor |
+| Yağmur (#33) | `features/exam/QuestionCard.tsx`, `ExamPage.css` | Kart içindeki "Soru 01 / 03" üst çubuktakini tekrarladığı için "3 sorudan 1." oldu; kenardaki soru numarası kalın | Hayır |
+| Yağmur (#30) | `styles/base.css`, `layouts/AppShell.*`, `layouts/AuthLayout.*`, `main.tsx` | Koyu tema (K-42): `color-scheme`, mobil üst çubuk zemini tokenla, tema düğmesi, açılışta tema uygulanması | Hayır |
+| Yağmur (#30) | `auth/roles.ts` | Bütün rollerin ana sayfası `/overview`; menülere "Genel bakış" ve "Platform hakkında", adaya "Kayıt fotoğrafı" eklendi | Hayır |
+| Yağmur (#30) | `layouts/AppShell.*`, `components/PageHeader.*` | Renkli simge kutuları, daraltılabilir menü, sayfa başlığı bandı, hata sınırı (K-43) | Hayır |
+| Yağmur (#30) | `App.test.tsx`, `pages/authPages.test.tsx` | Kökten ve girişten sonra beklenen başlık artık genel bakışın karşılaması ("Merhaba, Ayşe 👋", adı olmayan kullanıcıda "Hoş geldiniz 👋"); 403 ekranındaki "Ana sayfaya dön" `/overview`'e gidiyor | Davranış aynı, yalnızca ana sayfa değişti |
+| Yağmur (#30) | `auth/RequireAuth.tsx`, `auth/tokenStore.ts` | K-44: rol uyuşmazlığında yönlendirme, belirteçler `sessionStorage`'da | Evet: K-35'teki iki karar değişti (gerekçe K-44'te) |
+| Yağmur (#30) | `pages/profile/ProfilePage.*`, yeni `ProfileHero.tsx` | Profil kartı (avatar, ad, rol), simgeli hesap satırları; şifre formu aynı. Ekran okuyucu başlığı "Profil" | Hayır |
+| Yağmur (#32) | `features/biometric/ReferencePhotoPage.*`, `referencePhoto.test.tsx` | Rıza açılır pencerede, sonra fotoğraf alanı; testler önce "Metni oku ve onayla"yı tıklıyor, beklenen gönderim aynı | Akış değişti, kurallar aynı |
+| Yağmur (#32) | `features/exams/MyExamsPage.tsx`, `ExamCard.*`, `myExams.test.tsx` | Uyarı yerine eylem kartı ("Kayıt fotoğrafınızı yükleyin"); sınav bilgileri çip ve pencere kutusu | Hayır |
+| Yağmur (#33) / Şeyma (S4) | `features/exam/examPage.test.tsx` | "Tarayıcıda kare saklanmaz" kontrolü: `sessionStorage`'da yalnızca oturum belirteci | Hayır; kontrolün amacı aynı |
+| Şeyma (#34, S5) | `web/src/pages/ReviewExamsPage.tsx`, `ReviewSessionsPage.tsx`, `ReviewSessionPage.tsx`, `web/src/review/*`, `web/src/pages/review.test.tsx`, S5'in `web/src/api/review.ts`'i ve `global.css` ekleri | **Kaldırıldı** (Ayşe'nin kararı, 27 Kasım): S5 ile bu daldaki değerlendirici ekranları (`features/review/*`, Stitch 18–22) aynı adresleri ve aynı `api/review.ts` dosyasını kullanıyordu; birleşmede ikisi bir arada duramıyordu. Kalan ekranlar yeni tasarımda ve kullanıcı geri bildirimiyle düzeltilmiş olanlar. S5'in K-34'teki kuralları korunuyor: yalnızca `Reviewer`, karar yalnızca `AwaitingReview`'da, **yanlış alarm ve karar geri alınamadığı için önce onay** (yanlış alarm için onay penceresi bu birleşmede eklendi; karar basılı tutarak onaylanıyor), bildirimde liste yenileme ve toast, bağlanamazsa sessiz, saklama süresi dolmuşsa açıklama. `recharts` bağımlılığı kaldırıldı (grafikler SVG/CSS) | **Evet, Şeyma'nın kodu kaldırıldı.** Testlerindeki 20 davranışın hepsi `features/review/review.test.tsx`'e taşındı (aynı SignalR taklidiyle): liste ve rozetler, süzgeç/sıralama sorgusu, kendi sınavının bildirimi, başka sınavın bildirimini yok sayma, çıkınca bağlantıyı kapatma, atanmadığı sınavda sunucu mesajı, kanıt ve grafik, onaylı karar, vazgeçince istek yok, karar gerekmeyen/verilmiş oturum, onaylı yanlış alarm, not ekleme, çakışma mesajı, saklama süresi açıklaması, sınav listesi, boş liste, aday erişemez |
+| Esma (#35, E5a) | `CandidateFlowE2ETests.cs`, `docs/entegrasyon-E5a.md` | Değişmedi; bu dalda da geçiyor. B-4 (rıza isteğinde `accepted`) bu dalda doğru | Hayır |
+| Yağmur (K-35 kuralı) | `docs/MIMARI-KARARLAR.md` | K-35'teki "başlık üstüne küçük etiket konmaz" kuralı yeniden geçerli (K-39, modern yön) | Hayır |
+
+---
+
+## K-41 · Yönetici ekranları ve risk ayarları ucu (UI1, Stitch 23–32)
+
+| Ekran | Adres | Bağlandığı uç |
+|---|---|---|
+| 25 Sınavlar | `/admin/exams` | `GET /api/exams`; durum erişim penceresinden (planlandı / erişime açık / son başlangıç geçti / sona erdi) |
+| 26–29 Sınav düzenleyici | `/admin/exams/new`, `/admin/exams/{id}[/questions\|assignments\|risk]` | `POST/PUT/DELETE /api/exams`, soru ve atama uçları (E3), `GET /api/risk-settings` |
+| 23–24 Kullanıcılar ve davet | `/admin/users` | `GET/POST /api/users`, `PATCH /api/users/{id}` (rol, pasife alma) |
+| 30 Raporlar | `/admin/reports` | `GET /api/review/exams/{id}/sessions` (yönetici okur, K-31), rapor görünümü `/reports/exams/{examId}/sessions/{sessionId}`, PDF/Excel indirme |
+| 31 Ayarlar | `/admin/settings` | Rıza metinleri (`GET /api/consent-texts/{type}`), sınav başına saklama süresi, risk değerleri özeti |
+| 32 Denetim kaydı | `/admin/audit` | `GET /api/audit-logs` (işlem grubu, tarih aralığı, sayfa) |
+
+- **Yeni uç `GET /api/risk-settings`** (`Manage`): `riskconfig.json`'daki oturum eşiği, tekrar ve süre ayarları ile her olay türünün ağırlığı, azalma katsayısı ve tek başına eşiği; ağırlığa göre sıralı. Salt okunur, değerler sunucunun skor hesabındakiyle aynı. Sınav başına düzenleme açık konu (S-30); ekranda "salt okunur, sınav başına ayar henüz yok" yazıyor.
+- Ekranda uydurma ayar yok: "alternatif sınav yöntemi metni" ve "destek talebi" için uç olmadığından Ayarlar sayfasında gösterilmiyor.
+- Yeni sınav yalnızca "Genel bilgiler" adımıyla açılıyor; kaydedilince sınavın adresine ve "Sorular" adımına geçiliyor. Adımların yanında ilerleme (soru sayısı, aday/değerlendirici sayısı).
+- Kullanıcı kendi rolünü değiştiremez ve kendini pasife alamaz (ekranda "Siz"). Pasife alma yenileme belirteçlerini iptal ediyor; ekranda "oturumu en geç 15 dakika içinde kapanır" deniyor (erişim belirteci ömrü, K-20).
+- Ortak desenler (filtre çipleri, arama, veri tablosu, seçim kutusu, form ızgarası) `web/src/styles/patterns.css`'te.
+
+---
+
+## K-42 · Koyu tema (UI1)
+
+- Aynı token adları, koyu değerler: `theme.css`'te `:root[data-theme='dark']`. Bileşenler renk kodu yazmadığı için ek iş yok; lacivert yan menü ve tanıtım panelleri iki temada aynı.
+- Tercih `lib/theme.ts`'te: açık, koyu ya da sistem (varsayılan). Tarayıcıda `aiguard.theme` anahtarıyla saklanıyor; "sistem"de işletim sistemi teması değişince sayfa da değişiyor.
+- Tema `main.tsx`'te ilk çizimden önce uygulanıyor (CSP `script-src 'self'` satır içi betiğe izin vermediği için `index.html`'de değil); sayfa yanlış renkte açılıp sonra değişmiyor.
+- Geçiş düğmesi (`ThemeToggle`) yan menünün altında ve giriş ekranının sağ üst köşesinde.
+
+---
+
+## K-43 · Genel bakış panelleri, platform hakkında ve yön bulma (UI1)
+
+Kullanıcı geri bildirimi: "sitenin amacı belli değil", "nerede olduğumu anlamıyorum", "sayfalar şablon havasında ve dashboard olmalı".
+
+| Karar | Ayrıntı |
+|---|---|
+| Her rolün ana sayfası `/overview` (genel bakış) | Aday: karşılama, sıradaki sınav ve açılışa kalan süre, hazırlık listesi (kayıt fotoğrafı gerçek durumdan), "sınav nasıl ilerler" adımları. Değerlendirici: bekleyen/karara bağlanan/tamamlanan sayıları, sınav bazında kuyruk, "incelemeye başla" (en çok bekleyen sınavın ilk dosyası). Yönetici: erişime açık ve planlanan sınav, aktif kullanıcı, karar bekleyen dosya, hızlı eylemler, sorusu olmayan sınav uyarısı, son 6 denetim kaydı. Bütün sayılar mevcut uçlardan; yeni uç yok |
+| `/about` "Platform hakkında" (bütün roller) | Amaç, sinyal → açıklanabilir skor → insan kararı akışı, ilkeler (kararı insan verir, sürekli kayıt yok, açık rıza, saklama süresi, denetlenebilirlik, sıfır güven), roller, araştırma projesi. Metinler K-24…K-32 kararlarına dayanıyor; iddia yok |
+| Sayfa başlığı şablonu (`PageHeader`) | Yumuşak geçişli bant, solda bölümün renkli simgesi (`IconTile`, `layouts/sections.ts`), yol çubuğu, başlık + "i", tek cümle açıklama, eylemler. Bölüm simgesi menüyle aynı; adres verilmezse yoldan bulunuyor. Değerlendirici paneli, dosya ve sihirbaz başlıkları da aynı bantta |
+| Yan menü | Her bölüm kendi renginde simge kutusuyla; masaüstünde "Menüyü daralt" ile yalnızca simgeler kalır (adlar ipucunda), tercih `aiguard.sidebar.collapsed`. Telefonda çekmece |
+| Tanıtım | Her rolde önce "AI-Guard nedir?" ve "Kararı insan verir", sonra role özel dört adım, sonunda "i" düğmesi ve Platform hakkında. Anahtar `aiguard.onboarding.<rol>.v2` (önceki tanıtımı görmüş kullanıcı yenisini bir kez görür) |
+| Hata sınırı (`RouteErrorBoundary`) | Sayfa çizilirken ya da sayfa parçası yüklenemezken boş ekran yerine "Sayfa yüklenemedi / Sayfayı yenile". Yeni sürüm yayımlanınca eski parçanın bulunamaması da buraya düşer (yerelde, çalışırken paket kurulunca görülen boş sayfa hatası) |
+
+---
+
+## K-44 · Kullanıcı geri bildirimi turu: yetki, oturum, sadeleştirme (UI1)
+
+| Karar | Ayrıntı | Önceki karar |
+|---|---|---|
+| Rolün açamadığı sayfa gösterilmez | `RequireAuth` rol uyuşmazlığında 403 ekranı yerine rolün ana sayfasına (`/overview`) yönlendiriyor. Başka rolün adresiyle giriş yapan da kendi ana sayfasına düşüyor (üç rolün "yanlış yerden başlaması" buydu) | K-35'teki "403 ekranı" kaldırıldı (`ForbiddenPage` kullanılmıyor) |
+| Sayfa yenilenince oturum düşmez | Belirteçler sekmeye özel `sessionStorage`'da (`aiguard.session`): yenilemede kalır, sekme kapanınca silinir; `localStorage` kullanılmıyor. XSS'e karşı CSP `script-src 'self'` | K-35'teki "yalnızca bellek" |
+| Site anlatımı tek yerde: tanıtım | "Platform hakkında" sayfası, panellerdeki "nasıl ilerler" bölümleri ve girişteki YM 491 satırı kaldırıldı. Tanıtıma "Bir daha gösterme" eklendi (seçilmezse bir sonraki girişte yeniden açılır, aynı oturumda açılmaz) | K-43 |
+| "i" kutusu kesilmez | Kutu `document.body`'ye (portal) sabit konumla açılıyor; kart ya da başlık bandı onu kesemiyor | — |
+| Form alanları yazarken bozulmaz | Sınav formunda tarih ve sayı alanlarının ham metni ayrı tutuluyor; değer yalnızca geçerliyken forma yansıyor (erişim penceresi ve saklama süresindeki "donma") | — |
+| Aramalar takılmaz | Liste süzme `useDeferredValue` ile; kullanıcı tablosunda satır animasyonu yok | — |
+| Kayıt fotoğrafı akışı | Önce "Önce açık rızanız gerekiyor" kartı; metin ve onay açılır pencerede; onaydan sonra sürükle-bırak fotoğraf alanı. Her yeni yükleme için rıza yeniden veriliyor | Yağmur'un satır içi rıza kutusu |
+| Skor gerekçesi | Şelale yerine olay türüne göre sıralı yatay çubuk (tek renk, değer çubuk ucunda, üzerine gelince ayrıntı). "Seçilen olay" yerine "Olay ayrıntısı": açılışta en etkili olay seçili, yanlış alarm düğmesi bu kartta | — |
+| Davet | Davet penceresi bağlantının 72 saat geçerli olduğunu ve e-posta gönderiminin henüz kurulmadığını (S-15) yazıyor | — |
+| Aday raporu kaymaz | Rapor ızgarası ve bölümleri `minmax(0, 1fr)`; uzun sözcük (ör. boşluksuz not) satır kırıyor. Önce sayfa 18 bin piksele genişliyordu. PDF ve Excel indirme tarayıcıda denendi | — |
+| Erişim penceresi | Başlangıç bitişi geçerse bitiş, pencerenin uzunluğunu koruyarak birlikte kayar | — |
+| Boşluklar | Sayfa başlığı bandı, karşılama, kartlar sıkılaştırıldı; ana ekranlar 1440×900'de kaydırmadan sığıyor | — |
+| Deneme verisi | `DevDataSeeder` aday1–aday12 (10 aday daha, hepsi örnek sınava atanmış); `DevDataSeederTests` sayıları `ExtraCandidates` ile | 2 aday |
+
+Uçtan uca deneme (tarayıcı, gerçek API): giriş, yenilemede oturumun kalması, yazarak tarih/sayı girme, soru ekleme, aday ve değerlendirici atama, kaydedilen değerlerin doğruluğu (saklama 60, süre 45), raporlarda sınav seçme ve rapor açma, sınav listesinde arama: hepsi geçti.
+
+Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; servis çalışmıyorsa API 15 sn zaman aşımını bekliyor (`VisionFaceService`). Rıza geri alma ucu ölçüldü: 26 ms. Ekranda yükleme sırasında "birkaç saniye sürebilir" yazıyor.
+
+---
+
 ## Kartlarda geçmeyen GAB kuralları
 
 Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart metinlerinde geçmiyor. İlgili kartı uygularken bunlar da kapsama dahil.
@@ -1110,3 +1324,4 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-27 | GAB 3.3.2: reddedilen istekler denetim kaydına yazılmalı | Ayşe, Esma | A5'te yapılmadı (K-32): her 401/403'ü kayda yazmak tabloyu hızla büyütür. Uygulama günlüğünde var; gerekirse yalnızca tekrarlayan reddedilmeler (ör. aynı kullanıcıdan art arda 403) kayda alınabilir |
 | S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |
 | S-29 | Sorular kamera/mikrofon açılmadan önyüzde gizleniyor, ama sunucu `InProgress`'te soruları yine döndürüyor; değiştirilmiş bir istemci kamera açmadan soruları okuyabilir | Yağmur (S4), Esma (E4) | Sunucuda da kontrol: oturum uç `GET /api/sessions/{id}` soruları ancak son birkaç saniyede kare gelmişse döndürsün. K-24'ü değiştirdiği için ekip kararı gerekiyor |
+| S-30 | Risk ağırlıkları şu an platform geneli ve salt okunur (`riskconfig.json`, K-41); Stitch 29 sınav başına düzenleme gösteriyordu | Ayşe | Sınav başına ağırlık istenirse: sınava bağlı ayar tablosu, `PUT /api/exams/{id}/risk-settings`, RiskEngine'in oturumun sınavına göre ayar okuması ve geçmiş skorların hangi ayarla hesaplandığının kaydı gerekir |

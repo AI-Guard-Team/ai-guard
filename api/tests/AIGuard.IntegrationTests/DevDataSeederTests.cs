@@ -39,9 +39,9 @@ public class DevDataSeederTests : IAsyncLifetime
 
         Assert.Equal(1, await db.Users.CountAsync(u => u.Role == UserRole.Admin));
         Assert.Equal(1, await db.Users.CountAsync(u => u.Role == UserRole.Reviewer));
-        Assert.Equal(2, await db.Users.CountAsync(u => u.Role == UserRole.Candidate));
+        Assert.Equal(2 + DevDataSeeder.ExtraCandidates, await db.Users.CountAsync(u => u.Role == UserRole.Candidate));
         Assert.Equal(1, await db.Exams.CountAsync());
-        Assert.Equal(3, await db.ExamAssignments.CountAsync());
+        Assert.Equal(3 + DevDataSeeder.ExtraCandidates, await db.ExamAssignments.CountAsync());
         Assert.True(await db.Questions.CountAsync() >= 1);
     }
 

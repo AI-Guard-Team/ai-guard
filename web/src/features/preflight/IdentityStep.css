@@ -1,0 +1,90 @@
+.identity-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.identity-camera {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.identity-camera .alert {
+  margin: 0;
+}
+
+.identity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.identity-tips {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-accent);
+}
+
+.identity-tips h3 {
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-md);
+}
+
+.identity-tips ol {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: tip;
+}
+
+.identity-tips li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding-left: 2.25rem;
+  font-size: var(--font-size-sm);
+  counter-increment: tip;
+}
+
+/* Sıra bilgi taşıdığı için numara var (önce yüz, sonra ışık…). */
+.identity-tips li::before {
+  content: counter(tip);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.identity-tips strong {
+  font-weight: 600;
+}
+
+.identity-tips span {
+  color: var(--color-text-muted);
+}
+
+.identity-session-id {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 899px) {
+  .identity-layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,166 @@
+/* Sıfırlama, yazı ve tarayıcının kendi çizdiği yüzeyler (seçim, kaydırma çubuğu, odak). Renkler theme.css'ten. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Kaydırma çubuğu açılıp kapanınca içerik yana kaymasın. */
+  scrollbar-gutter: stable;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 750;
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.022em;
+  color: var(--color-text);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--font-size-2xl);
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--color-link);
+  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+img,
+video,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Sayılar (süre, skor, sayaç) hizası bozulmasın. */
+time,
+.numeric,
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Yalnızca kod ve kimlik (ör. eşleştirme kodu): IBM Plex Mono. */
+.mono,
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95em;
+}
+
+/* Küçük yardımcı bilgi satırı (tarih, belge numarası, sayaç). Başlık üstü etiket olarak kullanılmaz. */
+.kicker {
+  font-size: var(--font-size-xs);
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--color-text-subtle);
+}
+
+/* Bilet/makbuz yırtma çizgisi. */
+.perforation {
+  height: 0;
+  margin: var(--space-6) 0;
+  border: 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+::selection {
+  background: rgb(67 97 238 / 20%);
+  color: var(--color-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--color-primary);
+  accent-color: var(--color-primary);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(138 151 177 / 55%) transparent;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

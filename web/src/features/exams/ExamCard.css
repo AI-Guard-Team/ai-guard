@@ -1,0 +1,147 @@
+.exam-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.exam-tile-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.exam-tile-title {
+  font-size: var(--font-size-lg);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.exam-tile-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.exam-tile-facts > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.exam-tile-fact-wide {
+  grid-column: 1 / -1;
+}
+
+.exam-tile-facts dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.exam-tile-facts dd {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+/* Alt kısım kartın dibine yapışır: aynı satırdaki kartların düğmeleri hizalı kalır. */
+.exam-tile-footer {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
+.exam-tile-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.exam-tile-error {
+  color: var(--color-danger-text);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.exam-tile-closed,
+.exam-tile-used {
+  background: var(--color-surface-muted);
+  box-shadow: none;
+}
+
+.exam-tile-closed .exam-tile-title,
+.exam-tile-used .exam-tile-title {
+  color: var(--color-text-muted);
+}
+
+/* Bilgi çipleri ve erişim penceresi (K-44). */
+.exam-tile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exam-tile-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+}
+
+.exam-tile-chips svg {
+  color: var(--color-primary);
+}
+
+.exam-tile-window {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-row-hover);
+}
+
+.exam-tile-window dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.exam-tile-window dd {
+  margin: 2px 0 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.exam-tile-window-end {
+  grid-column: 1 / -1;
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border-strong);
+}

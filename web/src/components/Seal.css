@@ -1,0 +1,83 @@
+.seal {
+  --seal-color: var(--color-primary);
+  --seal-bg: var(--color-primary-soft);
+  position: relative;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--seal-color) 35%, transparent);
+  border-radius: 50%;
+  background: var(--seal-bg);
+  color: var(--seal-color);
+}
+
+.seal-success {
+  --seal-color: var(--color-success-text);
+  --seal-bg: var(--color-success-bg);
+}
+
+.seal-warning {
+  --seal-color: var(--color-warning-text);
+  --seal-bg: var(--color-warning-bg);
+}
+
+.seal-danger {
+  --seal-color: var(--color-danger-text);
+  --seal-bg: var(--color-danger-bg);
+}
+
+.seal-center {
+  display: grid;
+  justify-items: center;
+  gap: 0.2em;
+  max-width: 78%;
+  text-align: center;
+}
+
+.seal-icon {
+  display: grid;
+  place-items: center;
+}
+
+/* Yazı boyutu rozet boyutuna bağlı (Seal.tsx). */
+.seal-label {
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+/* Boş yuva ve beklemede: kesikli çerçeve, zemin yok. */
+.seal.is-empty,
+.seal.is-pending {
+  border-style: dashed;
+  border-width: 1.5px;
+  background: transparent;
+}
+
+.seal.is-empty {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-subtle);
+}
+
+.seal.is-pending {
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+/* Yeni verildiğinde yerine oturur. Hareket azaltma tercihinde base.css süreyi sıfırlıyor. */
+.seal.is-animated {
+  animation: seal-pop var(--duration-stamp) var(--ease-stamp) both;
+}
+
+@keyframes seal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

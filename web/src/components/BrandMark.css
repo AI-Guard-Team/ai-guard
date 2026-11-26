@@ -1,0 +1,50 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  background: var(--gradient-brand);
+  color: var(--palette-navy-deep);
+  box-shadow: 0 6px 16px -6px rgb(167 139 250 / 60%);
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: grid;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brand-subtitle {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.brand-dark .brand-name {
+  color: #fff;
+}
+
+.brand-dark .brand-subtitle {
+  color: var(--color-sidebar-text);
+}
+
+.brand-light .brand-name {
+  color: var(--color-text);
+}
+
+.brand-light .brand-subtitle {
+  color: var(--color-text-muted);
+}

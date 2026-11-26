@@ -36,7 +36,11 @@ public sealed class ExamService(IAppDbContext db, TimeProvider clock)
             })
             .ToListAsync(ct);
 
-        return rows.Select(r => ToSummary(r.Exam, r.QuestionCount, role, r.AttemptUsedAt)).ToList();
+        var sessions = role == UserRole.Candidate
+            ? await LatestSessionsAsync(userId, rows.Select(r => r.Exam.Id).ToList(), ct)
+            : new Dictionary<Guid, CandidateSessionSummary>();
+
+        return rows.Select(r => ToSummary(r.Exam, r.QuestionCount, role, r.AttemptUsedAt, sessions.GetValueOrDefault(r.Exam.Id))).ToList();
     }
 
     /// <summary>Yönetici her sınavı, diğer roller yalnızca atandıkları sınavı görür; görmüyorsa null.</summary>
@@ -58,7 +62,10 @@ public sealed class ExamService(IAppDbContext db, TimeProvider clock)
         }
 
         var count = await db.Questions.CountAsync(q => q.ExamId == examId, ct);
-        return ToSummary(exam, count, role, assignment?.AttemptUsedAt);
+        var session = role == UserRole.Candidate
+            ? (await LatestSessionsAsync(userId, [examId], ct)).GetValueOrDefault(examId)
+            : null;
+        return ToSummary(exam, count, role, assignment?.AttemptUsedAt, session);
     }
 
     public async Task<ExamOperationResult> CreateAsync(ExamRequest request, CancellationToken ct = default)
@@ -224,10 +231,33 @@ public sealed class ExamService(IAppDbContext db, TimeProvider clock)
         question.CorrectOptionIndex = r.CorrectOptionIndex!.Value;
     }
 
-    private static ExamSummary ToSummary(Exam e, int questionCount, UserRole role, DateTimeOffset? attemptUsedAt) => new(
+    private static ExamSummary ToSummary(
+        Exam e, int questionCount, UserRole role, DateTimeOffset? attemptUsedAt, CandidateSessionSummary? session) => new(
         e.Id, e.Name, e.Type, e.DurationMinutes, e.WindowStartAt, e.WindowEndAt,
         ExamRules.LatestStartAt(e), e.RetentionDays, questionCount,
-        role == UserRole.Candidate ? attemptUsedAt is not null : null);
+        role == UserRole.Candidate ? attemptUsedAt is not null : null,
+        role == UserRole.Candidate ? session : null);
+
+    /// <summary>Adayın verilen sınavlardaki en son oturumu (oluşturulma zamanına göre); tek sorguda.</summary>
+    private async Task<Dictionary<Guid, CandidateSessionSummary>> LatestSessionsAsync(
+        Guid candidateId, IReadOnlyCollection<Guid> examIds, CancellationToken ct)
+    {
+        if (examIds.Count == 0)
+        {
+            return [];
+        }
+
+        var rows = await db.ExamSessions.AsNoTracking()
+            .Where(s => s.CandidateId == candidateId && examIds.Contains(s.ExamId))
+            .Select(s => new { s.ExamId, s.Id, s.State, s.StartedAt, s.EndedAt, s.CreatedAt })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.ExamId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(r => r.CreatedAt).Select(r => new CandidateSessionSummary(r.Id, r.State, r.StartedAt, r.EndedAt)).First());
+    }
 
     private static QuestionDetail ToDetail(Question q) => new(q.Id, q.Text, q.Options, q.CorrectOptionIndex, q.Order);
 }

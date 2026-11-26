@@ -1,0 +1,40 @@
+.consent-text {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.consent-text h3 {
+  font-size: var(--font-size-md);
+}
+
+.consent-text-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  height: 14rem;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  overscroll-behavior: contain;
+}
+
+.consent-text-body:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Metindeki tek satır sonları (madde işaretli satırlar) korunur. */
+.consent-text-body p {
+  white-space: pre-line;
+}
+
+.consent-text-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

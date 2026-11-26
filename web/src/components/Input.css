@@ -1,0 +1,145 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.field > label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.field-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-control input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  box-shadow: 0 1px 2px rgb(17 26 56 / 4%);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.field-control input::placeholder {
+  color: var(--color-text-subtle);
+  opacity: 1;
+}
+
+.field-control input:hover {
+  border-color: var(--palette-slate);
+}
+
+.field-control input:focus {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.field-control input:disabled,
+.field-control input:read-only {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.field.has-icon input {
+  padding-left: 2.75rem;
+}
+
+.field.has-trailing input {
+  padding-right: 5rem;
+}
+
+.field-icon {
+  position: absolute;
+  left: var(--space-4);
+  display: flex;
+  color: var(--color-text-subtle);
+  pointer-events: none;
+}
+
+.field-trailing {
+  position: absolute;
+  right: var(--space-2);
+  display: flex;
+}
+
+.field-toggle {
+  min-width: 4rem;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field-toggle:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.field-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.field.has-error input {
+  border-color: var(--color-danger);
+}
+
+.field.has-error input:focus {
+  box-shadow: 0 0 0 3px rgb(229 72 77 / 20%);
+}
+
+.field-hint,
+.field-error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.field-hint {
+  color: var(--color-text-muted);
+}
+
+.field-error {
+  color: var(--color-danger-text);
+  font-weight: 500;
+}
+
+.field textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  resize: vertical;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.field textarea:focus {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.field.has-error textarea {
+  border-color: var(--color-danger);
+}

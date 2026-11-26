@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ToastContext, type ShowToast, type ToastKind } from './toastContext'
+import './Toast.css'
 
 interface ToastItem {
   id: number

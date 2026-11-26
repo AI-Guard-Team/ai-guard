@@ -1,0 +1,140 @@
+.agent-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-steps li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  font-size: var(--font-size-sm);
+}
+
+.agent-steps li > svg {
+  color: var(--color-primary);
+}
+
+.agent-steps li > span {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.agent-steps strong {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+}
+
+.agent-steps code {
+  font-size: 0.85em;
+}
+
+.agent-os-note {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.agent-os-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Durum kutusu sabit yükseklikte: durum metni değişince altındaki düğmeler kaymaz. */
+.agent-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 5rem;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.agent-status > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.agent-status-checking {
+  border-color: rgb(79 122 99 / 30%);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.agent-status-indicated {
+  border-color: rgb(201 138 43 / 35%);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.agent-status-title {
+  font-weight: 600;
+}
+
+.agent-status-text {
+  font-size: var(--font-size-sm);
+}
+
+.indicator-items {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.indicator-items li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.indicator-message {
+  font-weight: 600;
+}
+
+.indicator-fix {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.justification {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 40rem;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-divider);
+}
+
+.justification h3 {
+  font-size: var(--font-size-md);
+}
+
+.justification .field {
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.justification > button {
+  justify-self: start;
+}
+
+@media (max-width: 899px) {
+  .agent-steps {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,34 +1,200 @@
-/* Renk ve yazı tipi değişkenlerinin tek kaynağı. Bileşenler bu adları kullanır, renk kodu yazmaz. */
+/*
+ * Renk, yazı, boşluk ve hareket değişkenlerinin TEK kaynağı.
+ * Bileşenler yalnızca bu adları kullanır; başka bir dosyada renk kodu yazılmaz.
+ *
+ * Yön (K-39, PRODUCT.md): modern, kurumsal İK platformu. Lacivert ana renk, açık gök mavisi zemin, canlı indigo eylem,
+ * yumuşak köşeli beyaz kartlar, Plus Jakarta Sans. Ham renkler --palette-*, bileşenler --color-*.
+ */
 :root {
-  --font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-size: 16px;
-  --line-height: 1.5;
+  /* ---------- Ham palet ---------- */
+  --palette-navy: #14214d;
+  --palette-navy-deep: #0d1636;
+  --palette-ink: #111a38;
+  --palette-indigo: #4361ee;
+  --palette-indigo-deep: #3451d1;
+  --palette-sky: #7fb3f5;
+  --palette-sky-soft: #eaf2ff;
+  --palette-lilac: #a78bfa;
+  --palette-rose: #ec6a9c;
+  --palette-mist: #f4f7fc;
+  --palette-paper: #ffffff;
+  --palette-slate: #8a97b1;
+  --palette-line: #e3e9f4;
+  --palette-mint: #0f9d73;
+  --palette-amber: #e09a1a;
+  --palette-coral: #e5484d;
+  /* Eski adlar (Yağmur'un ekranları kullanıyor): yeni paletle eşleşiyor. */
+  --palette-ivory: var(--palette-mist);
+  --palette-bordeaux: var(--palette-indigo);
 
-  --color-bg: #02030a;
-  --color-surface: rgb(10 16 40 / 62%);
-  --color-text: #f4f7fb;
-  --color-muted: #b7c3d6;
-  --color-border: rgb(255 255 255 / 28%);
-  --color-primary: #ffffff;
-  --color-primary-hover: #e4ebff;
-  --color-on-primary: #070b16;
-  --color-danger: #e25b6f;
-  --color-danger-hover: #c4475b;
-  --color-focus: #6aa4ff;
+  /* Marka geçişi: gök mavisi → lila → gül. Yalnızca marka anlarında (giriş, tanıtım). */
+  --gradient-brand: linear-gradient(115deg, var(--palette-sky) 0%, var(--palette-lilac) 52%, var(--palette-rose) 100%);
+  --gradient-navy: radial-gradient(120% 90% at 100% 0%, #26388a 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #3b2a7a 0%, transparent 60%), var(--palette-navy);
 
-  --color-success-bg: rgb(18 92 58 / 45%);
-  --color-success-text: #b9f0d0;
-  --color-warning-bg: rgb(120 84 10 / 45%);
-  --color-warning-text: #ffe3a3;
-  --color-danger-bg: rgb(140 28 48 / 45%);
-  --color-danger-text: #ffc0c9;
-  --color-info-bg: rgb(28 70 160 / 45%);
-  --color-info-text: #d5e4ff;
-  --color-neutral-bg: rgb(255 255 255 / 10%);
-  --color-neutral-text: #d5deea;
+  /* ---------- Yüzeyler ---------- */
+  --color-bg: var(--palette-mist);
+  --color-surface: var(--palette-paper);
+  --color-surface-accent: var(--palette-sky-soft);
+  --color-surface-muted: #eef2f9;
+  --color-sidebar: var(--palette-navy);
+  --color-sidebar-hover: rgb(255 255 255 / 7%);
+  --color-sidebar-active: rgb(255 255 255 / 12%);
+  --color-sidebar-text: #b9c4e0;
+  --color-sidebar-text-strong: #ffffff;
+  --texture-paper: none;
+  --texture-paper-size: auto;
 
-  --radius: 18px;
+  /* ---------- Metin ---------- */
+  --color-text: var(--palette-ink);
+  --color-text-muted: #4e5b78;
+  --color-text-subtle: #66728d;
+  --color-text-on-dark: #ffffff;
+
+  /* ---------- Çizgiler ---------- */
+  --color-border: var(--palette-line);
+  --color-border-strong: #c9d3e6;
+  --color-divider: var(--palette-line);
+  --color-rule-dashed: #c9d3e6;
+
+  /* ---------- Eylem ---------- */
+  --color-primary: var(--palette-indigo);
+  --color-primary-hover: var(--palette-indigo-deep);
+  --color-on-primary: #ffffff;
+  --color-primary-soft: rgb(67 97 238 / 10%);
+  --color-secondary-hover: rgb(17 26 56 / 4%);
+  --color-row-hover: #f7f9fd;
+  --color-focus: var(--palette-indigo);
+  --color-selected: rgb(67 97 238 / 9%);
+  --color-link: var(--palette-indigo);
+  --color-seal: var(--palette-indigo);
+  --color-on-seal: #ffffff;
+
+  /* ---------- Durum (metin + açık zemin) ---------- */
+  --color-success: var(--palette-mint);
+  --color-success-text: #0a7354;
+  --color-success-bg: rgb(15 157 115 / 11%);
+  --color-warning: var(--palette-amber);
+  --color-warning-text: #8a5800;
+  --color-warning-bg: rgb(224 154 26 / 14%);
+  --color-danger: var(--palette-coral);
+  --color-danger-hover: #c93a3f;
+  --color-danger-text: #b42328;
+  --color-danger-bg: rgb(229 72 77 / 10%);
+  --color-info: var(--palette-indigo);
+  --color-info-text: #2c44b8;
+  --color-info-bg: rgb(67 97 238 / 10%);
+  --color-neutral-text: var(--color-text-muted);
+  --color-neutral-bg: rgb(138 151 177 / 14%);
+
+  /* ---------- Yazı ---------- */
+  --font-display: 'Plus Jakarta Sans Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --font-body: 'Plus Jakarta Sans Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --font-size-2xs: 0.75rem; /* 12 */
+  --font-size-xs: 0.8125rem; /* 13 */
+  --font-size-sm: 0.875rem; /* 14 */
+  --font-size-md: 1rem; /* 16 */
+  --font-size-lg: 1.125rem; /* 18 */
+  --font-size-xl: 1.3125rem; /* 21 */
+  --font-size-2xl: 1.75rem; /* 28 */
+  --font-size-3xl: 2.125rem; /* 34: sayfa başlığı */
+  --font-size-4xl: 3rem; /* 48: giriş ve büyük rakamlar */
+  --line-height-tight: 1.2;
+  --line-height: 1.55;
+  --tracking-label: 0.02em;
+
+  /* ---------- Boşluk ---------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ---------- Şekil: yumuşak köşeler ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
   --radius-pill: 999px;
-  --shadow: 0 24px 60px rgb(0 0 0 / 45%);
-  --header-height: 64px;
+
+  /* ---------- Derinlik: lacivert tabanlı yumuşak gölgeler ---------- */
+  --shadow-sm: 0 1px 2px rgb(17 26 56 / 5%), 0 2px 6px -1px rgb(17 26 56 / 5%);
+  --shadow-md: 0 2px 4px rgb(17 26 56 / 4%), 0 10px 28px -6px rgb(17 26 56 / 12%);
+  --shadow-lg: 0 6px 12px rgb(17 26 56 / 6%), 0 28px 56px -12px rgb(17 26 56 / 24%);
+
+  /* ---------- Hareket ---------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-stamp: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration: 220ms;
+  --duration-stamp: 420ms;
+
+  /* ---------- Yerleşim ---------- */
+  --sidebar-width: 264px;
+  --topbar-height: 68px;
+  --content-max: 1240px;
+  --focus-ring: 0 0 0 3px rgb(67 97 238 / 30%);
+  --z-sidebar: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}
+
+/*
+ * Koyu tema (K-42): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
+ * Lacivert yan menü ve tanıtım panelleri iki temada da aynı kalır.
+ */
+:root[data-theme='dark'] {
+  --palette-mist: #0b1226;
+  --palette-paper: #121b33;
+  --palette-line: #253255;
+  --palette-sky-soft: #16224a;
+
+  --color-bg: #0b1226;
+  --color-surface: #121b33;
+  --color-surface-accent: #16224a;
+  --color-surface-muted: #19244a;
+
+  --color-text: #e8ecf8;
+  --color-text-muted: #aab5d0;
+  --color-text-subtle: #8c98b8;
+
+  --color-border: #253255;
+  --color-border-strong: #364470;
+  --color-divider: #1f2a4a;
+  --color-rule-dashed: #364470;
+
+  --color-primary: #5570f6;
+  --color-primary-hover: #6a83ff;
+  --color-primary-soft: rgb(110 134 255 / 16%);
+  --color-secondary-hover: rgb(232 236 248 / 6%);
+  --color-row-hover: #162043;
+  --color-focus: #8aa0ff;
+  --color-selected: rgb(110 134 255 / 18%);
+  --color-link: #9db0ff;
+  --color-seal: #8aa0ff;
+
+  --color-success-text: #5fd6ad;
+  --color-success-bg: rgb(15 157 115 / 20%);
+  --color-warning-text: #f2c35e;
+  --color-warning-bg: rgb(224 154 26 / 20%);
+  --color-danger-text: #ff8f93;
+  --color-danger-bg: rgb(229 72 77 / 18%);
+  --color-info-text: #a8b8ff;
+  --color-info-bg: rgb(110 134 255 / 18%);
+  --color-neutral-bg: rgb(140 152 184 / 16%);
+
+  --gradient-navy: radial-gradient(120% 90% at 100% 0%, #22337d 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #33256e 0%, transparent 60%), #0e1838;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px -1px rgb(0 0 0 / 25%);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 25%), 0 10px 28px -6px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 6px 12px rgb(0 0 0 / 30%), 0 28px 56px -12px rgb(0 0 0 / 60%);
+  --focus-ring: 0 0 0 3px rgb(138 160 255 / 40%);
 }

@@ -1,0 +1,40 @@
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Lacivert yüzeyde (yan menü). */
+.theme-toggle-dark {
+  color: var(--color-sidebar-text);
+}
+
+.theme-toggle-dark:hover {
+  background: var(--color-sidebar-hover);
+  color: #fff;
+}
+
+/* Açık yüzeyde (giriş ekranı köşesi). */
+.theme-toggle-light {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.theme-toggle-light:hover {
+  background: var(--color-row-hover);
+}
+
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
