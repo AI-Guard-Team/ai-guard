@@ -147,6 +147,7 @@ export function ProfilePage() {
             <FormAlert message={formError} />
             <PasswordInput
               label={m.current}
+              placeholder={copy.passwordPlaceholder}
               autoComplete="current-password"
               maxLength={MAX_PASSWORD_LENGTH}
               value={currentPassword}

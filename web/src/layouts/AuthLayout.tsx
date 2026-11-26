@@ -1,6 +1,6 @@
 import { FileCheck2, ShieldCheck, UserCheck } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { BrandMark } from '../components/BrandMark'
 import { LanguageToggle } from '../components/LanguageToggle'
@@ -63,9 +63,25 @@ export function AuthLayout({ title, description, children, footer }: AuthLayoutP
     introPlayed = true
   }, [])
 
+  // İmleç ışığı: konum CSS değişkenine kare başına bir kez yazılır (requestAnimationFrame); React yeniden çizilmez.
+  const aside = useRef<HTMLElement>(null)
+  const frame = useRef(0)
+  const followPointer = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== 'mouse' || frame.current) return
+    const { clientX, clientY } = event
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0
+      const box = aside.current?.getBoundingClientRect()
+      if (!box) return
+      aside.current?.style.setProperty('--spot-x', `${clientX - box.left}px`)
+      aside.current?.style.setProperty('--spot-y', `${clientY - box.top}px`)
+    })
+  }
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
+
   return (
     <div className="auth-layout">
-      <aside className="auth-aside">
+      <aside className="auth-aside" ref={aside} onPointerMove={followPointer}>
         <AuthOrbit />
         <motion.div
           className="auth-aside-brand"

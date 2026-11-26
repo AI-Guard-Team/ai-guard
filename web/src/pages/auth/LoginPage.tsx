@@ -1,4 +1,4 @@
-import { ArrowRight, Mail } from 'lucide-react'
+import { ArrowRight, LockKeyhole, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { login } from '../../api/auth'
@@ -134,6 +134,8 @@ export function LoginPage() {
         />
         <PasswordInput
           label={copy.password}
+          placeholder={copy.passwordPlaceholder}
+          icon={<LockKeyhole size={18} />}
           autoComplete="current-password"
           maxLength={MAX_PASSWORD_LENGTH}
           value={password}

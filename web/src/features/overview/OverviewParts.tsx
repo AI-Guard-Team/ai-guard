@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { IconTile, type TileTone } from '../../components/IconTile'
+import { useCountUp } from '../../hooks/useCountUp'
 import { defineMessages, useMessages } from '../../i18n/messages'
 
 const messages = defineMessages({ tr: { all: 'Tümünü gör' }, en: { all: 'View all' } })
@@ -30,13 +31,21 @@ interface StatTileProps {
   index?: number
 }
 
+/** Sayı akarak gelir; sayı olmayan değer ("Hazır", "–") olduğu gibi. */
+function StatValue({ value }: { value: ReactNode }) {
+  const counted = useCountUp(typeof value === 'number' ? value : 0)
+  return <>{typeof value === 'number' ? counted : value}</>
+}
+
 /** Tek bir ölçü: renkli simge, büyük sayı, kısa ad. Bağlantılıysa ilgili sayfayı açar. */
 export function StatTile({ icon, tone, value, label, hint, to, index = 0 }: StatTileProps) {
   const body = (
     <>
       <IconTile icon={icon} tone={tone} />
       <span className="stat-tile-text">
-        <span className="stat-tile-value numeric">{value}</span>
+        <span className="stat-tile-value numeric">
+          <StatValue value={value} />
+        </span>
         <span className="stat-tile-label">{label}</span>
         {hint ? <span className="stat-tile-hint">{hint}</span> : null}
       </span>

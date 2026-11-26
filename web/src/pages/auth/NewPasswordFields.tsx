@@ -43,6 +43,7 @@ export function NewPasswordFields({ password, confirm, errors, onPasswordChange,
     <>
       <PasswordInput
         label={label}
+        placeholder={copy.newPasswordPlaceholder}
         autoComplete="new-password"
         maxLength={MAX_PASSWORD_LENGTH}
         value={password}
@@ -51,6 +52,7 @@ export function NewPasswordFields({ password, confirm, errors, onPasswordChange,
       />
       <PasswordInput
         label={m.repeat(label)}
+        placeholder={copy.repeatPlaceholder}
         autoComplete="new-password"
         maxLength={MAX_PASSWORD_LENGTH}
         value={confirm}
