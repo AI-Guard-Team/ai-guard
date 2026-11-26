@@ -32,13 +32,13 @@ async function open(handler: FetchHandler, enrolled = false) {
   const fetchMock = mockFetch(withCandidateBasics(handler, { enrolled }))
   signInAs('Candidate')
   await renderApp('/profile/photo')
-  await screen.findByRole('button', { name: 'Metni oku ve onayla' }) // rıza metni açılır pencerede (K-43)
+  await screen.findByRole('button', { name: 'Metni oku ve onayla' }) // rıza metni açılır pencerede (K-44)
   return fetchMock
 }
 
 const photoCall = (fetchMock: ReturnType<typeof mockFetch>) => fetchMock.mock.calls.find(([url]) => url === '/api/me/photo')
 
-/** Yeni akış (K-43): rıza metni açılır pencerede okunup onaylanır, sonra fotoğraf alanı açılır. */
+/** Yeni akış (K-44): rıza metni açılır pencerede okunup onaylanır, sonra fotoğraf alanı açılır. */
 async function giveConsent() {
   await userEvent.click(await screen.findByRole('button', { name: 'Metni oku ve onayla' }))
   await userEvent.click(screen.getByRole('checkbox'))
@@ -130,7 +130,7 @@ describe('kayıt fotoğrafı ve biyometrik rıza', () => {
     const fetchMock = await open((url, init) => (url === '/api/me/biometric-consent' && init.method === 'DELETE' ? jsonResponse(204) : jsonResponse(500)), true)
 
     expect(await screen.findByText('Yüz şablonunuz hazır')).toBeInTheDocument()
-    await giveConsent() // yeni fotoğraf için de önce rıza (K-43)
+    await giveConsent() // yeni fotoğraf için de önce rıza (K-44)
     expect(screen.getByRole('button', { name: 'Fotoğrafı güncelle' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Rızamı geri al' }))
     const dialog = screen.getByRole('dialog')

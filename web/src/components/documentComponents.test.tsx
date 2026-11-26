@@ -8,7 +8,7 @@ import { RiskScore } from './RiskScore'
 import { Seal } from './Seal'
 import { StatusBadge } from './StatusBadge'
 
-describe('belge bileşenleri (K-38)', () => {
+describe('belge bileşenleri (K-39)', () => {
   it('rozet yazısını ekran okuyucuya söyler; boş yuvada ikon yok', () => {
     const { container, rerender } = render(<Seal label="Rıza" />)
     expect(screen.getByRole('img', { name: 'Rıza' })).toHaveClass('is-stamped')

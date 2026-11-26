@@ -31,7 +31,7 @@ const loadAll = async (signal: AbortSignal) => {
 
 /**
  * Ayarlar (Stitch 31): platformda gerçekten var olan ayarların özeti. Rıza metinleri sürümlü ve salt okunur (K-32),
- * saklama süresi sınav başına (sınav formunda), risk değerleri platform geneli (K-40). Uydurma bir ayar yok.
+ * saklama süresi sınav başına (sınav formunda), risk değerleri platform geneli (K-41). Uydurma bir ayar yok.
  */
 export function SettingsPage() {
   const { data, error, reload } = useResource(loadAll, 'Ayarlar yüklenemedi.')

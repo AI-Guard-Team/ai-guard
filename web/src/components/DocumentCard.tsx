@@ -18,7 +18,7 @@ interface DocumentCardProps {
   children?: ReactNode
 }
 
-/** Kart (K-38): başlık, altında kısa bilgi satırı (ör. dosya numarası) ve içerik. */
+/** Kart (K-39): başlık, altında kısa bilgi satırı (ör. dosya numarası) ve içerik. */
 export function DocumentCard({
   docNo,
   kicker,

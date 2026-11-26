@@ -27,7 +27,7 @@ interface SealProps {
 const ICONS = { seal: ShieldCheck, success: CircleCheck, warning: CircleAlert, danger: CircleX } as const
 
 /**
- * Karar ve tamamlanma rozeti (K-38): yumuşak renkli daire, ortada ikon ve kısa yazı. Karar (Temiz/Şüpheli/İhlal) ve
+ * Karar ve tamamlanma rozeti (K-39): yumuşak renkli daire, ortada ikon ve kısa yazı. Karar (Temiz/Şüpheli/İhlal) ve
  * sihirbaz adımlarında kullanılır. Renk tek başına anlam taşımaz; yazı her zaman görünür.
  */
 export function Seal({ label, tone = 'seal', state = 'stamped', animate = false, size = 96, icon, title, className }: SealProps) {

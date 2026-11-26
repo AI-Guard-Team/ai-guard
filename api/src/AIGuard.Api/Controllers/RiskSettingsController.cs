@@ -7,8 +7,8 @@ using Microsoft.Extensions.Options;
 namespace AIGuard.Api.Controllers;
 
 /// <summary>
-/// Risk ayarları (UI1, Stitch 29; K-40). Salt okunur: değerler riskconfig.json'dan, değişiklik sunucu yapılandırmasıyla.
-/// Sınav başına düzenleme ayrı bir karar (S-27).
+/// Risk ayarları (UI1, Stitch 29; K-41). Salt okunur: değerler riskconfig.json'dan, değişiklik sunucu yapılandırmasıyla.
+/// Sınav başına düzenleme ayrı bir karar (S-30).
 /// </summary>
 [ApiController]
 [Route("api/risk-settings")]

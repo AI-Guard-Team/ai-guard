@@ -20,12 +20,12 @@ describe('yönlendirme', () => {
     signInAs(role)
     await renderApp('/')
 
-    // Her rolün ana sayfası genel bakış paneli (K-42); karşılama başlığı adıyla.
+    // Her rolün ana sayfası genel bakış paneli (K-43); karşılama başlığı adıyla.
     expect(screen.getByRole('heading', { level: 1, name: /Merhaba, Test/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Genel bakış' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('başka rolün sayfasına giden kullanıcı kendi ana sayfasına döner (K-43)', async () => {
+  it('başka rolün sayfasına giden kullanıcı kendi ana sayfasına döner (K-44)', async () => {
     signInAs('Candidate')
     await renderApp('/admin')
 

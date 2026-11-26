@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-// Tema tercihi (K-41): açık, koyu ya da sistem. Tercih tarayıcıda saklanır; <html data-theme> ile uygulanır.
+// Tema tercihi (K-42): açık, koyu ya da sistem. Tercih tarayıcıda saklanır; <html data-theme> ile uygulanır.
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 export type Theme = 'light' | 'dark'

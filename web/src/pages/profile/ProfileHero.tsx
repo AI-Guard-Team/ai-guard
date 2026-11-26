@@ -3,7 +3,7 @@ import { ROLE_LABEL } from '../../auth/roles'
 import { useAuth } from '../../auth/useAuth'
 import './ProfilePage.css'
 
-/** Profil kartı: avatar, ad, e-posta, rol. Profilin iki sekmesinde (hesap, kayıt fotoğrafı) aynı (K-43). */
+/** Profil kartı: avatar, ad, e-posta, rol. Profilin iki sekmesinde (hesap, kayıt fotoğrafı) aynı (K-44). */
 export function ProfileHero() {
   const { user } = useAuth()
   if (!user) return null

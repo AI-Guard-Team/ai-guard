@@ -14,7 +14,7 @@ export type SessionState =
   | 'Cancelled'
   | 'Decided'
 
-/** Adayın bu sınavdaki en son oturumu (K-35). */
+/** Adayın bu sınavdaki en son oturumu (K-36). */
 export interface MySession {
   id: string
   state: SessionState
@@ -22,7 +22,7 @@ export interface MySession {
   endedAt?: string | null
 }
 
-/** `GET /api/exams` satırı (E3 K-23 + K-35). Aday için `attemptUsed` ve `mySession` dolu. */
+/** `GET /api/exams` satırı (E3 K-23 + K-36). Aday için `attemptUsed` ve `mySession` dolu. */
 export interface ExamSummary {
   id: string
   name: string

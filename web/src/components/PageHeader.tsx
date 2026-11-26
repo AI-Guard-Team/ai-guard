@@ -33,7 +33,7 @@ function sectionOf(pathname: string): string | undefined {
 }
 
 /**
- * Her sayfanın başlık şablonu (K-38): bölümün renkli simgesi, yol çubuğu, başlık + bilgi düğmesi, tek cümle açıklama
+ * Her sayfanın başlık şablonu (K-39): bölümün renkli simgesi, yol çubuğu, başlık + bilgi düğmesi, tek cümle açıklama
  * ve eylemler. Bütün sayfalar aynı düzende başlar; kullanıcı bölümü rengiyle de tanır. Sayfa başına tek h1.
  */
 export function PageHeader({ title, breadcrumbs, kicker, description, info, actions, section }: PageHeaderProps) {

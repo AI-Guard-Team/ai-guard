@@ -55,8 +55,10 @@ export function ReviewPanelPage() {
 
   const load = useCallback(
     async (signal: AbortSignal) => {
-      const [exam, list] = await Promise.all([getExam(examId, signal), getReviewSessions(examId, toQuery(filter, sort), signal)])
-      return { exam, list }
+      // Dosya listesinin hatası öne alınır: sunucunun mesajı (ör. "bu sınava atanmadınız") sınav isteğininkinden açıklayıcı.
+      const [exam, list] = await Promise.allSettled([getExam(examId, signal), getReviewSessions(examId, toQuery(filter, sort), signal)])
+      if (list.status === 'rejected') throw list.reason
+      return { exam: exam.status === 'fulfilled' ? exam.value : undefined, list: list.value }
     },
     [examId, filter, sort],
   )

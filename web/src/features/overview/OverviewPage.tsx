@@ -4,7 +4,7 @@ import { CandidateOverview } from './CandidateOverview'
 import { ReviewerOverview } from './ReviewerOverview'
 import './overview.css'
 
-/** Genel bakış: her rolün girişte gördüğü panel (kullanıcı isteği, K-42). */
+/** Genel bakış: her rolün girişte gördüğü panel (kullanıcı isteği, K-43). */
 export function OverviewPage() {
   const { user } = useAuth()
   if (!user) return null

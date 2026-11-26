@@ -10,7 +10,7 @@ interface OpticalBubbleProps {
   className?: string
 }
 
-/** Optik form baloncuğu (K-38). Yalnızca görünüm; seçim davranışı çevreleyen input/düğmede. */
+/** Optik form baloncuğu (K-39). Yalnızca görünüm; seçim davranışı çevreleyen input/düğmede. */
 export function OpticalBubble({ children, filled = false, size = 'md', flagged = false, className }: OpticalBubbleProps) {
   const classes = ['bubble', `bubble-${size}`, filled && 'is-filled', flagged && 'is-flagged', className].filter(Boolean).join(' ')
   return (

@@ -35,7 +35,7 @@ describe('giriş', () => {
     await userEvent.type(screen.getByLabelText('Şifre'), 'Sifre123!')
     await userEvent.click(screen.getByRole('button', { name: 'Giriş yap' }))
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Merhaba, Ayşe 👋' })).toBeInTheDocument() // ana sayfa genel bakış (K-42)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Merhaba, Ayşe 👋' })).toBeInTheDocument() // ana sayfa genel bakış (K-43)
     expect(tokenStore.get()?.accessToken).toBe(accessToken)
     expect(body(fetchMock.mock.calls[0])).toEqual({ email: 'aday@aiguard.local', password: 'Sifre123!' })
   })

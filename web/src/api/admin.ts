@@ -157,7 +157,7 @@ export interface RiskSettings {
   events: EventRiskRule[]
 }
 
-/** `GET /api/risk-settings` (K-40): riskconfig.json'daki değerler, salt okunur. */
+/** `GET /api/risk-settings` (K-41): riskconfig.json'daki değerler, salt okunur. */
 export function getRiskSettings(signal?: AbortSignal): Promise<RiskSettings> {
   return apiRequest<RiskSettings>('/api/risk-settings', { signal })
 }

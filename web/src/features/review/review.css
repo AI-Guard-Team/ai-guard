@@ -1,4 +1,4 @@
-/* Değerlendirici ekranları (Stitch 18–21; Prompt E, F; K-38). */
+/* Değerlendirici ekranları (Stitch 18–21; Prompt E, F; K-39). */
 
 .review-page {
   display: grid;
@@ -780,7 +780,7 @@
   }
 }
 
-/* Skor gerekçesi: sıralı yatay çubuk (K-43, dataviz). */
+/* Skor gerekçesi: sıralı yatay çubuk (K-44, dataviz). */
 .bars {
   display: grid;
   gap: var(--space-4);

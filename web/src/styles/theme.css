@@ -2,7 +2,7 @@
  * Renk, yazı, boşluk ve hareket değişkenlerinin TEK kaynağı.
  * Bileşenler yalnızca bu adları kullanır; başka bir dosyada renk kodu yazılmaz.
  *
- * Yön (K-38, PRODUCT.md): modern, kurumsal İK platformu. Lacivert ana renk, açık gök mavisi zemin, canlı indigo eylem,
+ * Yön (K-39, PRODUCT.md): modern, kurumsal İK platformu. Lacivert ana renk, açık gök mavisi zemin, canlı indigo eylem,
  * yumuşak köşeli beyaz kartlar, Plus Jakarta Sans. Ham renkler --palette-*, bileşenler --color-*.
  */
 :root {
@@ -148,7 +148,7 @@
 }
 
 /*
- * Koyu tema (K-41): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
+ * Koyu tema (K-42): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
  * Lacivert yan menü ve tanıtım panelleri iki temada da aynı kalır.
  */
 :root[data-theme='dark'] {

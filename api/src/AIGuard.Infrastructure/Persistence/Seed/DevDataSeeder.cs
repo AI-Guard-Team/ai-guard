@@ -81,7 +81,7 @@ public sealed class DevDataSeeder(
         var reviewer = CreateUser("Örnek Değerlendirici", "reviewer@aiguard.local", UserRole.Reviewer);
         var candidate1 = CreateUser("Örnek Aday 1", "aday1@aiguard.local", UserRole.Candidate);
         var candidate2 = CreateUser("Örnek Aday 2", "aday2@aiguard.local", UserRole.Candidate);
-        // Listeleri, aramayı ve atamaları gerçekçi denemek için daha fazla aday (UI1, K-43).
+        // Listeleri, aramayı ve atamaları gerçekçi denemek için daha fazla aday (UI1, K-44).
         var moreCandidates = Enumerable.Range(3, ExtraCandidates)
             .Select(i => CreateUser($"Örnek Aday {i}", $"aday{i}@aiguard.local", UserRole.Candidate))
             .ToList();

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace AIGuard.IntegrationTests.Exams;
 
-/// <summary>UI1 (Stitch 29, K-40): risk ayarları salt okunur, yalnızca yöneticiye; değerler sunucunun kullandığı değerler.</summary>
+/// <summary>UI1 (Stitch 29, K-41): risk ayarları salt okunur, yalnızca yöneticiye; değerler sunucunun kullandığı değerler.</summary>
 public class RiskSettingsApiTests(PostgresFixture fx) : IClassFixture<PostgresFixture>
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };

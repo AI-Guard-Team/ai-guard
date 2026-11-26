@@ -10,8 +10,8 @@ import { formatNumber } from '../../lib/format'
 const load = (signal: AbortSignal) => getRiskSettings(signal)
 
 /**
- * Risk ayarları (Stitch 29; `GET /api/risk-settings`, K-40). Değerler platform geneli ve salt okunur: sunucunun
- * skor hesabında kullandığı riskconfig.json. Sınav başına düzenleme ayrı bir karar (S-27); ekranda öyle söyleniyor.
+ * Risk ayarları (Stitch 29; `GET /api/risk-settings`, K-41). Değerler platform geneli ve salt okunur: sunucunun
+ * skor hesabında kullandığı riskconfig.json. Sınav başına düzenleme ayrı bir karar (S-30); ekranda öyle söyleniyor.
  */
 export function RiskTab() {
   const { data, error, reload } = useResource(load, 'Risk ayarları yüklenemedi.')

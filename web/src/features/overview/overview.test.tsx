@@ -21,7 +21,7 @@ const exam = {
 
 afterEach(() => localStorage.clear())
 
-describe('genel bakış (K-42)', () => {
+describe('genel bakış (K-43)', () => {
   it('aday sıradaki sınavını, açılışa kalan süreyi ve eksik kayıt fotoğrafını görür', async () => {
     mockFetch((url) => (url === '/api/exams' ? jsonResponse(200, [exam]) : url === '/api/me/biometric' ? jsonResponse(200, { enrolled: false }) : jsonResponse(404)))
     signInAs('Candidate', 'Ayşe Demir')

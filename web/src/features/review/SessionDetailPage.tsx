@@ -8,13 +8,14 @@ import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { DocumentCard } from '../../components/DocumentCard'
 import { InfoTip } from '../../components/InfoTip'
+import { Modal } from '../../components/Modal'
 import { RiskScore } from '../../components/RiskScore'
 import { Seal } from '../../components/Seal'
 import { Skeleton } from '../../components/Skeleton'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useResource } from '../../hooks/useResource'
 import { DECISION_LABEL, DECISION_TONE, FLAG_LABEL, FLAG_TONE, STATUS_LABEL, STATUS_TONE, eventLabel } from '../../lib/eventCatalog'
-import { docNumber, formatDate, formatDateTime, formatTimeRange } from '../../lib/format'
+import { docNumber, formatDate, formatDateTime, formatTimeRange, formatTimeSeconds } from '../../lib/format'
 import { ContributionBars } from './ContributionBars'
 import { DecisionPanel } from './DecisionPanel'
 import { EvidencePanel } from './EvidencePanel'
@@ -44,6 +45,8 @@ export function SessionDetailPage() {
   const [markingId, setMarkingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [justDecided, setJustDecided] = useState(false)
+  // Yanlış alarm geri alınamaz: önce onay penceresi (S5'teki karar, K-34).
+  const [confirmMark, setConfirmMark] = useState<ReviewEvent | null>(null)
 
   if (loading && !data) {
     return (
@@ -209,7 +212,7 @@ export function SessionDetailPage() {
               monitoringDataDeletedAt={detail.monitoringDataDeletedAt}
               canMark={canMark}
               marking={markingId === selectedEvent?.id}
-              onMark={(event) => void mark(event)}
+              onMark={setConfirmMark}
             />
             <p className="evidence-audit">Bu dosyayı açmanız denetim kaydına yazıldı.</p>
           </DocumentCard>
@@ -231,6 +234,28 @@ export function SessionDetailPage() {
           />
         </DocumentCard>
       ) : null}
+
+      <Modal open={confirmMark !== null} title="Yanlış alarm olarak işaretlensin mi?" onClose={() => setConfirmMark(null)}>
+        <p>
+          {confirmMark ? `${eventLabel(confirmMark.type)} (${formatTimeSeconds(confirmMark.startedAt)}) ` : ''}olayı silinmez, skordan çıkar ve işaretleyen
+          olarak adınız kaydedilir. Bu işlem geri alınamaz.
+        </p>
+        <div className="modal-actions">
+          <Button variant="secondary" onClick={() => setConfirmMark(null)}>
+            Vazgeç
+          </Button>
+          <Button
+            loading={markingId !== null}
+            onClick={() => {
+              const event = confirmMark
+              setConfirmMark(null)
+              if (event) void mark(event)
+            }}
+          >
+            İşaretle
+          </Button>
+        </div>
+      </Modal>
 
       <div className="case-footer">
         <Link className="button button-secondary button-md" to={`/reports/exams/${detail.examId}/sessions/${detail.sessionId}`}>

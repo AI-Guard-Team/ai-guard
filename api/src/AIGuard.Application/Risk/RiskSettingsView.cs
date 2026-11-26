@@ -3,7 +3,7 @@ using AIGuard.Domain.Enums;
 namespace AIGuard.Application.Risk;
 
 /// <summary>
-/// <c>GET /api/risk-settings</c> yanıtı (UI1, Stitch 29; K-40): riskconfig.json'daki eşik ve olay ağırlıkları, salt okunur.
+/// <c>GET /api/risk-settings</c> yanıtı (UI1, Stitch 29; K-41): riskconfig.json'daki eşik ve olay ağırlıkları, salt okunur.
 /// Değerler sunucunun skor hesabında kullandığı değerlerin aynısı; önyüz eşik tahmin etmesin diye buradan okuyor.
 /// </summary>
 public sealed record RiskSettingsView(

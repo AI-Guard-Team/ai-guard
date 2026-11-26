@@ -14,7 +14,7 @@ export function RequireAuth({ roles }: { roles?: Role[] }) {
     return <Navigate to={target} replace state={{ from }} />
   }
 
-  // Rolün açamadığı sayfa kullanıcıya hiç gösterilmez; kendi ana sayfasına gider (kullanıcı isteği, K-43).
+  // Rolün açamadığı sayfa kullanıcıya hiç gösterilmez; kendi ana sayfasına gider (kullanıcı isteği, K-44).
   // Örn. yönetici sayfasında oturumu kapanıp aday olarak giren kişi yönetici adresine düşmez.
   if (roles && !roles.includes(user.role)) return <Navigate to={ROLE_HOME[user.role]} replace />
 

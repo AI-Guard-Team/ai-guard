@@ -10,7 +10,7 @@ interface QuestionNavigatorProps {
 }
 
 /**
- * Minyatür optik cevap kâğıdı (K-38): cevaplanan baloncuk dolu, boş olan çerçeveli, işaretli olanın köşesinde
+ * Minyatür optik cevap kâğıdı (K-39): cevaplanan baloncuk dolu, boş olan çerçeveli, işaretli olanın köşesinde
  * bordo bayrak, mevcut soru altı çizili. Durum ekran okuyucuya düğme adıyla söyleniyor.
  */
 export function QuestionNavigator({ questions, current, selections, marked, onSelect }: QuestionNavigatorProps) {

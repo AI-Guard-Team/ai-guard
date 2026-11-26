@@ -1,6 +1,6 @@
 import { apiRequest } from './client'
 
-// Yükleme S2 kartından, geri alma A3 kartından, durum UI1'den (K-35).
+// Yükleme S2 kartından, geri alma A3 kartından, durum UI1'den (K-36).
 export const PROFILE_ENDPOINTS = {
   photo: '/api/me/photo',
   withdrawBiometricConsent: '/api/me/biometric-consent',

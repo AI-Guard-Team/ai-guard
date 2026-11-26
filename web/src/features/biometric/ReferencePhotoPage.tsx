@@ -29,7 +29,7 @@ const PHOTO_RULES = [
   { ok: 'Yüz tamamen açık', no: 'Koyu gözlük, şapka, maske' },
 ] as const
 
-/** Kayıt fotoğrafı ve biyometrik rıza (Stitch ekran 8; A3 uçları, K-27, K-35). */
+/** Kayıt fotoğrafı ve biyometrik rıza (Stitch ekran 8; A3 uçları, K-27, K-36). */
 export function ReferencePhotoPage() {
   const showToast = useToast()
   const consentText = useConsentText('Biometric')

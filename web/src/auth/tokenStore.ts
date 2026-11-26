@@ -6,8 +6,8 @@ export interface Tokens {
 /** Oturum neden kapandı: "expired" belirteç yenilenemedi, "signout" kullanıcı çıktı. */
 export type EndReason = 'expired' | 'signout'
 
-// Belirteçler sekmeye özel sessionStorage'da (K-43): sayfa yenilenince oturum düşmez, sekme kapanınca silinir.
-// localStorage kullanılmaz (sekmeler arası ve kalıcı olurdu). XSS'e karşı CSP script-src 'self' (K-34).
+// Belirteçler sekmeye özel sessionStorage'da (K-44): sayfa yenilenince oturum düşmez, sekme kapanınca silinir.
+// localStorage kullanılmaz (sekmeler arası ve kalıcı olurdu). XSS'e karşı CSP script-src 'self' (K-35).
 // httpOnly çerez kararı verilirse değişmesi gereken tek yer bu dosyadır.
 const STORAGE_KEY = 'aiguard.session'
 

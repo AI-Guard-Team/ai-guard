@@ -21,7 +21,7 @@ interface QuestionCardProps {
 }
 
 /**
- * Optik form kâğıdı (K-38, Stitch 14): kenarda büyük soru numarası, harfli baloncuklu seçenekler.
+ * Optik form kâğıdı (K-39, Stitch 14): kenarda büyük soru numarası, harfli baloncuklu seçenekler.
  * Seçenekler radyo grubu; klavyeyle ok tuşlarıyla gezilir. "Kaydedildi" işareti sunucu onayından sonra kısa süre görünür.
  */
 export function QuestionCard({ question, index, total, selected, disabled, marked, queued, lastSavedAt, onChoose, onToggleMark }: QuestionCardProps) {

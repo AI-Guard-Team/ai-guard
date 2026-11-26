@@ -2,7 +2,7 @@ import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../lib/theme'
 import './ThemeToggle.css'
 
-/** Açık / koyu tema düğmesi (K-41). Tıklayınca o anki temanın tersine geçer ve tercih saklanır. */
+/** Açık / koyu tema düğmesi (K-42). Tıklayınca o anki temanın tersine geçer ve tercih saklanır. */
 export function ThemeToggle({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
   const { theme, choose } = useTheme()
   const next = theme === 'dark' ? 'light' : 'dark'
