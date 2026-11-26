@@ -6,7 +6,8 @@
 // - label: değerlendiricinin göreceği ad (sağlayıcı)
 //
 // Repodaki liste yalnızca belgelendirme amaçlı örnek bloklar içeriyor (RFC 5737 / RFC 3849; internette
-// kullanılmıyor). Gerçek liste kurumun seçtiği bir kaynaktan doldurulmalı (K-25). Dosya compose'da
+// kullanılmıyor). Gerçek liste bulut sağlayıcılarının resmî adres listelerinden doldurulmalı (K-50: kaynak,
+// biçim ve sınırlılık); kaynak ve indirme tarihi buraya yazılmalı. Dosya compose'da
 // container'a salt okunur bağlı; değiştirince "docker compose restart api" yeterli.
 {
   "VpnIpBlocks": {

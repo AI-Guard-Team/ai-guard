@@ -54,6 +54,28 @@ services:
     networks:
       - backend
 
+  # Tek seferlik adım: API'nin bağlanacağı yetkisi kısıtlı kullanıcı (GAB 3.3.2 en az ayrıcalık, S-7, K-50).
+  # Göçlerden sonra tabloların sahibiyle docs/sql/uygulama-kullanicisi.sql'i çalıştırır: aiguard_app yalnızca
+  # veri okuyup yazabilir, tablo oluşturamaz/silemez, denetim kaydını güncelleyemez. Betik her açılışta yeniden
+  # çalışabilir (kullanıcı varsa şifresini günceller). Şifre betiğe ve çıktıya yazılmaz.
+  db-user:
+    image: postgres:16
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD tanımlı değil}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER tanımlı değil}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB tanımlı değil}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD tanımlı değil}
+    volumes:
+      - ./docs/sql:/sql:ro
+    # "$$" -> değişkeni compose değil container içindeki kabuk çözsün.
+    command: ["sh", "-c", "psql -h postgres -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -q -v app_password=\"$${APP_DB_PASSWORD}\" -f /sql/uygulama-kullanicisi.sql"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - backend
+
   vision:
     build:
       context: ./vision
@@ -89,7 +111,8 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       # .env.example'daki ConnectionStrings__Default localhost'u gösterir (Docker'sız kurulum);
       # container içinde postgres servis adına gitmesi gerektiği için burada yeniden kuruluyor.
-      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Tabloların sahibi değil, db-user adımının açtığı yetkisi kısıtlı kullanıcı (S-7, K-50).
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=aiguard_app;Password=${APP_DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET tanımlı değil}
       VISION_SERVICE_KEY: ${VISION_SERVICE_KEY:?VISION_SERVICE_KEY tanımlı değil}
       # Aynı nedenle: localhost:8000 değil, iç ağdaki vision servisi.
@@ -123,6 +146,9 @@ services:
         condition: service_healthy
       # Göçler bitmeden API açılırsa tablolar yok ve örnek veri yüklenmez.
       migrate:
+        condition: service_completed_successfully
+      # API'nin kullanıcısı göçlerden sonra açılıyor; o olmadan API bağlanamaz.
+      db-user:
         condition: service_completed_successfully
       vision:
         condition: service_healthy

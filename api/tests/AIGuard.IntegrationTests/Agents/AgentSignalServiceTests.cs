@@ -30,7 +30,12 @@ public class AgentSignalServiceTests(PostgresFixture fx) : IClassFixture<Postgre
         Assert.Equal(32, agent.Key.Length);
         Assert.Equal(AgentSignature.HashKey(agent.Key), pairing.SessionKeyHash);
         Assert.Equal(agent.Key, agent.Keys.Get(agent.SessionId));
-        Assert.Null(pairing.EncryptedSessionKey); // anahtarın kendisi veritabanında yok
+        // Anahtarın kendisi veritabanında yok: yalnızca özet sütunu var, şifreli anahtar sütunu kaldırıldı (S-16).
+        var columns = await db.Database
+            .SqlQuery<string>($"SELECT column_name AS \"Value\" FROM information_schema.columns WHERE table_name = 'agent_pairings'")
+            .ToListAsync();
+        Assert.Contains("session_key_hash", columns);
+        Assert.DoesNotContain("encrypted_session_key", columns);
     }
 
     [SkippableFact]

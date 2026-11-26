@@ -33,12 +33,20 @@ internal sealed class TestApi
             b.UseSetting("Retention:Enabled", "false");
             // Sonra eklenen kayıt geçerli: sahte gönderici yerine davetleri biriktiren gönderici.
             b.ConfigureServices(s => s.AddSingleton<IEmailSender>(Emails));
+            // Testler kamera karesi göndermeden soruları okuyor; "kare var" kabul ediliyor. Kuralın kendisi
+            // (S-29) SessionQuestionGateTests'te gerçek hız sınırıyla sınanıyor.
+            b.ConfigureServices(s => s.AddSingleton<AIGuard.Application.Sessions.ICameraPresence>(new AlwaysPresentCamera()));
             // Testin kendi sahte servisleri (ör. S4'te analizci); sonra eklendiği için geçerli olan bunlar.
             if (services is not null)
             {
                 b.ConfigureServices(services);
             }
         });
+    }
+
+    private sealed class AlwaysPresentCamera : AIGuard.Application.Sessions.ICameraPresence
+    {
+        public bool HasRecentFrame(Guid sessionId, DateTimeOffset now) => true;
     }
 
     public WebApplicationFactory<Program> Factory { get; }

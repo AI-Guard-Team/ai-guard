@@ -59,6 +59,8 @@ public static class DependencyInjection
         // S4: sınav sırası kamera karesi ve ses parçası; hız sınırı bellekte, uygulama boyunca tek.
         services.AddSingleton<SessionMediaRateLimiter>();
         services.AddScoped<SessionMediaService>();
+        // S-29: sorular yalnızca son kareleri kabul edilen oturuma; bilgi hız sınırının kaydından.
+        services.AddSingleton<ICameraPresence>(sp => sp.GetRequiredService<SessionMediaRateLimiter>());
 
         // D4: sınav sırası kamera analizi ve olay kuralları (K-45). Oturum durumları bellekte, uygulama boyunca tek
         // (S-17). Eşikler "CameraMonitoring" bölümünden Api'de bağlanıyor; varsayılanlar sınıfta.
@@ -88,6 +90,8 @@ public static class DependencyInjection
 
         // A5: veri koruma. Saklama süresi görevi, rıza metinleri ve denetim kaydının görüntülenmesi.
         services.AddScoped<DataRetentionService>();
+        // S-27 (GAB 3.3.2): reddedilen istekler (401/403) denetim kaydına.
+        services.AddScoped<AccessDeniedRecorder>();
         services.AddScoped<ConsentTextService>();
         services.AddScoped<AuditLogService>();
         services.AddScoped<AIGuard.Application.Settings.PlatformSettingsService>();
