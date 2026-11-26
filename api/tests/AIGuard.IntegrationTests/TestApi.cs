@@ -24,6 +24,8 @@ internal sealed class TestApi
             b.UseEnvironment(environment);
             b.UseSetting("ConnectionStrings:Default", fx.ConnectionString);
             b.UseSetting("JWT_SECRET", JwtSecret);
+            // Kanıt karesi ve yüz vektörü şifreleme anahtarı (A3); her test sunucusu için rastgele (E5a).
+            b.UseSetting("EVIDENCE_ENCRYPTION_KEY", Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
             // Testler sabit tarihli oturumlar kullanıyor; arka plandaki otomatik teslim onları kapatmasın (E4).
             // Süre denetimi SessionTimekeeper testlerinde FakeTimeProvider ile ayrıca sınanıyor.
             b.UseSetting("Sessions:TimekeeperEnabled", "false");
