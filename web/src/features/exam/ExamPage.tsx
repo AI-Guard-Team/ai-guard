@@ -16,13 +16,34 @@ import { SubmitDialog } from './SubmitDialog'
 import { useCameraPermission, useFullscreen } from './useBrowserState'
 import { useExamMonitoring } from './useExamMonitoring'
 import { ANSWERABLE, FINISHED, RUNNING, useExamSession } from './useExamSession'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import './ExamPage.css'
+
+const messages = defineMessages({
+  tr: {
+    question: (current: string, total: string) => `· Soru ${current}/${total}`,
+    fullscreen: 'Tam ekrana geç',
+    submit: 'Sınavı teslim et',
+    waitingMedia: 'Sorular kamera ve mikrofon açılınca görünür. Tarayıcı izin isterse "İzin ver"i seçin.',
+    previous: 'Önceki',
+    next: 'Sonraki',
+  },
+  en: {
+    question: (current: string, total: string) => `· Question ${current}/${total}`,
+    fullscreen: 'Enter full screen',
+    submit: 'Submit exam',
+    waitingMedia: 'The questions appear once the camera and microphone are on. If the browser asks for permission, choose "Allow".',
+    previous: 'Previous',
+    next: 'Next',
+  },
+})
 
 /**
  * Canlı sınav ekranı (Stitch ekran 14) ve kesinti durumları (15). Yan menü yok: aday yalnızca sınava odaklanır.
  * Mantık `useExamSession` ve `useExamMonitoring`'de; bu bileşen durumlara göre çizer.
  */
 export function ExamPage() {
+  const m = useMessages(messages)
   const { sessionId = '' } = useParams()
   const videoRef = useRef<HTMLVideoElement>(null)
   const camera = useCamera(videoRef)
@@ -70,9 +91,7 @@ export function ExamPage() {
                 <h1>{view.examName}</h1>
               </span>
               {question && answering ? (
-                <span className="numeric">
-                  · Soru {String(index + 1).padStart(2, '0')}/{String(questions.length).padStart(2, '0')}
-                </span>
+                <span className="numeric">{m.question(String(index + 1).padStart(2, '0'), String(questions.length).padStart(2, '0'))}</span>
               ) : null}
             </div>
           ) : (
@@ -83,19 +102,19 @@ export function ExamPage() {
         <div className="exam-topbar-actions">
           <ExamStatusChips chips={chips} />
           {state === 'InProgress' && !fullscreen.fullscreen && fullscreen.supported ? (
-            <Button variant="ghost" className="exam-fullscreen" onClick={fullscreen.enter} aria-label="Tam ekrana geç" title="Tam ekrana geç">
+            <Button variant="ghost" className="exam-fullscreen" onClick={fullscreen.enter} aria-label={m.fullscreen} title={m.fullscreen}>
               <Maximize size={18} aria-hidden="true" />
             </Button>
           ) : null}
           {/* Düğme her zaman yer kaplar; sınav sürmüyorsa görünmez ve tıklanamaz (yüklemede çubuk uzamasın). */}
           {state !== undefined && RUNNING.has(state) ? (
             <Button disabled={exam.pending} onClick={() => setConfirming(true)} icon={<Send size={18} aria-hidden="true" />}>
-              Sınavı teslim et
+              {m.submit}
             </Button>
           ) : (
             <span className="exam-topbar-placeholder" aria-hidden="true">
               <Button tabIndex={-1} disabled icon={<Send size={18} />}>
-                Sınavı teslim et
+                {m.submit}
               </Button>
             </span>
           )}
@@ -146,7 +165,7 @@ export function ExamPage() {
             ) : null}
             {/* S4: izin istemi yanıtlanana ya da kamera/mikrofon açılana kadar sorular gösterilmiyor; süre işliyor. */}
             {view.state === 'InProgress' && !monitoring.ready && !monitoring.error ? (
-              <Alert>Sorular kamera ve mikrofon açılınca görünür. Tarayıcı izin isterse "İzin ver"i seçin.</Alert>
+              <Alert>{m.waitingMedia}</Alert>
             ) : null}
             {question && monitoring.ready ? (
               <div className="exam-layout">
@@ -166,7 +185,7 @@ export function ExamPage() {
                   <QuestionNavigator questions={questions} current={index} selections={selections} marked={marked} onSelect={setQuestionIndex} />
                   <div className="exam-pager">
                     <Button variant="secondary" disabled={index === 0} onClick={() => setQuestionIndex(index - 1)} icon={<ArrowLeft size={18} aria-hidden="true" />}>
-                      Önceki
+                      {m.previous}
                     </Button>
                     <Button
                       variant="secondary"
@@ -174,7 +193,7 @@ export function ExamPage() {
                       onClick={() => setQuestionIndex(index + 1)}
                       iconEnd={<ArrowRight size={18} aria-hidden="true" />}
                     >
-                      Sonraki
+                      {m.next}
                     </Button>
                   </div>
                 </div>

@@ -1,4 +1,7 @@
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { formatRemaining } from './remainingTime'
+
+const messages = defineMessages({ tr: { remaining: 'Kalan süre' }, en: { remaining: 'Time remaining' } })
 
 const WARNING_MS = 5 * 60_000
 const DANGER_MS = 60_000
@@ -12,8 +15,9 @@ function timerTone(remaining: number | null): TimerTone {
 
 /** Kalan süre (sunucu saatine göre, K-24): büyük ama sakin mono rakam. Son 5 dakikada kehribar, son dakikada kırmızı. */
 export function ExamTimer({ remaining }: { remaining: number | null }) {
+  const m = useMessages(messages)
   return (
-    <div className={`exam-timer exam-timer-${timerTone(remaining)}`} role="timer" aria-label="Kalan süre">
+    <div className={`exam-timer exam-timer-${timerTone(remaining)}`} role="timer" aria-label={m.remaining}>
       <span className="exam-timer-value numeric">{remaining !== null ? formatRemaining(remaining) : '—:—'}</span>
     </div>
   )

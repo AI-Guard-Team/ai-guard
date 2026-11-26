@@ -10,9 +10,38 @@ import { PageHeader } from '../../components/PageHeader'
 import { Skeleton } from '../../components/Skeleton'
 import { useNow } from '../../hooks/useNow'
 import { useResource } from '../../hooks/useResource'
+import { common } from '../../i18n/common'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { ExamCard } from './ExamCard'
 import { examStatus } from './examStatus'
 import './MyExamsPage.css'
+
+const messages = defineMessages({
+  tr: {
+    failed: 'Sınavlarınız yüklenemedi.',
+    title: 'Sınavlarım',
+    description: 'Size atanan sınavlar, açılış saatleri ve durumları.',
+    photoTitle: 'Kayıt fotoğrafınızı yükleyin',
+    photoAction: 'Fotoğraf yükle',
+    photoText: 'Sınav başında kimliğiniz bu fotoğrafla doğrulanır; yüklemeden sınava başlayamazsınız.',
+    listFailed: 'Sınavlar yüklenemedi',
+    loading: 'Sınavlar yükleniyor',
+    emptyTitle: 'Size atanmış sınav yok',
+    emptyText: 'Kurumunuz sizi bir sınava atadığında burada görünür. Bir sınava atanmanız gerektiğini düşünüyorsanız yöneticinize başvurun.',
+  },
+  en: {
+    failed: 'Your exams could not be loaded.',
+    title: 'My exams',
+    description: 'Exams assigned to you, their opening times and status.',
+    photoTitle: 'Upload your reference photo',
+    photoAction: 'Upload photo',
+    photoText: 'Your identity is checked against this photo at the start of the exam; you cannot start without it.',
+    listFailed: 'Exams could not be loaded',
+    loading: 'Loading exams',
+    emptyTitle: 'No exams assigned to you',
+    emptyText: 'When your institution assigns you to an exam, it appears here. If you think you should be assigned, contact your administrator.',
+  },
+})
 
 interface MyExamsData {
   exams: ExamSummary[]
@@ -27,45 +56,47 @@ const loadMyExams = async (signal: AbortSignal): Promise<MyExamsData> => {
 
 /** Adayın atandığı sınavlar (Stitch ekran 7; GET /api/exams, GET /api/me/biometric). */
 export function MyExamsPage() {
+  const m = useMessages(messages)
+  const c = useMessages(common)
   // Modül düzeyindeki fonksiyon zaten sabit; useCallback gerekmez.
-  const { data, error, loading, reload } = useResource(loadMyExams, 'Sınavlarınız yüklenemedi.')
+  const { data, error, loading, reload } = useResource(loadMyExams, m.failed)
   const now = useNow()
 
   return (
     <>
-      <PageHeader title="Sınavlarım" description="Size atanan sınavlar, açılış saatleri ve durumları." />
+      <PageHeader title={m.title} description={m.description} />
 
       {data && !data.biometric.enrolled ? (
         <ActionBanner
           icon={Camera}
-          title="Kayıt fotoğrafınızı yükleyin"
+          title={m.photoTitle}
           action={
             <Link className="button button-primary button-md" to="/profile/photo">
-              Fotoğraf yükle
+              {m.photoAction}
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
           }
         >
-          Sınav başında kimliğiniz bu fotoğrafla doğrulanır; yüklemeden sınava başlayamazsınız.
+          {m.photoText}
         </ActionBanner>
       ) : null}
 
       {error && !data ? (
-        <Alert tone="danger" title="Sınavlar yüklenemedi">
+        <Alert tone="danger" title={m.listFailed}>
           <p>{error}</p>
           <Button variant="secondary" onClick={reload}>
-            Yeniden dene
+            {c.retry}
           </Button>
         </Alert>
       ) : loading && !data ? (
-        <div className="exam-grid" aria-busy="true" aria-label="Sınavlar yükleniyor">
+        <div className="exam-grid" aria-busy="true" aria-label={m.loading}>
           {[0, 1, 2].map((key) => (
             <Skeleton key={key} height="22rem" radius="lg" />
           ))}
         </div>
       ) : data && data.exams.length === 0 ? (
-        <EmptyState icon={ClipboardList} title="Size atanmış sınav yok">
-          <p>Kurumunuz sizi bir sınava atadığında burada görünür. Bir sınava atanmanız gerektiğini düşünüyorsanız yöneticinize başvurun.</p>
+        <EmptyState icon={ClipboardList} title={m.emptyTitle}>
+          <p>{m.emptyText}</p>
         </EmptyState>
       ) : data ? (
         <div className="exam-grid">

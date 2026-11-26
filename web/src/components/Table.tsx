@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
+import { defineMessages, useMessages } from '../i18n/messages'
 import './Table.css'
+
+const messages = defineMessages({ tr: { empty: 'Gösterilecek kayıt yok.' }, en: { empty: 'No records to show.' } })
 
 export interface Column<T> {
   key: string
@@ -14,8 +17,9 @@ interface TableProps<T> {
   empty?: string
 }
 
-export function Table<T>({ columns, rows, rowKey, empty = 'Gösterilecek kayıt yok.' }: TableProps<T>) {
-  if (rows.length === 0) return <p className="table-empty">{empty}</p>
+export function Table<T>({ columns, rows, rowKey, empty }: TableProps<T>) {
+  const m = useMessages(messages)
+  if (rows.length === 0) return <p className="table-empty">{empty ?? m.empty}</p>
 
   return (
     <div className="table-wrap">

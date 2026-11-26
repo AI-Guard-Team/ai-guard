@@ -12,23 +12,74 @@ import { StatusBadge } from '../../components/StatusBadge'
 import { useNow } from '../../hooks/useNow'
 import { useResource } from '../../hooks/useResource'
 import { formatDateTime } from '../../lib/format'
+import { common } from '../../i18n/common'
+import { getLocale } from '../../i18n/lang'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { PHASE_LABEL, PHASE_TONE, windowPhase, type WindowPhase } from './examWindow'
 import './admin.css'
 
 type Filter = 'all' | WindowPhase
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'Tümü' },
-  { key: 'open', label: 'Erişime açık' },
-  { key: 'upcoming', label: 'Planlandı' },
-  { key: 'closed', label: 'Sona erdi' },
-]
+const FILTER_KEYS: Filter[] = ['all', 'open', 'upcoming', 'closed']
+
+const messages = defineMessages({
+  tr: {
+    filters: { all: 'Tümü', open: 'Erişime açık', upcoming: 'Planlandı', closing: 'Son başlangıç geçti', closed: 'Sona erdi' } as Record<Filter, string>,
+    failed: 'Sınavlar yüklenemedi.',
+    admin: 'Yönetim',
+    title: 'Sınavlar',
+    description: 'Sınavları oluşturun, sorularını ve atamalarını yönetin.',
+    info: [
+      'Bir sınav dört adımda hazırlanır: genel bilgiler, sorular, atamalar ve risk ayarları.',
+      'Aday, erişim penceresi açıkken ve son başlangıç saatinden önce sınava başlayabilir.',
+      'Bir satıra tıklayınca sınavın düzenleme ekranı açılır.',
+    ],
+    newExam: 'Yeni sınav',
+    filterBy: 'Duruma göre süz',
+    search: 'Sınav ara',
+    searchPlaceholder: 'Sınav adıyla ara',
+    listFailed: 'Sınavlar yüklenemedi',
+    emptyTitle: 'Henüz sınav yok',
+    firstExam: 'İlk sınavı oluştur',
+    emptyText: 'Sınav oluşturduktan sonra soru ekleyip adayları ve değerlendiricileri atayabilirsiniz.',
+    noMatch: 'Eşleşen sınav yok',
+    noMatchText: 'Aramayı ya da filtreyi değiştirin.',
+    closes: (at: string) => `${at} kapanır`,
+    noQuestions: 'Soru yok',
+  },
+  en: {
+    filters: { all: 'All', open: 'Open', upcoming: 'Scheduled', closing: 'Latest start passed', closed: 'Ended' },
+    failed: 'Exams could not be loaded.',
+    admin: 'Administration',
+    title: 'Exams',
+    description: 'Create exams and manage their questions and assignments.',
+    info: [
+      'An exam is prepared in four steps: general details, questions, assignments and risk settings.',
+      'Candidates can start while the access window is open and before the latest start time.',
+      'Click a row to open the exam editor.',
+    ],
+    newExam: 'New exam',
+    filterBy: 'Filter by status',
+    search: 'Search exams',
+    searchPlaceholder: 'Search by exam name',
+    listFailed: 'Exams could not be loaded',
+    emptyTitle: 'No exams yet',
+    firstExam: 'Create the first exam',
+    emptyText: 'After creating an exam, add questions and assign candidates and reviewers.',
+    noMatch: 'No matching exams',
+    noMatchText: 'Change the search or the filter.',
+    closes: (at: string) => `Closes ${at}`,
+    noQuestions: 'No questions',
+  },
+})
 
 const load = (signal: AbortSignal) => listExams(signal)
 
 /** Yönetici sınav listesi (Stitch 25): durum, pencere, soru sayısı; satır sınavın düzenleme ekranını açar. */
 export function AdminExamsPage() {
-  const { data, error, loading, reload } = useResource(load, 'Sınavlar yüklenemedi.')
+  const m = useMessages(messages)
+  const c = useMessages(common)
+  const { data, error, loading, reload } = useResource(load, m.failed)
   const now = useNow(30_000)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
@@ -36,54 +87,55 @@ export function AdminExamsPage() {
   const deferredQuery = useDeferredValue(query)
 
   const rows = useMemo(() => {
-    const term = deferredQuery.trim().toLocaleLowerCase('tr-TR')
+    const locale = getLocale()
+    const term = deferredQuery.trim().toLocaleLowerCase(locale)
     return (data ?? [])
       .map((exam) => ({ exam, phase: windowPhase(exam, now.getTime()) }))
-      .filter(({ exam, phase }) => (filter === 'all' || phase === filter || (filter === 'open' && phase === 'closing')) && (!term || exam.name.toLocaleLowerCase('tr-TR').includes(term)))
+      .filter(({ exam, phase }) => (filter === 'all' || phase === filter || (filter === 'open' && phase === 'closing')) && (!term || exam.name.toLocaleLowerCase(locale).includes(term)))
       .sort((a, b) => new Date(b.exam.windowStartAt).getTime() - new Date(a.exam.windowStartAt).getTime())
   }, [data, filter, deferredQuery, now])
 
   return (
     <div className="admin-page">
       <PageHeader
-        breadcrumbs={[{ label: 'Yönetim' }]}
-        title="Sınavlar"
-        description="Sınavları oluşturun, sorularını ve atamalarını yönetin."
+        breadcrumbs={[{ label: m.admin }]}
+        title={m.title}
+        description={m.description}
         info={
           <ul>
-            <li>Bir sınav dört adımda hazırlanır: genel bilgiler, sorular, atamalar ve risk ayarları.</li>
-            <li>Aday, erişim penceresi açıkken ve son başlangıç saatinden önce sınava başlayabilir.</li>
-            <li>Bir satıra tıklayınca sınavın düzenleme ekranı açılır.</li>
+            {m.info.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
         }
         actions={
           <Link className="button button-primary button-md" to="/admin/exams/new">
             <Plus size={18} aria-hidden="true" />
-            Yeni sınav
+            {m.newExam}
           </Link>
         }
       />
 
       <div className="admin-toolbar">
-        <div className="chip-tabs" role="group" aria-label="Duruma göre süz">
-          {FILTERS.map((item) => (
-            <button key={item.key} type="button" className="chip-tab" aria-pressed={filter === item.key} onClick={() => setFilter(item.key)}>
-              {item.label}
+        <div className="chip-tabs" role="group" aria-label={m.filterBy}>
+          {FILTER_KEYS.map((key) => (
+            <button key={key} type="button" className="chip-tab" aria-pressed={filter === key} onClick={() => setFilter(key)}>
+              {m.filters[key]}
             </button>
           ))}
         </div>
         <label className="search-field">
           <Search size={18} aria-hidden="true" />
-          <span className="visually-hidden">Sınav ara</span>
-          <input type="search" placeholder="Sınav adıyla ara" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <span className="visually-hidden">{m.search}</span>
+          <input type="search" placeholder={m.searchPlaceholder} maxLength={200} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
       </div>
 
       {error ? (
-        <Alert tone="danger" title="Sınavlar yüklenemedi">
+        <Alert tone="danger" title={m.listFailed}>
           {error}{' '}
           <Button variant="ghost" onClick={reload}>
-            Yeniden dene
+            {c.retry}
           </Button>
         </Alert>
       ) : null}
@@ -97,19 +149,19 @@ export function AdminExamsPage() {
       ) : data && data.length === 0 ? (
         <EmptyState
           icon={BookOpenCheck}
-          title="Henüz sınav yok"
+          title={m.emptyTitle}
           action={
             <Link className="button button-primary button-md" to="/admin/exams/new">
               <Plus size={18} aria-hidden="true" />
-              İlk sınavı oluştur
+              {m.firstExam}
             </Link>
           }
         >
-          Sınav oluşturduktan sonra soru ekleyip adayları ve değerlendiricileri atayabilirsiniz.
+          {m.emptyText}
         </EmptyState>
       ) : data && rows.length === 0 ? (
-        <EmptyState icon={Search} title="Eşleşen sınav yok">
-          Aramayı ya da filtreyi değiştirin.
+        <EmptyState icon={Search} title={m.noMatch}>
+          {m.noMatchText}
         </EmptyState>
       ) : (
         <ul className="admin-list">
@@ -119,17 +171,17 @@ export function AdminExamsPage() {
                 <span className="admin-row-main">
                   <span className="admin-row-title">{exam.name}</span>
                   <span className="admin-row-sub">
-                    {EXAM_TYPE_LABEL[exam.type]} · {exam.durationMinutes} dakika · {exam.questionCount} soru
+                    {EXAM_TYPE_LABEL[exam.type]} · {c.minutes(exam.durationMinutes)} · {c.questions(exam.questionCount)}
                   </span>
                 </span>
                 <span className="admin-row-window">
                   <span>{formatDateTime(exam.windowStartAt)}</span>
-                  <span className="admin-row-sub">{formatDateTime(exam.windowEndAt)} kapanır</span>
+                  <span className="admin-row-sub">{m.closes(formatDateTime(exam.windowEndAt))}</span>
                 </span>
                 <StatusBadge tone={PHASE_TONE[phase]} dot>
                   {PHASE_LABEL[phase]}
                 </StatusBadge>
-                {exam.questionCount === 0 ? <StatusBadge tone="warning">Soru yok</StatusBadge> : <span />}
+                {exam.questionCount === 0 ? <StatusBadge tone="warning">{m.noQuestions}</StatusBadge> : <span />}
                 <ChevronRight size={18} className="admin-row-arrow" aria-hidden="true" />
               </Link>
             </motion.li>

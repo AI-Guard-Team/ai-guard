@@ -299,7 +299,7 @@
 }
 
 .overview-list a > span:first-child,
-.quick-actions a > span {
+.quick-actions a > span:not(.icon-tile) {
   flex: 1;
   min-width: 0;
 }

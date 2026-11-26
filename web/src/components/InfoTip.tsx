@@ -2,7 +2,10 @@ import { Info, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { defineMessages, useMessages } from '../i18n/messages'
 import './InfoTip.css'
+
+const messages = defineMessages({ tr: { close: 'Kapat' }, en: { close: 'Close' } })
 
 interface InfoTipProps {
   /** Düğmenin ekran okuyucu adı ve açılan kutunun başlığı (ör. "Bu sayfa hakkında"). */
@@ -20,6 +23,7 @@ const GAP = 8
  * (portal); kart ya da başlık bandı onu kesemez. Esc ya da dışarı tıklama kapatır.
  */
 export function InfoTip({ title, children, align = 'start' }: InfoTipProps) {
+  const m = useMessages(messages)
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -92,7 +96,7 @@ export function InfoTip({ title, children, align = 'start' }: InfoTipProps) {
             >
               <div className="infotip-head">
                 <strong>{title}</strong>
-                <button type="button" className="infotip-close" aria-label="Kapat" onClick={() => setOpen(false)}>
+                <button type="button" className="infotip-close" aria-label={m.close} onClick={() => setOpen(false)}>
                   <X size={16} aria-hidden="true" />
                 </button>
               </div>

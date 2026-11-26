@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiError } from '../api/client'
+import { defineMessages, pick } from '../i18n/messages'
+
+const messages = defineMessages({ tr: { failed: 'Bilgiler yüklenemedi.' }, en: { failed: 'The information could not be loaded.' } })
 
 export interface Resource<T> {
   data: T | undefined
@@ -21,12 +24,16 @@ interface Settled<T> {
  * `load` değiştikçe yeniden yüklenir; çağıran yer `useCallback` ile sabitlemeli.
  * "Yükleniyor" ayrı bir durum değil: son yanıt en son isteğe ait değilse yükleniyordur (ek çizim yok).
  */
-export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, fallbackError = 'Bilgiler yüklenemedi.'): Resource<T> {
+export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, fallbackError?: string): Resource<T> {
   const [version, setVersion] = useState(0)
   // Her yeni istek için yeni bir kimlik nesnesi; yanıt hangi isteğe ait, bununla anlaşılır.
   const request = useMemo(() => ({ load, version }), [load, version])
   const [settled, setSettled] = useState<Settled<T> | null>(null)
   const fallback = useRef(fallbackError)
+  // Dil değişince yedek metin de güncel dilde kalsın; isteği yeniden başlatmadan.
+  useEffect(() => {
+    fallback.current = fallbackError
+  }, [fallbackError])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -36,7 +43,7 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, fallba
       },
       (caught: unknown) => {
         if (controller.signal.aborted) return
-        const message = caught instanceof ApiError ? caught.message : fallback.current
+        const message = caught instanceof ApiError ? caught.message : (fallback.current ?? pick(messages).failed)
         setSettled((previous) => ({ request, data: previous?.data, error: message }))
       },
     )

@@ -3,7 +3,47 @@ import { useState } from 'react'
 import type { ReviewEvent } from '../../api/review'
 import { Button } from '../../components/Button'
 import { SOURCE_LABEL, eventLabel } from '../../lib/eventCatalog'
-import { formatDuration, formatNumber, formatTimeSeconds } from '../../lib/format'
+import { defineMessages, useMessages } from '../../i18n/messages'
+import { formatDuration, formatNumber, formatPercent, formatTimeSeconds } from '../../lib/format'
+
+const messages = defineMessages({
+  tr: {
+    noEvents: 'Bu oturumda olay yok.',
+    what: 'Ne oldu',
+    source: 'Kaynak',
+    when: 'Ne zaman',
+    duration: 'Süre',
+    instant: 'Anlık',
+    effect: 'Skora etkisi',
+    falseAlarmZero: '0 (yanlış alarm)',
+    confidence: 'Model güveni',
+    alt: (label: string) => `${label} anına ait kanıt karesi`,
+    reveal: 'Kanıtı göster',
+    deleted: 'Kanıt kareleri saklama süresi dolduğu için silindi.',
+    expired: 'Kanıt bağlantısının süresi dolmuş olabilir; sayfayı yenileyin.',
+    none: 'Bu olay için kanıt karesi yok.',
+    falseAlarm: 'Yanlış alarm',
+    mark: 'Yanlış alarm olarak işaretle',
+  },
+  en: {
+    noEvents: 'There are no events in this session.',
+    what: 'What happened',
+    source: 'Source',
+    when: 'When',
+    duration: 'Duration',
+    instant: 'Instant',
+    effect: 'Effect on score',
+    falseAlarmZero: '0 (false alarm)',
+    confidence: 'Model confidence',
+    alt: (label: string) => `Evidence frame at the moment of: ${label}`,
+    reveal: 'Show evidence',
+    deleted: 'Evidence frames were deleted because the retention period ended.',
+    expired: 'The evidence link may have expired; reload the page.',
+    none: 'There is no evidence frame for this event.',
+    falseAlarm: 'False alarm',
+    mark: 'Mark as false alarm',
+  },
+})
 
 interface EvidencePanelProps {
   event: ReviewEvent | null
@@ -19,50 +59,51 @@ interface EvidencePanelProps {
  * Yanlış alarm kararı burada verilir. Kare varsayılan bulanık; değerlendirici bilerek açar (5 dk imzalı bağlantı).
  */
 export function EvidencePanel({ event, monitoringDataDeletedAt, canMark, marking, onMark }: EvidencePanelProps) {
+  const m = useMessages(messages)
   const [revealedId, setRevealedId] = useState<string | null>(null)
   const [failedId, setFailedId] = useState<string | null>(null)
 
-  if (!event) return <p className="evidence-empty">Bu oturumda olay yok.</p>
+  if (!event) return <p className="evidence-empty">{m.noEvents}</p>
 
   const revealed = revealedId === event.id
   return (
     <div className="evidence">
       <dl className="evidence-facts">
         <div>
-          <dt>Ne oldu</dt>
+          <dt>{m.what}</dt>
           <dd>{event.reason ?? eventLabel(event.type)}</dd>
         </div>
         <div>
-          <dt>Kaynak</dt>
+          <dt>{m.source}</dt>
           <dd>{SOURCE_LABEL[event.source]}</dd>
         </div>
         <div>
-          <dt>Ne zaman</dt>
+          <dt>{m.when}</dt>
           <dd className="numeric">{formatTimeSeconds(event.startedAt)}</dd>
         </div>
         <div>
-          <dt>Süre</dt>
-          <dd className="numeric">{event.durationSec > 0 ? formatDuration(event.durationSec) : 'Anlık'}</dd>
+          <dt>{m.duration}</dt>
+          <dd className="numeric">{event.durationSec > 0 ? formatDuration(event.durationSec) : m.instant}</dd>
         </div>
         <div>
-          <dt>Skora etkisi</dt>
-          <dd className="numeric">{event.isFalseAlarm ? '0 (yanlış alarm)' : `+${formatNumber(event.contribution, 1)}`}</dd>
+          <dt>{m.effect}</dt>
+          <dd className="numeric">{event.isFalseAlarm ? m.falseAlarmZero : `+${formatNumber(event.contribution, 1)}`}</dd>
         </div>
         {event.confidence !== null ? (
           <div>
-            <dt>Model güveni</dt>
-            <dd className="numeric">%{formatNumber(event.confidence * 100)}</dd>
+            <dt>{m.confidence}</dt>
+            <dd className="numeric">{formatPercent(event.confidence * 100)}</dd>
           </div>
         ) : null}
       </dl>
 
       {event.evidenceUrl && failedId !== event.id ? (
         <figure className={['evidence-frame', revealed && 'is-revealed'].filter(Boolean).join(' ')}>
-          <img src={event.evidenceUrl} alt={revealed ? `${eventLabel(event.type)} anına ait kanıt karesi` : ''} onError={() => setFailedId(event.id)} />
+          <img src={event.evidenceUrl} alt={revealed ? m.alt(eventLabel(event.type)) : ''} onError={() => setFailedId(event.id)} />
           {revealed ? null : (
             <div className="evidence-veil">
               <Button variant="secondary" onClick={() => setRevealedId(event.id)}>
-                Kanıtı göster
+                {m.reveal}
               </Button>
             </div>
           )}
@@ -71,21 +112,22 @@ export function EvidencePanel({ event, monitoringDataDeletedAt, canMark, marking
         <p className="evidence-none">
           <ImageOff size={18} aria-hidden="true" />
           {monitoringDataDeletedAt
-            ? 'Kanıt kareleri saklama süresi dolduğu için silindi.'
+            ? m.deleted
             : failedId === event.id
-              ? 'Kanıt bağlantısının süresi dolmuş olabilir; sayfayı yenileyin.'
-              : 'Bu olay için kanıt karesi yok.'}
+              ? m.expired
+              : m.none}
         </p>
       )}
 
       {event.isFalseAlarm ? (
         <p className="evidence-marked">
           <Flag size={16} aria-hidden="true" />
-          Yanlış alarm{event.falseAlarmMarkedBy ? ` · ${event.falseAlarmMarkedBy}` : ''}
+          {m.falseAlarm}
+          {event.falseAlarmMarkedBy ? ` · ${event.falseAlarmMarkedBy}` : ''}
         </p>
       ) : canMark && event.contribution > 0 ? (
         <Button variant="secondary" loading={marking} icon={<Flag size={16} aria-hidden="true" />} onClick={() => onMark(event)}>
-          Yanlış alarm olarak işaretle
+          {m.mark}
         </Button>
       ) : null}
     </div>

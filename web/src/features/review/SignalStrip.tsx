@@ -2,6 +2,12 @@ import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import type { EventSource, ReviewEvent, ScorePoint } from '../../api/review'
 import { SOURCE_LABEL, SOURCES, eventLabel } from '../../lib/eventCatalog'
 import { formatTime, formatTimeSeconds } from '../../lib/format'
+import { defineMessages, useMessages } from '../../i18n/messages'
+
+const messages = defineMessages({
+  tr: { timeline: 'Zaman çizgisi', lane: (source: string) => `${source} olayları`, falseAlarm: ', yanlış alarm' },
+  en: { timeline: 'Timeline', lane: (source: string) => `${source} events`, falseAlarm: ', false alarm' },
+})
 
 interface SignalStripProps {
   start: number
@@ -24,6 +30,7 @@ const CURVE_HEIGHT = 56
  * Oynatma çizgisi fareyle sürüklenir ya da ok tuşlarıyla kayar; bloklar düğme, klavyeyle de seçilir.
  */
 export function SignalStrip({ start, end, events, scoreHistory, cursor, selectedId, onCursor, onSelect }: SignalStripProps) {
+  const m = useMessages(messages)
   const track = useRef<HTMLDivElement>(null)
   const span = Math.max(1, end - start)
   const percent = (time: number) => Math.min(100, Math.max(0, ((time - start) / span) * 100))
@@ -91,7 +98,7 @@ export function SignalStrip({ start, end, events, scoreHistory, cursor, selected
         className="signal-track"
         role="slider"
         tabIndex={0}
-        aria-label="Zaman çizgisi"
+        aria-label={m.timeline}
         aria-valuemin={start}
         aria-valuemax={end}
         aria-valuenow={Math.round(cursor)}
@@ -105,7 +112,7 @@ export function SignalStrip({ start, end, events, scoreHistory, cursor, selected
         </svg>
 
         {SOURCES.map((source) => (
-          <div key={source} className="signal-lane" role="group" aria-label={`${SOURCE_LABEL[source]} olayları`}>
+          <div key={source} className="signal-lane" role="group" aria-label={m.lane(SOURCE_LABEL[source])}>
             {bySource(source).map((item) => {
               const at = new Date(item.startedAt).getTime()
               const width = Math.max(MIN_WIDTH_PERCENT, ((item.durationSec * 1000) / span) * 100)
@@ -116,7 +123,7 @@ export function SignalStrip({ start, end, events, scoreHistory, cursor, selected
                   type="button"
                   className={['signal-block', tone, item.id === selectedId && 'is-selected'].filter(Boolean).join(' ')}
                   style={{ left: `${percent(at)}%`, width: `${Math.min(width, 100 - percent(at))}%` }}
-                  aria-label={`${eventLabel(item.type)}, ${formatTimeSeconds(item.startedAt)}${item.isFalseAlarm ? ', yanlış alarm' : ''}`}
+                  aria-label={`${eventLabel(item.type)}, ${formatTimeSeconds(item.startedAt)}${item.isFalseAlarm ? m.falseAlarm : ''}`}
                   title={`${eventLabel(item.type)} · ${formatTimeSeconds(item.startedAt)}`}
                   onClick={() => onSelect(item)}
                 />

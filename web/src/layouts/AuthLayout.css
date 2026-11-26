@@ -20,7 +20,14 @@
   color: var(--color-sidebar-text);
 }
 
+.auth-aside > :not(.auth-orbit) {
+  position: relative;
+  z-index: 1;
+}
+
 .auth-aside-body {
+  /* Marka üstte, tanıtım panelin dikey ortasında. */
+  margin-block: auto;
   display: grid;
   gap: var(--space-10);
   max-width: 30rem;
@@ -97,19 +104,35 @@
 
 .auth-main {
   position: relative;
+  overflow: hidden;
 }
 
-.auth-theme {
+/* Dil ve tema: sağ üst köşe; yan yana, sabit yer (sayfalar arasında kaymaz). */
+.auth-prefs {
   position: absolute;
   top: var(--space-6);
   right: var(--space-6);
+  display: flex;
+  gap: var(--space-2);
+  z-index: 2;
 }
 
 .auth-mobile-brand {
   display: none;
 }
 
+.auth-main-orbit {
+  display: none;
+}
+
+.auth-main > :not(.auth-main-orbit, .auth-prefs) {
+  position: relative;
+  z-index: 1;
+}
+
 .auth-card {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   max-width: 27rem;
   margin: 0 auto;
@@ -118,6 +141,26 @@
   border-radius: var(--radius-xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-md);
+}
+
+/* Kart yerine oturunca üstünden bir kez geçen ince ışık: tek seferlik, yalnızca transform. */
+.auth-card-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 55%) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: auth-sheen 1.4s 0.55s var(--ease-out) forwards;
+}
+
+:root[data-theme='dark'] .auth-card-sheen {
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 8%) 50%, transparent 65%);
+}
+
+@keyframes auth-sheen {
+  to {
+    transform: translateX(120%);
+  }
 }
 
 .auth-card h1 {
@@ -173,9 +216,18 @@
     padding: var(--space-6) var(--space-4) var(--space-10);
   }
 
-  .auth-theme {
+  .auth-prefs {
     top: var(--space-5);
     right: var(--space-4);
+  }
+
+  /* Telefonda düğmeler yalnızca simge: marka ile çakışmasın. */
+  .auth-prefs .theme-toggle span {
+    display: none;
+  }
+
+  .auth-main-orbit {
+    display: block;
   }
 
   .auth-mobile-brand {

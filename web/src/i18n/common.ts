@@ -1,0 +1,43 @@
+import { defineMessages } from './messages'
+
+/** Birçok ekranda aynı olan kısa metinler; her ekran yalnızca kendine özgü metinleri kendi dosyasında tutar. */
+export const common = defineMessages({
+  tr: {
+    retry: 'Yeniden dene',
+    cancel: 'Vazgeç',
+    close: 'Kapat',
+    save: 'Kaydet',
+    saving: 'Kaydediliyor…',
+    delete: 'Sil',
+    edit: 'Düzenle',
+    back: 'Geri',
+    next: 'İleri',
+    continue: 'Devam et',
+    loading: 'Yükleniyor…',
+    minutes: (n: number) => `${n} dakika`,
+    minutesShort: (n: number) => `${n} dk`,
+    questions: (n: number) => `${n} soru`,
+    yes: 'Evet',
+    no: 'Hayır',
+    none: '—',
+  },
+  en: {
+    retry: 'Try again',
+    cancel: 'Cancel',
+    close: 'Close',
+    save: 'Save',
+    saving: 'Saving…',
+    delete: 'Delete',
+    edit: 'Edit',
+    back: 'Back',
+    next: 'Next',
+    continue: 'Continue',
+    loading: 'Loading…',
+    minutes: (n: number) => `${n} ${n === 1 ? 'minute' : 'minutes'}`,
+    minutesShort: (n: number) => `${n} min`,
+    questions: (n: number) => `${n} ${n === 1 ? 'question' : 'questions'}`,
+    yes: 'Yes',
+    no: 'No',
+    none: '—',
+  },
+})

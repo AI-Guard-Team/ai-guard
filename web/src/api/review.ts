@@ -1,5 +1,11 @@
 import { tokenStore } from '../auth/tokenStore'
-import { ApiError, apiRequest, refreshTokens } from './client'
+import { ApiError, apiRequest, refreshTokens, statusMessage } from './client'
+import { defineMessages, pick } from '../i18n/messages'
+
+const messages = defineMessages({
+  tr: { downloadFailed: 'Rapor indirilemedi. Lütfen tekrar deneyin.' },
+  en: { downloadFailed: 'The report could not be downloaded. Please try again.' },
+})
 
 // Değerlendirici ve rapor uçları (A4, K-31; A5, K-32). Ad ve alanlar sunucudaki ReviewModels ile birebir.
 
@@ -166,10 +172,10 @@ export async function downloadCandidateReport(examId: string, sessionId: string,
   const path = `/api/reports/exams/${examId}/sessions/${sessionId}?format=${format}`
   const send = () => fetch(path, { headers: { Authorization: `Bearer ${tokenStore.get()?.accessToken ?? ''}` } })
   let response = await send().catch(() => {
-    throw new ApiError(0, 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.')
+    throw new ApiError(0, statusMessage(0))
   })
   if (response.status === 401 && (await refreshTokens())) response = await send()
-  if (!response.ok) throw new ApiError(response.status, 'Rapor indirilemedi. Lütfen tekrar deneyin.')
+  if (!response.ok) throw new ApiError(response.status, pick(messages).downloadFailed)
 
   const disposition = response.headers.get('Content-Disposition') ?? ''
   const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)

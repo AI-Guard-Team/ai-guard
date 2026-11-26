@@ -1,4 +1,5 @@
 import { apiRequest } from './client'
+import { defineMessages, live } from '../i18n/messages'
 
 export type ExamType = 'GeneralAptitude' | 'EnglishProficiency'
 
@@ -42,10 +43,12 @@ export interface StartSessionResponse {
   state: SessionState
 }
 
-export const EXAM_TYPE_LABEL: Record<ExamType, string> = {
-  GeneralAptitude: 'Genel yetenek',
-  EnglishProficiency: 'İngilizce yeterlik',
-}
+export const EXAM_TYPE_LABEL: Record<ExamType, string> = live(
+  defineMessages<Record<ExamType, string>>({
+    tr: { GeneralAptitude: 'Genel yetenek', EnglishProficiency: 'İngilizce yeterlik' },
+    en: { GeneralAptitude: 'General aptitude', EnglishProficiency: 'English proficiency' },
+  }),
+)
 
 export async function listExams(signal?: AbortSignal): Promise<ExamSummary[]> {
   return (await apiRequest<ExamSummary[]>('/api/exams', { signal })) ?? []

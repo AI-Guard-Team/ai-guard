@@ -49,6 +49,8 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Sınav ekranı | Yan menüsüz; mantık `useExamSession`'da, ekran bileşenleri yalnızca çizer; çevrimdışıyken cevaplama sürer, bekleyen sayısı görünür; "daha sonra dön" yalnızca istemcide (K-38) |
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-36) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
+| Arayüz dili | Türkçe ve İngilizce; metinler kullanıldıkları dosyanın yanında iki dilde, tercih tarayıcıda; sunucu metinleri Türkçe kalıyor (K-45) |
+| Giriş ve koyu tema | Giriş panelinde dönen, parlayan halkalar (Şeyma'nın S1 tasarımı); koyu temada yan menü sayfayla aynı ailede, kontrastlar AA (K-46) |
 
 ---
 
@@ -1255,6 +1257,56 @@ Uçtan uca deneme (tarayıcı, gerçek API): giriş, yenilemede oturumun kalmas�
 
 Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; servis çalışmıyorsa API 15 sn zaman aşımını bekliyor (`VisionFaceService`). Rıza geri alma ucu ölçüldü: 26 ms. Ekranda yükleme sırasında "birkaç saniye sürebilir" yazıyor.
 
+
+---
+
+## K-45 · Türkçe / İngilizce arayüz (UI1)
+
+Kullanıcı isteği: "uygulamanın her yerine İngilizce–Türkçe özelliği gelsin".
+
+| Karar | Ayrıntı | Gerekçe |
+|---|---|---|
+| Kütüphane yok | `web/src/i18n/`: `lang.ts` (geçerli dil, `useLang`, `setLang`), `messages.ts` (`defineMessages`, `useMessages`, `pick`, `live`) | Yaklaşık 1.300 metin için i18next gibi bir paket gerekmiyor; ana paket büyümesin |
+| Metinler dosyanın yanında | Her bileşen kendi `messages` sözlüğünü iki dilde tutar; sık tekrar edenler `i18n/common.ts` ve `pages/auth/authCopy.ts` | Modüler: ekranı değiştiren kişi metnini de aynı yerde görür |
+| Eksik çeviri derlenmez | `defineMessages({ tr, en })`'de İngilizce sözlük Türkçeyle aynı tipte olmak zorunda (`NoInfer`) | Unutulan anahtar CI'da yakalanır |
+| Etiket eşlemeleri canlı | `ROLE_LABEL`, `EVENT_LABEL`, `ACTION_LABEL` gibi eşlemeler `live()` ile; okunduğu anda geçerli dili verir | Bu eşlemeleri okuyan onlarca dosya değişmeden kaldı |
+| Dil değişince ağaç yeniden çizilir | `Root` (`src/Root.tsx`) `useLang` ile abone; durum korunuyor (giriş formuna yazılan e-posta kaybolmuyor; giriş kartının anahtarı başlık değil adres) | Düz işlevlerden okunan metinler de güncel dile geçsin |
+| Tercih | `localStorage` `aiguard.lang`; yoksa tarayıcı dili Türkçe değilse İngilizce. `<html lang>` güncelleniyor (ekran okuyucu doğru telaffuz etsin) | Tema tercihiyle aynı yöntem (K-42) |
+| Düğme | Yan menüde, giriş ekranının ve kabuk dışı sayfaların (404, oturum süresi doldu) sağ üstünde; öbür dilin kendi adıyla ("English" / "Türkçe") | Dili bilmeyen kişi de tanısın |
+| Tarih ve sayı | `lib/format.ts` geçerli dile göre `tr-TR` / `en-GB` | — |
+| Sunucu metinleri | API'nin ProblemDetails metinleri Türkçe. İngilizcede istemci, duruma göre İngilizce genel metin gösteriyor (`statusMessage`); bilinen durumlar (hatalı giriş, kilit, aynı e-posta, geçersiz bağlantı) ekranın kendi metniyle söyleniyor | Sunucuya çeviri eklemek ayrı bir iş (S-31) |
+| Hukuki metin | Aydınlatma ve rıza metinleri sunucudan Türkçe; İngilizcede altında "bağlayıcı olan Türkçe metin" notu ve `lang="tr"` | Rıza metninin resmî hâli tek |
+
+Sınav ekranına dil düğmesi konmadı (aday yalnızca sınava odaklanır, K-37); sınav öncesinde seçilen dil sınavda da geçerli.
+
+## K-46 · Giriş ekranı, koyu tema ve kurumsal hareket (UI1)
+
+Kullanıcı isteği: Şeyma'nın "yanar dönerli" arka planı, soldan tanıtım ve sağdan giriş, ikisi de animasyonlu; koyu tema renklerinin düzeltilmesi.
+
+| Karar | Ayrıntı | Gerekçe |
+|---|---|---|
+| Halkalı arka plan | `layouts/AuthOrbit.tsx`: Şeyma'nın S1'deki parlayan halkaları; iki köşede iç içe halkalar, üzerlerinde farklı hız ve yönde dönen ışık yayları ve ışıması, nefes alan yumuşak parıltı | Tek "an": göz alıcı ama kurumsal |
+| Takılma yok | Dönüş ve nefes yalnızca `transform` / `opacity` (kompozitörde); bulanıklık katmanda bir kez çiziliyor. Hareket azaltma tercihinde durur | Giriş ekranı zayıf cihazda da akıcı |
+| Giriş hareketi | Tanıtım soldan (başlık bulanıklıktan netleşerek), ilkeler sırayla; form kartı sağdan, üzerinden bir kez ince ışık geçer. Tanıtım uygulama açılışında bir kez oynar; giriş ekranları arasında yalnızca kart yenilenir | Her geçişte sol panelin yeniden oynaması yorucu |
+| Telefonda | Sol panel yok; halkaların soluk sürümü kartın arkasında, dil ve tema düğmeleri yalnızca simge | — |
+| Koyu tema | Zeminler düşük doygunlukta mürekkep tonu, üç katman (zemin < yüzey < vurgulu yüzey); yan menü ve karşılama bantları sayfayla aynı aileden; seçili menü öğesi beyaz hap yerine marka renginde hafif zemin | Önceki koyu temada parlak lacivert menü ile siyaha yakın sayfa iki ayrı uygulama gibi duruyordu |
+| Kontrast | Koyu temada gövde metni 14.7:1, ikincil 8.0:1, soluk 5.8:1, düğme yazısı 4.7:1 (WCAG AA) | Ölçüldü |
+| Menü göstergesi | Seçili öğenin zemini sayfa değişince bir öğeden ötekine kayar (motion `layoutId`, yay) | Kurumsal, kısa, tek bir yerde |
+| Düzeltme | Genel bakıştaki "Hızlı eylemler" simgeleri uzun çubuk gibi esniyordu (simge de `span`'dı); iki temada da düzeldi | — |
+| YM 491 satırı | Giriş panelinde yok (K-44 kararı korunuyor) | — |
+
+Doğrulama: giriş ve şifremi unuttum ekranları 1440 ve 390 genişlikte, açık/koyu ve TR/EN (16 görünüm) için CLS 0, yatay taşma yok. Üretim paketi nginx'teki CSP başlığıyla açıldı; ihlal yok.
+
+### Doğrulama kuralları (bu turda sıkılaştırılan)
+
+- E-posta: zorunlu, en fazla 254 karakter, biçim; alandan çıkınca denetleniyor, düzeltildikçe hata kalkıyor. Giriş, şifremi unuttum ve davet aynı kuralı kullanıyor (`passwordRules.validateEmail`).
+- Şifre alanları: en fazla 128 karakter; Caps Lock açıkken uyarı.
+- Davet ve sıfırlama bağlantısı: kod base64url biçiminde değilse sunucuya gönderilmiyor; okunduktan sonra adres çubuğundan siliniyor (tarayıcı geçmişinde ve ekran paylaşımında görünmesin).
+- Davette ad en az 2 karakter; aynı e-posta (409) alanın altında söyleniyor.
+- Sınav formunda süre 1–600 dk, saklama 1–3650 gün; soruda aynı seçenek iki kez yazılamıyor.
+- Ajansız / göstergeli devam gerekçesi en az 10 karakter.
+- Denetim kaydında başlangıç tarihi bitişten sonraysa istek gönderilmiyor.
+- Bütün gönderim düğmeleri istek sürerken ikinci kez çalışmıyor.
 ---
 
 ## Kartlarda geçmeyen GAB kuralları
@@ -1325,3 +1377,4 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |
 | S-29 | Sorular kamera/mikrofon açılmadan önyüzde gizleniyor, ama sunucu `InProgress`'te soruları yine döndürüyor; değiştirilmiş bir istemci kamera açmadan soruları okuyabilir | Yağmur (S4), Esma (E4) | Sunucuda da kontrol: oturum uç `GET /api/sessions/{id}` soruları ancak son birkaç saniyede kare gelmişse döndürsün. K-24'ü değiştirdiği için ekip kararı gerekiyor |
 | S-30 | Risk ağırlıkları şu an platform geneli ve salt okunur (`riskconfig.json`, K-41); Stitch 29 sınav başına düzenleme gösteriyordu | Ayşe | Sınav başına ağırlık istenirse: sınava bağlı ayar tablosu, `PUT /api/exams/{id}/risk-settings`, RiskEngine'in oturumun sınavına göre ayar okuması ve geçmiş skorların hangi ayarla hesaplandığının kaydı gerekir |
+| S-31 | API'nin hata metinleri (ProblemDetails) yalnızca Türkçe; İngilizce arayüzde istemci genel metin gösteriyor | Ekip | `Accept-Language` ile sunucuda çeviri ya da hata kodları (`code`) dönüp metni istemcide seçmek |

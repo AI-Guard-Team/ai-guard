@@ -3,7 +3,13 @@ import { addNote, type ReviewNote } from '../../api/review'
 import { ApiError } from '../../api/client'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
+import { defineMessages, useMessages } from '../../i18n/messages'
 import { formatDateTime } from '../../lib/format'
+
+const messages = defineMessages({
+  tr: { failed: 'Not eklenemedi.', empty: 'Henüz not yok.', add: 'Not ekle', save: 'Notu kaydet' },
+  en: { failed: 'The note could not be added.', empty: 'No notes yet.', add: 'Add a note', save: 'Save note' },
+})
 
 const MAX_NOTE = 2000
 
@@ -16,13 +22,14 @@ interface NotesPanelProps {
 
 /** Değerlendirici notları (K-31): çizgili defter kâğıdı. Notlar silinmez, yalnızca eklenir. */
 export function NotesPanel({ sessionId, notes, canWrite, onAdded }: NotesPanelProps) {
+  const m = useMessages(messages)
   const [text, setText] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!text.trim()) return
+    if (!text.trim() || pending) return
     setPending(true)
     setError(null)
     try {
@@ -30,7 +37,7 @@ export function NotesPanel({ sessionId, notes, canWrite, onAdded }: NotesPanelPr
       setText('')
       onAdded()
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Not eklenemedi.')
+      setError(caught instanceof ApiError ? caught.message : m.failed)
     } finally {
       setPending(false)
     }
@@ -38,7 +45,7 @@ export function NotesPanel({ sessionId, notes, canWrite, onAdded }: NotesPanelPr
 
   return (
     <div className="notes">
-      {notes.length === 0 ? <p className="notes-empty">Henüz not yok.</p> : null}
+      {notes.length === 0 ? <p className="notes-empty">{m.empty}</p> : null}
       <ol className="notes-list">
         {notes.map((note) => (
           <li key={note.id}>
@@ -52,7 +59,7 @@ export function NotesPanel({ sessionId, notes, canWrite, onAdded }: NotesPanelPr
       {canWrite ? (
         <form className="notes-form" onSubmit={submit}>
           <label className="kicker" htmlFor={`note-${sessionId}`}>
-            Not ekle
+            {m.add}
           </label>
           <textarea
             id={`note-${sessionId}`}
@@ -68,7 +75,7 @@ export function NotesPanel({ sessionId, notes, canWrite, onAdded }: NotesPanelPr
               {text.length}/{MAX_NOTE}
             </span>
             <Button type="submit" variant="secondary" loading={pending} disabled={!text.trim()}>
-              Notu kaydet
+              {m.save}
             </Button>
           </div>
         </form>

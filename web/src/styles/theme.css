@@ -41,6 +41,11 @@
   --color-sidebar-active: rgb(255 255 255 / 12%);
   --color-sidebar-text: #b9c4e0;
   --color-sidebar-text-strong: #ffffff;
+  --color-sidebar-border: transparent;
+  --color-nav-active-bg: #ffffff;
+  --color-nav-active-text: var(--palette-navy);
+  --color-nav-active-shadow: 0 6px 18px -8px rgb(0 0 0 / 45%);
+  --gradient-sidebar: var(--gradient-navy);
   --texture-paper: none;
   --texture-paper-size: auto;
 
@@ -148,53 +153,67 @@
 }
 
 /*
- * Koyu tema (K-42): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
- * Lacivert yan menü ve tanıtım panelleri iki temada da aynı kalır.
+ * Koyu tema (K-42, K-46): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
+ * Zeminler düşük doygunlukta mürekkep tonu ve üç katman (zemin < yüzey < vurgulu yüzey); mavi yalnızca vurguda.
+ * Yan menü ve tanıtım bantları sayfayla aynı aileden: açık temadaki parlak lacivert koyu zeminde ayrı bir uygulama
+ * gibi duruyordu. Metin kontrastları WCAG AA (gövde ≥ 4.5:1) ölçülerek seçildi.
  */
 :root[data-theme='dark'] {
-  --palette-mist: #0b1226;
-  --palette-paper: #121b33;
-  --palette-line: #253255;
-  --palette-sky-soft: #16224a;
+  --palette-mist: #0b0f19;
+  --palette-paper: #121826;
+  --palette-line: #232b3d;
+  --palette-sky-soft: #182038;
 
-  --color-bg: #0b1226;
-  --color-surface: #121b33;
-  --color-surface-accent: #16224a;
-  --color-surface-muted: #19244a;
+  --color-bg: #0b0f19;
+  --color-surface: #121826;
+  --color-surface-accent: #172036;
+  --color-surface-muted: #161d2c;
 
-  --color-text: #e8ecf8;
-  --color-text-muted: #aab5d0;
-  --color-text-subtle: #8c98b8;
+  --color-sidebar: #0e1320;
+  --color-sidebar-hover: rgb(255 255 255 / 5%);
+  --color-sidebar-active: rgb(122 144 255 / 14%);
+  --color-sidebar-text: #a9b3cc;
+  --color-sidebar-text-strong: #f2f4fa;
+  --color-sidebar-border: #1c2332;
+  --color-nav-active-bg: rgb(122 144 255 / 15%);
+  --color-nav-active-text: #f2f4fa;
+  --color-nav-active-shadow: inset 0 0 0 1px rgb(122 144 255 / 28%);
+  --gradient-sidebar: radial-gradient(120% 45% at 0% 0%, rgb(67 97 238 / 16%) 0%, transparent 60%), #0e1320;
 
-  --color-border: #253255;
-  --color-border-strong: #364470;
-  --color-divider: #1f2a4a;
-  --color-rule-dashed: #364470;
+  --color-text: #e7eaf3;
+  --color-text-muted: #a6aec4;
+  --color-text-subtle: #8a93ab;
 
-  --color-primary: #5570f6;
-  --color-primary-hover: #6a83ff;
-  --color-primary-soft: rgb(110 134 255 / 16%);
-  --color-secondary-hover: rgb(232 236 248 / 6%);
-  --color-row-hover: #162043;
-  --color-focus: #8aa0ff;
-  --color-selected: rgb(110 134 255 / 18%);
-  --color-link: #9db0ff;
-  --color-seal: #8aa0ff;
+  --color-border: #232b3d;
+  --color-border-strong: #333c53;
+  --color-divider: #1c2332;
+  --color-rule-dashed: #333c53;
 
-  --color-success-text: #5fd6ad;
-  --color-success-bg: rgb(15 157 115 / 20%);
-  --color-warning-text: #f2c35e;
-  --color-warning-bg: rgb(224 154 26 / 20%);
-  --color-danger-text: #ff8f93;
-  --color-danger-bg: rgb(229 72 77 / 18%);
-  --color-info-text: #a8b8ff;
-  --color-info-bg: rgb(110 134 255 / 18%);
-  --color-neutral-bg: rgb(140 152 184 / 16%);
+  --color-primary: #5266ec;
+  --color-primary-hover: #5f72f0;
+  --color-primary-soft: rgb(122 144 255 / 14%);
+  --color-secondary-hover: rgb(231 234 243 / 6%);
+  --color-row-hover: #151c2b;
+  --color-focus: #8b9cff;
+  --color-selected: rgb(122 144 255 / 16%);
+  --color-link: #9fb0ff;
+  --color-seal: #8b9cff;
 
-  --gradient-navy: radial-gradient(120% 90% at 100% 0%, #22337d 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, #33256e 0%, transparent 60%), #0e1838;
+  --color-success-text: #5fd3ab;
+  --color-success-bg: rgb(15 157 115 / 18%);
+  --color-warning-text: #f0c15c;
+  --color-warning-bg: rgb(224 154 26 / 17%);
+  --color-danger-text: #ff8e92;
+  --color-danger-bg: rgb(229 72 77 / 16%);
+  --color-info-text: #a9b7ff;
+  --color-info-bg: rgb(122 144 255 / 15%);
+  --color-neutral-bg: rgb(138 147 171 / 15%);
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px -1px rgb(0 0 0 / 25%);
-  --shadow-md: 0 2px 4px rgb(0 0 0 / 25%), 0 10px 28px -6px rgb(0 0 0 / 45%);
-  --shadow-lg: 0 6px 12px rgb(0 0 0 / 30%), 0 28px 56px -12px rgb(0 0 0 / 60%);
-  --focus-ring: 0 0 0 3px rgb(138 160 255 / 40%);
+  /* Karşılama bantları: sayfadan bir ton açık yüzey, köşede yumuşak marka ışığı. */
+  --gradient-navy: radial-gradient(120% 90% at 100% 0%, rgb(67 97 238 / 30%) 0%, transparent 55%), radial-gradient(90% 70% at 0% 100%, rgb(124 92 220 / 22%) 0%, transparent 60%), #121a2e;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 35%), 0 2px 6px -1px rgb(0 0 0 / 25%);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 30%), 0 12px 28px -8px rgb(0 0 0 / 50%);
+  --shadow-lg: 0 6px 12px rgb(0 0 0 / 35%), 0 28px 56px -12px rgb(0 0 0 / 65%);
+  --focus-ring: 0 0 0 3px rgb(139 156 255 / 42%);
 }

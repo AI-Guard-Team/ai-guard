@@ -168,7 +168,7 @@ describe('şifremi unuttum', () => {
     await userEvent.type(screen.getByLabelText('E-posta'), 'adres-degil')
     await userEvent.click(screen.getByRole('button', { name: 'Sıfırlama bağlantısı gönder' }))
 
-    expect(screen.getByText('Geçerli bir e-posta adresi girin.')).toBeInTheDocument()
+    expect(screen.getByText(/Geçerli bir e-posta adresi girin/)).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

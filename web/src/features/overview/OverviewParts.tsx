@@ -3,6 +3,9 @@ import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { IconTile, type TileTone } from '../../components/IconTile'
+import { defineMessages, useMessages } from '../../i18n/messages'
+
+const messages = defineMessages({ tr: { all: 'Tümünü gör' }, en: { all: 'View all' } })
 
 /** Karşılama bandı: lacivert, ad ve rolün bu sayfadaki işi. */
 export function Hero({ greeting, text, aside }: { greeting: string; text: ReactNode; aside?: ReactNode }) {
@@ -54,12 +57,13 @@ export function StatTile({ icon, tone, value, label, hint, to, index = 0 }: Stat
 
 /** Kart başlığı + "tümünü gör" bağlantısı. */
 export function CardHead({ title, to, linkLabel }: { title: string; to?: string; linkLabel?: string }) {
+  const m = useMessages(messages)
   return (
     <div className="overview-card-head">
       <h2 className="overview-card-title">{title}</h2>
       {to ? (
         <Link className="overview-link" to={to}>
-          {linkLabel ?? 'Tümünü gör'}
+          {linkLabel ?? m.all}
           <ArrowRight size={16} aria-hidden="true" />
         </Link>
       ) : null}

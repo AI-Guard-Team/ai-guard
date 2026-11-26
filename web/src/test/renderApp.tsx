@@ -6,6 +6,7 @@ import { AuthProvider } from '../auth/AuthProvider'
 import type { Role } from '../auth/roles'
 import { tokenStore } from '../auth/tokenStore'
 import { ToastProvider } from '../components/ToastProvider'
+import { useLang } from '../i18n/lang'
 import { makeAccessToken } from './tokens'
 
 export function signInAs(role: Role, name = 'Test Kullanıcı'): void {
@@ -24,17 +25,22 @@ export async function renderApp(path: string, state?: unknown) {
 
   // Parçalar önceden indirilir; act içinde çizilince Suspense aynı turda çözülür (sahte zamanlayıcıyla da çalışır).
   await preloadPages()
-  let result!: ReturnType<typeof render>
-  await act(async () => {
-    result = render(
+  // main.tsx'teki gibi: dil değişince bütün ağaç yeniden çizilir.
+  function Root() {
+    useLang()
+    return (
       <MemoryRouter initialEntries={[entry]}>
         <ToastProvider>
           <AuthProvider>
             <App />
           </AuthProvider>
         </ToastProvider>
-      </MemoryRouter>,
+      </MemoryRouter>
     )
+  }
+  let result!: ReturnType<typeof render>
+  await act(async () => {
+    result = render(<Root />)
   })
   return result
 }

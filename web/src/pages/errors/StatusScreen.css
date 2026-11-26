@@ -1,4 +1,5 @@
 .status-page {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 100dvh;
@@ -67,5 +68,24 @@
   .status-screen {
     margin: var(--space-6) auto;
     padding: var(--space-8) var(--space-5);
+  }
+}
+
+.status-prefs {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 599px) {
+  .status-prefs {
+    top: var(--space-4);
+    right: var(--space-4);
+  }
+
+  .status-prefs .theme-toggle span {
+    display: none;
   }
 }

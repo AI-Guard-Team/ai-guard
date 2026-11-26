@@ -2,9 +2,38 @@ import { Camera, ImageUp } from 'lucide-react'
 import { useRef, useState, type DragEvent } from 'react'
 import { Button } from '../../components/Button'
 import { CameraView } from '../camera/CameraView'
-import { useCamera } from '../camera/useCamera'
+import { common } from '../../i18n/common'
+import { defineMessages, useMessages } from '../../i18n/messages'
+import { frameError, useCamera } from '../camera/useCamera'
 import { ACCEPTED_PHOTO_TYPES } from './prepareReferencePhoto'
 import './PhotoPicker.css'
+
+const messages = defineMessages({
+  tr: {
+    cameraLabel: 'Kayıt fotoğrafı için kamera',
+    useFrame: 'Bu kareyi kullan',
+    preview: 'Seçilen kayıt fotoğrafı',
+    dropTitle: 'Fotoğrafı buraya bırakın ya da seçin',
+    dropHint: 'JPEG, PNG veya WebP. Büyük fotoğraflar göndermeden önce küçültülür.',
+    fileLabel: 'Fotoğraf dosyası seç',
+    another: 'Başka dosya seç',
+    choose: 'Dosya seç',
+    camera: 'Kameradan çek',
+    fileName: 'kayit-fotografi.jpg',
+  },
+  en: {
+    cameraLabel: 'Camera for the reference photo',
+    useFrame: 'Use this frame',
+    preview: 'Selected reference photo',
+    dropTitle: 'Drop the photo here or choose a file',
+    dropHint: 'JPEG, PNG or WebP. Large photos are resized before upload.',
+    fileLabel: 'Choose a photo file',
+    another: 'Choose another file',
+    choose: 'Choose file',
+    camera: 'Take with camera',
+    fileName: 'reference-photo.jpg',
+  },
+})
 
 interface PhotoPickerProps {
   /** Rıza verilmeden dosya seçimi ve kamera kapalı. */
@@ -15,6 +44,8 @@ interface PhotoPickerProps {
 
 /** Kayıt fotoğrafı seçimi: sürükle-bırak, dosya ya da kamera. Hazırlama ve gönderme çağıran yerde. */
 export function PhotoPicker({ disabled, previewUrl, onPick }: PhotoPickerProps) {
+  const m = useMessages(messages)
+  const c = useMessages(common)
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const camera = useCamera(videoRef)
@@ -37,18 +68,18 @@ export function PhotoPicker({ disabled, previewUrl, onPick }: PhotoPickerProps) 
     canvas.height = video.videoHeight || 480
     const context = canvas.getContext('2d')
     if (!context) {
-      setCaptureError('Kare alınamadı. Kamerayı yeniden açıp tekrar deneyin.')
+      setCaptureError(frameError())
       return
     }
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          setCaptureError('Kare alınamadı. Kamerayı yeniden açıp tekrar deneyin.')
+          setCaptureError(frameError())
           return
         }
         setCaptureError(null)
-        onPick(new File([blob], 'kayit-fotografi.jpg', { type: 'image/jpeg' }))
+        onPick(new File([blob], m.fileName, { type: 'image/jpeg' }))
         camera.stop()
       },
       'image/jpeg',
@@ -59,13 +90,13 @@ export function PhotoPicker({ disabled, previewUrl, onPick }: PhotoPickerProps) 
   if (camera.live) {
     return (
       <div className="photo-picker">
-        <CameraView videoRef={videoRef} live label="Kayıt fotoğrafı için kamera" placeholder={null} />
+        <CameraView videoRef={videoRef} live label={m.cameraLabel} placeholder={null} />
         <div className="photo-picker-actions">
           <Button onClick={takePhoto} icon={<Camera size={18} aria-hidden="true" />}>
-            Bu kareyi kullan
+            {m.useFrame}
           </Button>
           <Button variant="secondary" onClick={camera.stop}>
-            Vazgeç
+            {c.cancel}
           </Button>
         </div>
       </div>
@@ -84,12 +115,12 @@ export function PhotoPicker({ disabled, previewUrl, onPick }: PhotoPickerProps) 
         onDrop={onDrop}
       >
         {previewUrl ? (
-          <img className="photo-preview" src={previewUrl} alt="Seçilen kayıt fotoğrafı" />
+          <img className="photo-preview" src={previewUrl} alt={m.preview} />
         ) : (
           <>
             <ImageUp size={32} aria-hidden="true" />
-            <p className="photo-drop-title">Fotoğrafı buraya bırakın ya da seçin</p>
-            <p className="photo-drop-hint">JPEG, PNG veya WebP. Büyük fotoğraflar göndermeden önce küçültülür.</p>
+            <p className="photo-drop-title">{m.dropTitle}</p>
+            <p className="photo-drop-hint">{m.dropHint}</p>
           </>
         )}
       </div>
@@ -100,7 +131,7 @@ export function PhotoPicker({ disabled, previewUrl, onPick }: PhotoPickerProps) 
         type="file"
         accept={ACCEPTED_PHOTO_TYPES.join(',')}
         disabled={disabled}
-        aria-label="Fotoğraf dosyası seç"
+        aria-label={m.fileLabel}
         onChange={(event) => {
           const input = event.target
           const file = input.files?.[0]
@@ -110,10 +141,10 @@ export function PhotoPicker({ disabled, previewUrl, onPick }: PhotoPickerProps) 
       />
       <div className="photo-picker-actions">
         <Button variant="secondary" disabled={disabled} onClick={() => fileRef.current?.click()} icon={<ImageUp size={18} aria-hidden="true" />}>
-          {previewUrl ? 'Başka dosya seç' : 'Dosya seç'}
+          {previewUrl ? m.another : m.choose}
         </Button>
         <Button variant="secondary" disabled={disabled} onClick={() => void camera.start()} icon={<Camera size={18} aria-hidden="true" />}>
-          Kameradan çek
+          {m.camera}
         </Button>
       </div>
       {camera.error || captureError ? (

@@ -1,4 +1,6 @@
 import { tokenStore } from '../auth/tokenStore'
+import { getLang } from '../i18n/lang'
+import { defineMessages, pick } from '../i18n/messages'
 
 export interface TokenResponse {
   accessToken: string
@@ -16,9 +18,12 @@ export class ApiError extends Error {
     this.body = body
   }
 
-  /** Sunucunun Türkçe kısa nedeni (ProblemDetails "title"); ASP.NET'in İngilizce varsayılan başlığıysa undefined. */
+  /**
+   * Sunucunun Türkçe kısa nedeni (ProblemDetails "title"); ASP.NET'in İngilizce varsayılan başlığıysa undefined.
+   * Arayüz İngilizceyken de undefined: sunucu metinleri yalnızca Türkçe (K-45).
+   */
   get title(): string | undefined {
-    return userFacingTitle(this.body)
+    return getLang() === 'tr' ? userFacingTitle(this.body) : undefined
   }
 }
 
@@ -40,19 +45,46 @@ export interface RequestOptions {
   signal?: AbortSignal
 }
 
-const DEFAULT_MESSAGES: Record<number, string> = {
-  0: 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
-  400: 'Gönderilen bilgiler geçersiz.',
-  401: 'Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.',
-  403: 'Bu işlem için yetkiniz yok.',
-  404: 'İstenen kayıt bulunamadı.',
-  409: 'İşlem mevcut kayıtla çakışıyor.',
-  429: 'Çok fazla deneme yaptınız. Lütfen biraz bekleyip tekrar deneyin.',
+const messages = defineMessages({
+  tr: {
+    status: {
+      0: 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
+      400: 'Gönderilen bilgiler geçersiz.',
+      401: 'Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.',
+      403: 'Bu işlem için yetkiniz yok.',
+      404: 'İstenen kayıt bulunamadı.',
+      409: 'İşlem mevcut kayıtla çakışıyor.',
+      413: 'Gönderilen dosya çok büyük.',
+      429: 'Çok fazla deneme yaptınız. Lütfen biraz bekleyip tekrar deneyin.',
+    } as Record<number, string>,
+    server: 'Sunucuda bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
+    unexpected: 'Beklenmeyen bir hata oluştu.',
+  },
+  en: {
+    status: {
+      0: 'The server could not be reached. Check your internet connection and try again.',
+      400: 'The information you sent is not valid.',
+      401: 'Your session has expired. Please sign in again.',
+      403: 'You are not allowed to do this.',
+      404: 'The requested record was not found.',
+      409: 'This action conflicts with the current record.',
+      413: 'The file you sent is too large.',
+      429: 'Too many attempts. Please wait a moment and try again.',
+    },
+    server: 'Something went wrong on the server. Please try again later.',
+    unexpected: 'An unexpected error occurred.',
+  },
+})
+
+/** Duruma göre geçerli dildeki genel hata metni. */
+export function statusMessage(status: number): string {
+  const m = pick(messages)
+  return m.status[status] ?? (status >= 500 ? m.server : m.unexpected)
 }
 
-const SERVER_ERROR_MESSAGE = 'Sunucuda bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
-
 function errorMessage(status: number, body: unknown): string {
+  // Sunucu metinleri Türkçe; arayüz İngilizceyken duruma göre İngilizce genel metin gösterilir.
+  if (getLang() !== 'tr') return statusMessage(status)
   // Önce "detail" (ayrıntı ve ne yapılacağı), yoksa Türkçe "title"; İngilizce varsayılan başlık gösterilmez.
   if (body && typeof body === 'object') {
     const { detail, message } = body as { detail?: unknown; message?: unknown }
@@ -61,7 +93,7 @@ function errorMessage(status: number, body: unknown): string {
     const title = userFacingTitle(body)
     if (title) return title
   }
-  return DEFAULT_MESSAGES[status] ?? (status >= 500 ? SERVER_ERROR_MESSAGE : 'Beklenmeyen bir hata oluştu.')
+  return statusMessage(status)
 }
 
 async function readBody(response: Response): Promise<unknown> {
@@ -93,7 +125,7 @@ async function send(path: string, options: RequestOptions, accessToken: string |
     })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
-    throw new ApiError(0, DEFAULT_MESSAGES[0])
+    throw new ApiError(0, statusMessage(0))
   }
 }
 
