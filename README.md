@@ -45,7 +45,7 @@ ai-guard/
 |---|---|---|
 | Git | güncel | herkes |
 | .NET SDK | 8.0 (LTS) | api, agent |
-| Node.js | 20 LTS | web |
+| Node.js | 24 LTS (en az 22.22; testler 20 ile çalışmıyor) | web |
 | Python | 3.11 | vision |
 | PostgreSQL | 16 | api (Docker yoksa) |
 
