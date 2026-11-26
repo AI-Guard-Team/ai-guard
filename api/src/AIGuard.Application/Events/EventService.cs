@@ -13,7 +13,7 @@ namespace AIGuard.Application.Events;
 /// Tarayıcı olayları <see cref="RecordBrowserEventAsync"/>, sunucuda üretilen olaylar
 /// <see cref="RecordSystemEventAsync"/> üzerinden geliyor.
 /// </summary>
-public sealed class EventService(IAppDbContext db, RiskEngine riskEngine, TimeProvider clock)
+public sealed class EventService(IAppDbContext db, ExamRiskService risks, TimeProvider clock)
 {
     public const double MaxDurationSec = 3600;
     public const int MaxPayloadLength = 4096;
@@ -143,6 +143,8 @@ public sealed class EventService(IAppDbContext db, RiskEngine riskEngine, TimePr
 
         // Sınav bittiyse skor bitiş anında sabitleniyor; sonrasında azalma uygulanmıyor.
         var at = session.EndedAt is { } ended && ended < now ? ended : now;
+        // K-49: sınava özel ağırlık ve eşikler.
+        var riskEngine = await risks.EngineForExamAsync(session.ExamId, ct);
         var result = riskEngine.Calculate(inputs, at);
 
         session.RiskScore = result.Score;

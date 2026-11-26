@@ -26,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ReviewerNote> ReviewerNotes => Set<ReviewerNote>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ConsentText> ConsentTexts => Set<ConsentText>();
+    public DbSet<PlatformSettings> PlatformSettings => Set<PlatformSettings>();
 
     public Task<int> DeleteAuditLogsOlderThanAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default) =>
         // ExecuteDelete interceptor'a uğramıyor; 1 yıldan yeni bir kayıt gelse tetikleyici yine reddeder (K-32).

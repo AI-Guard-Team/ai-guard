@@ -30,6 +30,7 @@ public interface IAppDbContext
     DbSet<ReviewerNote> ReviewerNotes { get; }
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<ConsentText> ConsentTexts { get; }
+    DbSet<PlatformSettings> PlatformSettings { get; }
 
     /// <summary>İşlem (transaction) başlatmak için.</summary>
     DatabaseFacade Database { get; }

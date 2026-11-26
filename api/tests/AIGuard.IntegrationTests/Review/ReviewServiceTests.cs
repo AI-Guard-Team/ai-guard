@@ -93,7 +93,7 @@ public class ReviewServiceTests(PostgresFixture fx) : IClassFixture<PostgresFixt
         var clock = Clock();
         var signer = new EvidenceLinkSigner(clock);
 
-        var detail = await new ReviewService(db, Risk, signer, clock).GetAsync(session.Id, s.AsReviewer);
+        var detail = await new ReviewService(db, EventTestHelpers.Risks(db, clock), signer, clock).GetAsync(session.Id, s.AsReviewer);
 
         Assert.NotNull(detail);
         Assert.Equal(ReviewStatus.AwaitingReview, detail.Status);

@@ -22,6 +22,12 @@ public class Exam : Entity
     /// <summary>Kanıt kareleri ve olayların kaç gün saklanacağı.</summary>
     public int RetentionDays { get; set; } = 30;
 
+    /// <summary>
+    /// Sınava özel oturum eşiği (K-49); boşsa riskconfig.json'daki platform eşiği. Olay başına ağırlık, azalma
+    /// ve eşik <see cref="RiskSetting"/> satırlarında.
+    /// </summary>
+    public double? RiskSessionThreshold { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<Question> Questions { get; set; } = new List<Question>();
