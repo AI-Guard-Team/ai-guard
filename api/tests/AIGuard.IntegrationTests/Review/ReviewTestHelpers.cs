@@ -35,9 +35,9 @@ internal static class ReviewTestHelpers
 
     public static readonly RiskEngine Risk = new(EventTestHelpers.Options());
 
-    public static ReviewService Reviews(AppDbContext db, TimeProvider clock) => new(db, Risk, new EvidenceLinkSigner(clock), clock);
+    public static ReviewService Reviews(AppDbContext db, TimeProvider clock) => new(db, EventTestHelpers.Risks(db, clock), new EvidenceLinkSigner(clock), clock);
 
-    public static ReportService Reports(AppDbContext db, TimeProvider clock) => new(db, Risk, clock);
+    public static ReportService Reports(AppDbContext db, TimeProvider clock) => new(db, EventTestHelpers.Risks(db, clock), clock);
 
     public static async Task<ReviewScenario> ScenarioAsync(AppDbContext db)
     {

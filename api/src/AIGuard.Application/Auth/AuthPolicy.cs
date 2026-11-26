@@ -25,6 +25,9 @@ public static class AuthPolicy
     /// </summary>
     public static readonly TimeSpan PasswordResetCooldown = TimeSpan.FromMinutes(2);
 
+    /// <summary>Aynı kullanıcıya davet en fazla dakikada bir yeniden gönderilir (K-49).</summary>
+    public static readonly TimeSpan InviteResendCooldown = TimeSpan.FromMinutes(1);
+
     /// <summary>Bu sayıda art arda hatalı girişte hesap geçici olarak kilitleniyor (kart: 5).</summary>
     public const int MaxFailedLogins = 5;
 

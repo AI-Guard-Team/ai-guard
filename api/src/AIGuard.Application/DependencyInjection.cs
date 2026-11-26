@@ -29,6 +29,8 @@ public static class DependencyInjection
         services.AddSingleton<IValidateOptions<RiskOptions>, RiskOptionsValidator>();
         services.AddSingleton(sp => new RiskEngine(sp.GetRequiredService<IOptions<RiskOptions>>().Value));
 
+        // K-49: sınava özel risk ayarları; skor hesaplayan servisler motoru buradan alıyor.
+        services.AddScoped<ExamRiskService>();
         services.AddScoped<EventService>();
         services.AddScoped<SessionIpGuard>();
 
@@ -81,11 +83,14 @@ public static class DependencyInjection
         services.AddSingleton<EvidenceLinkSigner>();
         services.AddScoped<ReviewService>();
         services.AddScoped<ReportService>();
+        services.AddScoped<ExamReportService>();
+        services.AddScoped<AIGuard.Application.Notifications.NotificationService>();
 
         // A5: veri koruma. Saklama süresi görevi, rıza metinleri ve denetim kaydının görüntülenmesi.
         services.AddScoped<DataRetentionService>();
         services.AddScoped<ConsentTextService>();
         services.AddScoped<AuditLogService>();
+        services.AddScoped<AIGuard.Application.Settings.PlatformSettingsService>();
 
         return services;
     }

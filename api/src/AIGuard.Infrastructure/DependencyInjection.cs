@@ -44,7 +44,16 @@ public static class DependencyInjection
         // E2: JWT anahtarı eksik ya da kısaysa uygulama açılışta duruyor (bağlantı dizesiyle aynı davranış).
         services.AddSingleton(JwtSettings.FromConfiguration(configuration));
         services.AddSingleton<ITokenService, JwtTokenService>();
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        // K-49: SMTP_HOST tanımlıysa gerçek gönderim; değilse bağlantı loga (geliştirme ve CI).
+        if (SmtpSettings.FromConfiguration(configuration) is { } smtp)
+        {
+            services.AddSingleton(smtp);
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        }
 
         // Şifreleme anahtarı ve görüntü servisi ayarları ilk kullanımda okunuyor; eksikse ilgili uç
         // hata veriyor ama uygulamanın geri kalanı açılıyor. Docker Compose ve CI bu değişkenleri

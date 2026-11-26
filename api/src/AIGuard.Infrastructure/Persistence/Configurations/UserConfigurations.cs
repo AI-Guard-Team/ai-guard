@@ -29,6 +29,20 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
     }
 }
 
+/// <summary>Platform ayarları (K-49): tek satır; uzunluklar ayar uçlarının doğrulamasıyla aynı.</summary>
+internal sealed class PlatformSettingsConfiguration : IEntityTypeConfiguration<PlatformSettings>
+{
+    public void Configure(EntityTypeBuilder<PlatformSettings> b)
+    {
+        b.ToTable("platform_settings");
+        b.Property(s => s.AlternativeMethodText).HasMaxLength(PlatformSettings.MaxTextLength);
+        b.Property(s => s.SupportEmail).HasMaxLength(320);
+        b.Property(s => s.SupportPhone).HasMaxLength(PlatformSettings.MaxPhoneLength);
+        b.Property(s => s.AgentDownloadUrlWindows).HasMaxLength(PlatformSettings.MaxUrlLength);
+        b.Property(s => s.AgentDownloadUrlMac).HasMaxLength(PlatformSettings.MaxUrlLength);
+    }
+}
+
 internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {
     public void Configure(EntityTypeBuilder<RefreshToken> b)

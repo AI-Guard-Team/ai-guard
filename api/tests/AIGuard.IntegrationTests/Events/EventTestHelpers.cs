@@ -33,7 +33,11 @@ internal static class EventTestHelpers
     }
 
     public static EventService Service(AppDbContext db, TimeProvider clock) =>
-        new(db, new RiskEngine(Options()), clock);
+        new(db, Risks(db, clock), clock);
+
+    /// <summary>Sınava özel ayarı olmayan sınavda test ayarlarıyla aynı motoru veren servis (K-49).</summary>
+    public static ExamRiskService Risks(AppDbContext db, TimeProvider clock) =>
+        new(db, Microsoft.Extensions.Options.Options.Create(Options()), clock);
 
     public static FakeTimeProvider Clock() => new(Now);
 

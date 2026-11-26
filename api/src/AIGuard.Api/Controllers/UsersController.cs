@@ -40,6 +40,27 @@ public sealed class UsersController(UserService users) : ControllerBase
     public async Task<IReadOnlyList<UserSummary>> List([FromQuery] UserRole? role, CancellationToken ct) =>
         await users.ListAsync(role, ct);
 
+    /// <summary>
+    /// Daveti yeniden gönderir (K-49): yeni bağlantı, eskisi geçersiz. Kabul edilmiş davet ya da pasif kullanıcı
+    /// 409; aynı kullanıcıya dakikada birden sık 429.
+    /// </summary>
+    [HttpPost("{id:guid}/invite")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResendInvite(Guid id, CancellationToken ct)
+    {
+        var result = await users.ResendInviteAsync(User.GetUserId(), id, ct);
+        return result.Status switch
+        {
+            UserOperationStatus.Success => NoContent(),
+            UserOperationStatus.NotFound => NotFound(),
+            UserOperationStatus.TooSoon => Problem(statusCode: StatusCodes.Status429TooManyRequests, title: "İşlem yapılamıyor.", detail: result.Error),
+            _ => Problem(statusCode: StatusCodes.Status409Conflict, title: "Çakışma.", detail: result.Error),
+        };
+    }
+
     /// <summary>Rol atama ve pasife alma/etkinleştirme; yalnızca gönderilen alanlar değişir.</summary>
     [HttpPatch("{id:guid}")]
     [RequestSizeLimit(1024)]

@@ -51,6 +51,7 @@ public sealed class UserService(IAppDbContext db, IEmailSender email, TimeProvid
             Role = role,
             InviteTokenHash = SecureToken.Hash(token),
             InviteExpiresAt = now + AuthPolicy.InviteLifetime,
+            InviteSentAt = now,
             CreatedAt = now,
         };
         db.Users.Add(user);
@@ -86,7 +87,8 @@ public sealed class UserService(IAppDbContext db, IEmailSender email, TimeProvid
             u.Id, u.FullName, u.Email, u.Role, u.IsActive,
             u.InviteAcceptedAt is not null ? InviteStatus.Accepted
                 : u.InviteExpiresAt > now ? InviteStatus.Pending : InviteStatus.Expired,
-            u.CreatedAt)).ToList();
+            u.CreatedAt,
+            u.LastLoginAt)).ToList();
     }
 
     public async Task<UserOperationResult> UpdateAsync(Guid actorId, Guid userId, UpdateUserRequest request, CancellationToken ct = default)
@@ -140,6 +142,45 @@ public sealed class UserService(IAppDbContext db, IEmailSender email, TimeProvid
         }
 
         await db.SaveChangesAsync(ct);
+        return new(UserOperationStatus.Success, Id: user.Id);
+    }
+
+    /// <summary>
+    /// Daveti yeniden gönderir (K-49): yeni tek kullanımlık bağlantı, eski bağlantı geçersiz, süre yeniden 72 saat.
+    /// Daveti kabul etmiş ya da pasif kullanıcıya gönderilmez; aynı kullanıcıya en fazla dakikada bir.
+    /// </summary>
+    public async Task<UserOperationResult> ResendInviteAsync(Guid actorId, Guid userId, CancellationToken ct = default)
+    {
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId, ct);
+        if (user is null)
+        {
+            return new(UserOperationStatus.NotFound);
+        }
+
+        if (user.InviteAcceptedAt is not null)
+        {
+            return new(UserOperationStatus.Conflict, "Kullanıcı daveti kabul etmiş; davet yeniden gönderilemez.");
+        }
+
+        if (!user.IsActive)
+        {
+            return new(UserOperationStatus.Conflict, "Pasif kullanıcıya davet gönderilemez.");
+        }
+
+        var now = clock.GetUtcNow();
+        if (user.InviteSentAt is { } sent && now - sent < AuthPolicy.InviteResendCooldown)
+        {
+            return new(UserOperationStatus.TooSoon, "Davet az önce gönderildi; birkaç dakika sonra yeniden deneyin.");
+        }
+
+        var token = SecureToken.Generate();
+        user.InviteTokenHash = SecureToken.Hash(token);
+        user.InviteExpiresAt = now + AuthPolicy.InviteLifetime;
+        user.InviteSentAt = now;
+        Audit(actorId, "user.invite_resend", user.Id, now);
+        await db.SaveChangesAsync(ct);
+
+        await email.SendInviteAsync(user.Email, user.FullName, token, user.InviteExpiresAt.Value, ct);
         return new(UserOperationStatus.Success, Id: user.Id);
     }
 

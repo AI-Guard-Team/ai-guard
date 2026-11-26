@@ -13,7 +13,7 @@ namespace AIGuard.Application.Review;
 /// Erişim kuralı K-31: atanmış değerlendirici okur ve yazar, Admin yalnızca okur; erişimi olmayana
 /// oturumun varlığı da söylenmiyor (404).
 /// </summary>
-public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLinkSigner links, TimeProvider clock)
+public sealed class ReviewService(IAppDbContext db, ExamRiskService risks, EvidenceLinkSigner links, TimeProvider clock)
 {
     // Skor grafiği en fazla bu kadar noktadan oluşuyor; uzun bir oturumda örnekleme aralığı büyüyor.
     private const int MaxScorePoints = 300;
@@ -53,7 +53,7 @@ public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLin
             .Where(x => x.Status is not null)
             .Select(x => new ReviewSessionRow(
                 x.Row.Id, x.Row.CandidateId, x.Row.CandidateName, x.Row.StartedAt, x.Row.EndedAt, x.Row.RiskScore,
-                SessionFlagList.Of(x.Row.Flags), x.Status!.Value, x.Row.Decision, x.Row.TopReason))
+                SessionFlagList.Of(x.Row.Flags), x.Status!.Value, x.Row.Decision, ReasonFormatter.Localize(x.Row.TopReason)))
             .ToList();
 
         var pending = rows.Count(r => r.Status == ReviewStatus.AwaitingReview);
@@ -91,13 +91,14 @@ public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLin
         await LoadReviewDataAsync(session, ct);
 
         var evaluatedAt = ReviewRules.EvaluatedAt(session, now);
+        var risk = await risks.EngineForExamAsync(session.ExamId, ct);
         var contributions = risk.Calculate(ReviewRules.RiskInputs(session.Events), evaluatedAt).Contributions
             .ToDictionary(c => c.EventId, c => c.Contribution);
 
         var events = session.Events
             .OrderBy(e => e.StartedAt).ThenBy(e => e.ReceivedAt)
             .Select(e => new ReviewEventView(
-                e.Id, e.Type, e.Source, e.StartedAt, e.DurationSec, e.Confidence, e.Reason,
+                e.Id, e.Type, e.Source, e.StartedAt, e.DurationSec, e.Confidence, ReasonFormatter.Localize(e.Reason),
                 Math.Round(contributions.GetValueOrDefault(e.Id), 4),
                 e.IsFalseAlarm, e.FalseAlarmMarkedBy?.FullName, e.FalseAlarmMarkedAt,
                 e.EvidenceFrame is { } frame ? links.CreateUrl(frame.Id) : null))
@@ -108,7 +109,7 @@ public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLin
             new { evidenceLinks = events.Count(e => e.EvidenceUrl is not null) }, ct);
 
         // Saklama süresi dolup olaylar silindiyse grafik çizilemiyor; sıfırdan oluşan bir eğri kayıtlı skorla çelişirdi.
-        var history = session.MonitoringDataDeletedAt is null ? ScoreHistory(session, evaluatedAt) : [];
+        var history = session.MonitoringDataDeletedAt is null ? ScoreHistory(risk, session, evaluatedAt) : [];
 
         return new ReviewSessionDetail(
             session.Id, session.ExamId, session.Exam.Name, session.CandidateId, session.Candidate.FullName,
@@ -228,6 +229,7 @@ public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLin
             var events = await db.Events.AsNoTracking().Where(e => e.ExamSessionId == session.Id).ToListAsync(ct);
             var inputs = ReviewRules.RiskInputs(events).Select(e => e.EventId == eventId ? e with { IsFalseAlarm = true } : e);
             var oldScore = session.RiskScore;
+            var risk = await risks.EngineForExamAsync(session.ExamId, ct);
             session.RiskScore = risk.Calculate(inputs, ReviewRules.EvaluatedAt(session, now)).Score;
 
             Audit(actor, "event.false_alarm", nameof(Event), eventId, now,
@@ -316,7 +318,7 @@ public sealed class ReviewService(IAppDbContext db, RiskEngine risk, EvidenceLin
     /// Skor geçmişi (grafik verisi): olayların başlangıç ve bitişleri ile düzenli aralıklı noktalar. Skor her
     /// noktada risk motoruyla yeniden hesaplanıyor; azalma eğrisi de böylece grafikte görünüyor.
     /// </summary>
-    private IReadOnlyList<ScorePoint> ScoreHistory(ExamSession session, DateTimeOffset end)
+    private static IReadOnlyList<ScorePoint> ScoreHistory(RiskEngine risk, ExamSession session, DateTimeOffset end)
     {
         var start = session.StartedAt ?? session.CreatedAt;
         if (session.Events.Count > 0)
