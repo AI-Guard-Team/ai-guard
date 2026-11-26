@@ -2,6 +2,7 @@ using System.Text.Json;
 using AIGuard.Application.Abstractions;
 using AIGuard.Application.Monitoring;
 using AIGuard.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using MsOptions = Microsoft.Extensions.Options.Options;
@@ -23,11 +24,20 @@ public class CameraMonitorTests
     private readonly FakeStorage _storage = new();
     private readonly FakeTimeProvider _clock = new(T0);
 
+    private int _storageResolutions;
+
     private CameraMonitor Monitor() =>
-        new(_store, _vision, _storage, MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+        new(_store, _vision, () => { _storageResolutions++; return _storage; }, MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+
+    private ServiceProvider? _services;
+
+    /// <summary>Temizlik turunun oturum başına açtığı kapsamlar; burada hepsi aynı sahte depolamayı veriyor.</summary>
+    private IServiceScopeFactory Scopes =>
+        (_services ??= new ServiceCollection().AddScoped<ICameraMonitorStorage>(_ => _storage).BuildServiceProvider())
+        .GetRequiredService<IServiceScopeFactory>();
 
     private CameraEpisodeCloser Closer() =>
-        new(_store, () => _storage, MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
+        new(_store, () => _storage, Scopes, MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
 
     private Task Frame(double second, Guid? session = null) =>
         Monitor().AnalyzeFrameAsync(session ?? Session, [0xFF, 0xD8, 0xFF], T0.AddSeconds(second));
@@ -87,6 +97,40 @@ public class CameraMonitorTests
 
         Assert.Equal(3, _vision.Calls.Count(c => c.Identity));
         Assert.Equal(1, _storage.Loads);
+    }
+
+    [Fact]
+    public async Task Storage_is_resolved_only_for_the_reference_vector_and_episodes_to_write()
+    {
+        // İlk kare kimlik vektörü için çözümlüyor; sonraki temiz kareler depolamaya dokunmuyor (K-26).
+        await Frames(0, 5);
+        Assert.Equal(1, _storageResolutions);
+
+        // Yazılacak bölüm olunca yeniden çözümleniyor.
+        _vision.Respond = (p, r) => Measure(p, r, faces: 0, evidence: [1]);
+        await Frames(6, 8);
+        Assert.Equal(1, _storageResolutions);
+
+        _vision.Respond = (p, r) => Measure(p, r);
+        await Frame(9);
+        Assert.Equal(2, _storageResolutions);
+        Assert.Equal(EventType.FACE_MISSING, Assert.Single(Recorded()).Type);
+    }
+
+    [Fact]
+    public async Task Unavailable_storage_disables_identity_but_frames_are_still_analyzed()
+    {
+        // Şifreleme anahtarı olmayan ortam: depolama çözümlenirken DI'dan InvalidOperationException geliyor.
+        var monitor = new CameraMonitor(_store, _vision, () => throw new InvalidOperationException("EVIDENCE_ENCRYPTION_KEY tanımlı değil"),
+            MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+
+        await monitor.AnalyzeFrameAsync(Session, [0xFF, 0xD8, 0xFF], T0);
+        await monitor.AnalyzeFrameAsync(Session, [0xFF, 0xD8, 0xFF], T0.AddSeconds(60));
+
+        Assert.Equal(2, _vision.Calls.Count);
+        Assert.DoesNotContain(_vision.Calls, c => c.Identity);
+        Assert.True(_store.TryGet(Session, out var state));
+        Assert.True(state.ReferenceUnavailable);
     }
 
     [Fact]
@@ -324,7 +368,7 @@ public class CameraMonitorTests
     public async Task Closing_a_session_without_camera_state_does_nothing()
     {
         var resolved = false;
-        var closer = new CameraEpisodeCloser(_store, () => { resolved = true; return _storage; },
+        var closer = new CameraEpisodeCloser(_store, () => { resolved = true; return _storage; }, Scopes,
             MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
 
         await closer.CloseSessionAsync(Guid.NewGuid());
@@ -365,6 +409,69 @@ public class CameraMonitorTests
         Assert.Equal(4, episode.DurationSec);
         Assert.Contains($"\"closedBy\":\"{EpisodeEnd.Stale}\"", episode.Payload);
         Assert.True(_store.TryGet(Session, out _)); // durum boşta silme süresine kadar kalıyor
+    }
+
+    [Fact]
+    public async Task Sweep_skips_a_session_whose_write_fails_and_continues_with_the_rest()
+    {
+        var other = Guid.NewGuid();
+        _vision.Respond = (p, r) => Measure(p, r, faces: 0);
+        for (var s = 0; s <= 4; s++)
+        {
+            await Frame(s);
+            await Frame(s, other);
+        }
+
+        _storage.FailFor.Add(Session);
+        _clock.SetUtcNow(T0.AddSeconds(4 + 10));
+        await Closer().SweepAsync(); // istisna dışarı çıkmıyor
+
+        var written = Assert.Single(_storage.Recorded);
+        Assert.Equal(other, written.SessionId);
+        Assert.Equal(EventType.FACE_MISSING, written.Episode.Type);
+
+        // Başarısız oturumun bölümü geri konmadı; sonraki tur yeniden yazmaya çalışmıyor.
+        _storage.FailFor.Clear();
+        await Closer().SweepAsync();
+        Assert.Single(_storage.Recorded);
+    }
+
+    [Fact]
+    public async Task Sweep_writes_each_session_in_its_own_scope_so_a_failure_does_not_leak()
+    {
+        // Gerçek DbContext gibi davranan sahte: başarısız yazımdan sonra aynı örnekle yapılan her yazım da bozuluyor
+        // (change tracker'da kalan varlık). Oturumlar kendi kapsamında yazılıyorsa bu sonraki oturuma sızmıyor.
+        var failing = Guid.NewGuid();
+        var sessions = new[] { Guid.NewGuid(), failing, Guid.NewGuid(), Guid.NewGuid() };
+        var recorded = new List<Guid>();
+        var instances = new List<PoisonableStorage>();
+        using var provider = new ServiceCollection()
+            .AddScoped<ICameraMonitorStorage>(_ =>
+            {
+                var s = new PoisonableStorage(recorded, failing);
+                instances.Add(s);
+                return s;
+            })
+            .BuildServiceProvider();
+
+        _vision.Respond = (p, r) => Measure(p, r, faces: 0);
+        for (var s = 0; s <= 4; s++)
+        {
+            foreach (var id in sessions)
+            {
+                await Frame(s, id);
+            }
+        }
+
+        _clock.SetUtcNow(T0.AddSeconds(4 + 10));
+        var closer = new CameraEpisodeCloser(_store, () => _storage, provider.GetRequiredService<IServiceScopeFactory>(),
+            MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
+        await closer.SweepAsync();
+
+        // Sıra ne olursa olsun: her oturum ayrı örnekle yazıldı, bozulan yalnızca başarısız oturumunki.
+        Assert.Equal(sessions.Length, instances.Count);
+        Assert.Single(instances, i => i.Poisoned);
+        Assert.Equal(sessions.Where(id => id != failing).OrderBy(id => id), recorded.OrderBy(id => id));
     }
 
     [Fact]
@@ -417,7 +524,7 @@ public class CameraMonitorTests
     public async Task Sweep_with_no_sessions_does_not_touch_storage()
     {
         var resolved = false;
-        var closer = new CameraEpisodeCloser(_store, () => { resolved = true; return _storage; },
+        var closer = new CameraEpisodeCloser(_store, () => { resolved = true; return _storage; }, Scopes,
             MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
 
         await closer.SweepAsync();
@@ -487,6 +594,29 @@ public class CameraMonitorTests
         }
     }
 
+    /// <summary>Kapsam başına bir örnek; bir yazım başarısız olunca örnek "bozuluyor" (kaydedilemeyen varlıklar).</summary>
+    private sealed class PoisonableStorage(List<Guid> recorded, Guid failing) : ICameraMonitorStorage
+    {
+        public bool Poisoned { get; private set; }
+
+        public Task<float[]?> LoadReferenceVectorAsync(Guid sessionId, CancellationToken ct = default) => Task.FromResult<float[]?>(null);
+
+        public Task<EpisodeWriteStatus> RecordAsync(Guid sessionId, CameraEpisode episode, CancellationToken ct = default)
+        {
+            if (Poisoned || sessionId == failing)
+            {
+                Poisoned = true;
+                throw new InvalidOperationException("kaydedilemeyen varlık change tracker'da kaldı");
+            }
+
+            recorded.Add(sessionId);
+            return Task.FromResult(EpisodeWriteStatus.Recorded);
+        }
+
+        public Task<IReadOnlyCollection<Guid>> FindEndedAsync(IReadOnlyCollection<Guid> sessionIds, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyCollection<Guid>>([]);
+    }
+
     private sealed class FakeStorage : ICameraMonitorStorage
     {
         public float[]? Vector { get; set; } = UnitVector();
@@ -506,8 +636,16 @@ public class CameraMonitorTests
             return Task.FromResult(Vector?.ToArray());
         }
 
+        /// <summary>Bu oturumların yazımı veritabanı hatası gibi istisna veriyor.</summary>
+        public HashSet<Guid> FailFor { get; } = [];
+
         public Task<EpisodeWriteStatus> RecordAsync(Guid sessionId, CameraEpisode episode, CancellationToken ct = default)
         {
+            if (FailFor.Contains(sessionId))
+            {
+                throw new InvalidOperationException("veritabanına yazılamadı");
+            }
+
             Recorded.Add((sessionId, episode));
             return Task.FromResult(Status);
         }

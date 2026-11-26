@@ -1,4 +1,5 @@
 using AIGuard.Application.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,10 +13,14 @@ namespace AIGuard.Application.Monitoring;
 /// <remarks>
 /// Depolama (kanıt deposu ve şifreleyici) yalnızca yazılacak ya da sorulacak bir oturum varken çözümleniyor: şifreleme
 /// anahtarı olmayan bir bilgisayarda teslim, kamera izlenmemiş oturumlar için eskisi gibi çalışsın (K-26).
+///
+/// Temizlik turu her oturumun bölümlerini kendi DI kapsamında (kendi DbContext'iyle) yazıyor: bir oturumun başarısız
+/// yazımından change tracker'da kalan varlıklar sonraki oturumun SaveChanges'ına taşınmasın.
 /// </remarks>
 public sealed class CameraEpisodeCloser(
     CameraMonitorStore store,
     Func<ICameraMonitorStorage> storage,
+    IServiceScopeFactory scopes,
     IOptions<CameraMonitorOptions> options,
     TimeProvider clock,
     ILogger<CameraEpisodeCloser> logger) : ISessionMonitoringCloser
@@ -70,8 +75,8 @@ public sealed class CameraEpisodeCloser(
         }
 
         // İptal (biyometrik rıza geri alındı): olay yazılmıyor, durum vektörle birlikte siliniyor (K-45).
-        var data = storage();
-        var ended = await data.FindEndedAsync(sessions.Select(s => s.Key).ToList(), ct);
+        // Salt okunur sorgu (AsNoTracking); turun kendi kapsamında.
+        var ended = await storage().FindEndedAsync(sessions.Select(s => s.Key).ToList(), ct);
         foreach (var id in ended)
         {
             store.Remove(id);
@@ -119,7 +124,25 @@ public sealed class CameraEpisodeCloser(
                 continue;
             }
 
-            await CameraEpisodeWriter.WriteAsync(store, data, logger, id, episodes, ct);
+            if (episodes.Count == 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                // Oturum başına yeni kapsam (arka plan görevlerindeki kalıp): başarısız yazım kendi DbContext'iyle
+                // birlikte atılıyor.
+                await using var scope = scopes.CreateAsyncScope();
+                var sessionStorage = scope.ServiceProvider.GetRequiredService<ICameraMonitorStorage>();
+                await CameraEpisodeWriter.WriteAsync(store, sessionStorage, logger, id, episodes, ct);
+            }
+            catch (Exception) when (!ct.IsCancellationRequested)
+            {
+                // Tek oturumun yazma hatası (ör. veritabanı kısa süre erişilemez) turun geri kalanını durdurmasın.
+                // Bölümler tracker'dan çıkmış durumda, geri konmuyor (K-45 Sınırlılıklar). Günlüğe yalnızca oturum.
+                logger.LogWarning("Kamera bölümleri temizlik turunda yazılamadı: oturum {SessionId}", id);
+            }
         }
     }
 }

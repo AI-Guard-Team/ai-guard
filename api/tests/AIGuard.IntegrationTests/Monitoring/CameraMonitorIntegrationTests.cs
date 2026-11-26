@@ -9,6 +9,7 @@ using AIGuard.Domain.Sessions;
 using AIGuard.Infrastructure.Persistence;
 using AIGuard.IntegrationTests.Biometrics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using static AIGuard.IntegrationTests.Events.EventTestHelpers;
@@ -20,21 +21,51 @@ namespace AIGuard.IntegrationTests.Monitoring;
 /// Kamera bölümlerinin veritabanına yazılması (K-45): olay + şifreli kanıt karesi, referans vektörün çözülmesi,
 /// teslim ve otomatik teslimde açık bölümlerin oturum kapanmadan yazılması.
 /// </summary>
-public class CameraMonitorIntegrationTests(PostgresFixture fx) : IClassFixture<PostgresFixture>
+public class CameraMonitorIntegrationTests(PostgresFixture fx) : IClassFixture<PostgresFixture>, IDisposable
 {
     private readonly FakeTimeProvider _clock = Clock(); // EventTestHelpers.Now
     private readonly MemoryEvidenceStore _evidence = new();
     private readonly CameraMonitorStore _store = new();
     private readonly CameraMonitorOptions _options = new();
+    private readonly List<ServiceProvider> _providers = [];
 
     private CameraMonitorStorage Storage(AppDbContext db) =>
         new(db, Service(db, _clock), _evidence, BiometricTestHelpers.Encryptor, _clock);
 
-    private CameraEpisodeCloser Closer(AppDbContext db) =>
-        new(_store, () => Storage(db), MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
+    /// <summary>
+    /// Temizlik turunun oturum başına açtığı kapsamlar: her kapsam kendi AppDbContext'i ve depolamasıyla, uygulamadaki
+    /// kayıt gibi. <paramref name="onContextCreated"/> kapsamın bağlamı oluşunca çağrılıyor (sızıntı testi için).
+    /// </summary>
+    private IServiceScopeFactory Scopes(Action<AppDbContext>? onContextCreated = null)
+    {
+        var provider = new ServiceCollection()
+            .AddScoped(_ =>
+            {
+                var db = fx.CreateContext();
+                onContextCreated?.Invoke(db);
+                return db;
+            })
+            .AddScoped<ICameraMonitorStorage>(sp => Storage(sp.GetRequiredService<AppDbContext>()))
+            .BuildServiceProvider();
+        _providers.Add(provider);
+        return provider.GetRequiredService<IServiceScopeFactory>();
+    }
+
+    private CameraEpisodeCloser Closer(AppDbContext db, IServiceScopeFactory? scopes = null) =>
+        new(_store, () => Storage(db), scopes ?? Scopes(), MsOptions.Create(_options), _clock, NullLogger<CameraEpisodeCloser>.Instance);
+
+    public void Dispose()
+    {
+        foreach (var provider in _providers)
+        {
+            provider.Dispose();
+        }
+
+        GC.SuppressFinalize(this);
+    }
 
     private CameraMonitor Monitor(AppDbContext db, IFrameAnalysisService vision) =>
-        new(_store, vision, Storage(db), MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+        new(_store, vision, () => Storage(db), MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
 
     private async Task<ExamSession> SessionAsync()
     {
@@ -248,6 +279,51 @@ public class CameraMonitorIntegrationTests(PostgresFixture fx) : IClassFixture<P
 
         Assert.False(_store.TryGet(session.Id, out _));
         Assert.Empty(await EventsAsync(session.Id));
+    }
+
+    [SkippableFact]
+    public async Task Sweep_failure_in_one_session_does_not_leak_into_the_next_sessions_write()
+    {
+        Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
+        var first = await SessionAsync();
+        var second = await SessionAsync();
+        await FeedMultipleFacesAsync(first.Id);
+        await FeedMultipleFacesAsync(second.Id);
+
+        // Kareler kesildi: iki oturumun açık bölümü temizlik turunda yazılacak.
+        _clock.Advance(TimeSpan.FromSeconds(_options.StaleAfterSeconds + 5));
+
+        // Turda açılan ilk kapsamın bağlamı bozuk: var olmayan olaya bağlı kanıt karesi (FK ihlali). O oturumun
+        // SaveChanges'ı başarısız oluyor ve varlık change tracker'da kalıyor. Bağlam ortak olsaydı ikinci oturumun
+        // yazımı da aynı varlığı kaydetmeye çalışıp bozulurdu.
+        var contexts = 0;
+        var scopes = Scopes(db =>
+        {
+            if (Interlocked.Increment(ref contexts) == 1)
+            {
+                db.EvidenceFrames.Add(new EvidenceFrame
+                {
+                    EventId = Guid.NewGuid(),
+                    StorageKey = $"{Guid.NewGuid():N}.bin",
+                    DeleteAfter = Now.AddDays(1),
+                });
+            }
+        });
+
+        await using (var db = fx.CreateContext())
+        {
+            await Closer(db, scopes).SweepAsync(); // istisna dışarı çıkmıyor
+        }
+
+        // Hangi oturum önce işlendiyse onunki yazılamadı; diğeri kendi bağlamıyla yazıldı.
+        var firstEvents = await EventsAsync(first.Id);
+        var secondEvents = await EventsAsync(second.Id);
+        Assert.Equal(2, contexts);
+        Assert.Equal(1, firstEvents.Count + secondEvents.Count);
+        Assert.Equal(EventType.MULTIPLE_FACES, Assert.Single(firstEvents.Concat(secondEvents)).Type);
+
+        // Yazılamayan bölümün kanıt dosyası geri silindi (K-26); depoda yalnızca yazılan olayınki var.
+        Assert.Single(_evidence.Files);
     }
 
     /// <summary>Her karede iki yüz; kimlik ve telefon sonuçları sözleşmeye uygun.</summary>

@@ -13,11 +13,15 @@ namespace AIGuard.Application.Monitoring;
 /// <see cref="CameraMonitorOptions.VisionTimeoutSeconds"/>). Kare yalnızca bellekte; kanıt karesi ancak olay
 /// yazılırsa saklanıyor. Ses D5'te; şimdilik hiçbir şey yapılmıyor.
 /// Günlüğe yalnızca oturum kimliği, olay türü, HTTP durumu ve hata kodu yazılıyor; görüntü, vektör ve skor yok (K-27).
+///
+/// Depolama (kanıt deposu ve şifreleyici) <see cref="CameraEpisodeCloser"/>'daki gibi yalnızca yazılacak bölüm ya da
+/// kimlik vektörü gerektiğinde çözümleniyor: şifreleme anahtarı olmayan bilgisayarda kare, ses ve izin uçları
+/// (aynı controller) açılabilsin (K-26).
 /// </remarks>
 public sealed class CameraMonitor(
     CameraMonitorStore store,
     IFrameAnalysisService vision,
-    ICameraMonitorStorage storage,
+    Func<ICameraMonitorStorage> storage,
     IOptions<CameraMonitorOptions> options,
     ILogger<CameraMonitor> logger) : IMediaAnalyzer
 {
@@ -74,7 +78,10 @@ public sealed class CameraMonitor(
                 }
             }
 
-            await CameraEpisodeWriter.WriteAsync(store, storage, logger, sessionId, episodes, CancellationToken.None);
+            if (episodes.Count > 0)
+            {
+                await CameraEpisodeWriter.WriteAsync(store, storage(), logger, sessionId, episodes, CancellationToken.None);
+            }
         }
         finally
         {
@@ -155,7 +162,25 @@ public sealed class CameraMonitor(
             }
         }
 
-        var vector = await storage.LoadReferenceVectorAsync(sessionId, ct);
+        ICameraMonitorStorage data;
+        try
+        {
+            data = storage();
+        }
+        catch (InvalidOperationException)
+        {
+            // Şifreleme anahtarı tanımlı değil (K-26): vektör çözülemez, oturumda kimlik kontrolü yapılmıyor.
+            // Kare yine analiz ediliyor; aksi hâlde her kare 500 alırdı.
+            lock (state.Sync)
+            {
+                state.ReferenceUnavailable = true;
+            }
+
+            logger.LogWarning("Kimlik kontrolü yapılamıyor, kanıt deposu ya da şifreleyici kullanılamıyor: oturum {SessionId}", sessionId);
+            return null;
+        }
+
+        var vector = await data.LoadReferenceVectorAsync(sessionId, ct);
         lock (state.Sync)
         {
             if (state.Closed)

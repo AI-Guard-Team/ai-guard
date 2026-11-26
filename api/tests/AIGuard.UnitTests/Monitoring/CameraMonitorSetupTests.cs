@@ -1,3 +1,4 @@
+using AIGuard.Api.Controllers;
 using AIGuard.Application;
 using AIGuard.Application.Abstractions;
 using AIGuard.Application.Monitoring;
@@ -52,6 +53,22 @@ public class CameraMonitorSetupTests
 
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SessionService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SessionTimekeeper>());
+    }
+
+    [Fact]
+    public void Monitoring_controller_is_created_without_an_encryption_key()
+    {
+        // /frames, /audio ve /permission aynı controller'da; CameraMonitor depolamayı tembel çözümlediği için
+        // anahtarsız bilgisayarda controller kurulabiliyor (K-26, K-45).
+        using var provider = BuildProvider(encryptionKey: null);
+        using var scope = provider.CreateScope();
+
+        var controller = ActivatorUtilities.CreateInstance<SessionMonitoringController>(scope.ServiceProvider);
+
+        Assert.NotNull(controller);
+        Assert.IsType<CameraMonitor>(scope.ServiceProvider.GetRequiredService<IMediaAnalyzer>());
+        // Depolamanın kendisi anahtar ister; çözümlenmediğini gösteren karşı kontrol.
+        Assert.ThrowsAny<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<ICameraMonitorStorage>());
     }
 
     [Fact]
