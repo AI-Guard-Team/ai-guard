@@ -16,6 +16,8 @@ import { CancelledNotice } from './CancelledNotice'
 import { ConsentStep } from './ConsentStep'
 import { IdentityStep } from './IdentityStep'
 import { ReadyStep } from './ReadyStep'
+// Başlık PageHeader'ın sınıflarını kullanıyor; doğrudan açılan/yenilenen sayfada stil yoksa breadcrumb düz liste görünüyordu.
+import '../../components/PageHeader.css'
 import './preflight.css'
 
 /**

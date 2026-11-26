@@ -1,5 +1,7 @@
 import { Download, MonitorCheck, MousePointerClick, RefreshCw } from 'lucide-react'
 import { AGENT_DOWNLOAD_URL } from '../../api/agentPairing'
+import { usePlatformSettings } from '../../hooks/usePlatformSettings'
+import { isHttpsUrl } from '../../lib/safeUrl'
 import { defineMessages, useMessages } from '../../i18n/messages'
 
 const messages = defineMessages({
@@ -14,6 +16,8 @@ const messages = defineMessages({
     pair: 'Eşleştirin',
     pairText: 'Bu sayfada “Ajanla eşleştir”e basın; kod yazmanız gerekmez. Tarayıcı “bu cihazdaki diğer uygulamalara erişim” izni sorarsa İzin ver’i seçin.',
     mac: 'macOS kullanıyorsunuz. macOS ajanının kurulum adımlarını kurumunuzun sınav sorumlusundan alın; eşleştirme bu sayfadan aynı şekilde yapılır.',
+    macLink: 'macOS kullanıyorsunuz: yukarıdaki bağlantı macOS ajanını indirir; eşleştirme bu sayfadan aynı şekilde yapılır.',
+    help: (contact: string) => `Sorun yaşarsanız: ${contact}`,
   },
   en: {
     download: 'Download',
@@ -26,6 +30,8 @@ const messages = defineMessages({
     pair: 'Pair',
     pairText: 'Press “Pair with agent” on this page; you do not need to type a code. If the browser asks for access to other apps on this device, choose Allow.',
     mac: 'You are using macOS. Ask your institution’s exam coordinator for the macOS agent setup steps; pairing works the same way from this page.',
+    macLink: 'You are using macOS: the link above downloads the macOS agent; pairing works the same way from this page.',
+    help: (contact: string) => `If you run into trouble: ${contact}`,
   },
 })
 
@@ -34,12 +40,16 @@ function isMac(): boolean {
 }
 
 /**
- * Ajanın kurulum adımları (Stitch ekran 10, docs/ajan-kurulum-windows.md). İndirme adresi henüz yayında değil
- * (K-25); adres gelince `AGENT_DOWNLOAD_URL` doldurulur ve düğme kendiliğinden bağlantıya dönüşür.
+ * Ajanın kurulum adımları (Stitch ekran 10, docs/ajan-kurulum-windows.md). İndirme adresi yöneticinin platform
+ * ayarından (K-49; işletim sistemine göre Windows ya da macOS); ayarlanmadıysa "kurumunuzun verdiği bağlantı".
  */
 export function AgentSetupGuide() {
   const m = useMessages(messages)
   const mac = isMac()
+  const settings = usePlatformSettings()
+  const configured = mac ? settings?.agentDownloadUrlMac : settings?.agentDownloadUrlWindows
+  const downloadUrl = isHttpsUrl(configured) ? configured : AGENT_DOWNLOAD_URL
+  const contact = [settings?.supportEmail, settings?.supportPhone].filter(Boolean).join(' · ')
   return (
     <div className="agent-guide">
       <ol className="agent-steps">
@@ -48,14 +58,14 @@ export function AgentSetupGuide() {
           <span>
             <strong>{m.download}</strong>
             <span>
-              {AGENT_DOWNLOAD_URL ? (
-                <a href={AGENT_DOWNLOAD_URL} rel="noopener">
+              {downloadUrl ? (
+                <a href={downloadUrl} rel="noopener noreferrer" download>
                   {m.downloadLink}
                 </a>
               ) : (
                 m.fromInstitution
               )}{' '}
-              <code>aiguard-agent.exe</code> {m.downloadText}
+              {mac ? null : <code>aiguard-agent.exe</code>} {m.downloadText}
             </span>
           </span>
         </li>
@@ -77,9 +87,10 @@ export function AgentSetupGuide() {
       {mac ? (
         <p className="agent-os-note">
           <MonitorCheck size={16} aria-hidden="true" />
-          {m.mac}
+          {downloadUrl ? m.macLink : m.mac}
         </p>
       ) : null}
+      {contact ? <p className="agent-os-note">{m.help(contact)}</p> : null}
     </div>
   )
 }

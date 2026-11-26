@@ -13,8 +13,10 @@ import { LanguageToggle } from '../components/LanguageToggle'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { getLocale } from '../i18n/lang'
 import { defineMessages, useMessages } from '../i18n/messages'
+import { NotificationBell } from './NotificationBell'
 import { OnboardingDialog } from './OnboardingDialog'
 import { SECTION_ICON } from './sections'
+import { useNotifications } from './useNotifications'
 import './AppShell.css'
 
 const messages = defineMessages({
@@ -97,6 +99,8 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => stored(COLLAPSE_KEY) === '1')
   const [onboardingOpen, setOnboardingOpen] = useState(() => (user ? shouldShowOnboarding(user.role) : false))
+  // Testlerde arka planda istek atılmaz (sayfa testlerinin fetch sayımını bozmasın); zilin kendi testi var.
+  const notifications = useNotifications(import.meta.env.MODE === 'test' ? undefined : user?.id)
 
   // Telefonda menüden bir sayfa seçilince menü kapanır.
   const [lastPath, setLastPath] = useState(location.pathname)
@@ -158,6 +162,7 @@ export function AppShell() {
           onClick={() => setMenuOpen((open) => !open)}
         >
           {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          {notifications.unread > 0 && !menuOpen ? <span className="app-menu-dot" aria-hidden="true" /> : null}
         </button>
         <BrandMark tone="light" />
       </header>
@@ -188,6 +193,7 @@ export function AppShell() {
         </nav>
 
         <div className="app-sidebar-foot">
+          <NotificationBell notifications={notifications} collapsed={collapsed} />
           <ThemeToggle />
           <LanguageToggle />
           <button type="button" className="app-help" onClick={() => setOnboardingOpen(true)} title={collapsed ? m.tour : undefined}>
