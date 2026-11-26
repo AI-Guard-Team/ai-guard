@@ -5,7 +5,7 @@ import { initLang } from './i18n/lang'
 import { initTheme } from './lib/theme'
 import { Root } from './Root'
 
-// Tema ve dil ilk çizimden önce: sayfa yanlış renkte ya da yanlış dilde görünüp sonra değişmesin (K-42, K-45).
+// Tema ve dil ilk çizimden önce: sayfa yanlış renkte ya da yanlış dilde görünüp sonra değişmesin (K-42, K-46).
 initTheme()
 initLang()
 

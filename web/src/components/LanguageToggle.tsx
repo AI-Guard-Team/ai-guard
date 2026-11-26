@@ -8,7 +8,7 @@ const OTHER = {
   en: { next: 'tr', label: 'Türkçe', aria: 'Türkçeye geç' },
 } as const
 
-/** Türkçe / İngilizce geçişi (K-45). Tercih saklanır; bütün ekranlar ve tarih biçimleri anında değişir. */
+/** Türkçe / İngilizce geçişi (K-46). Tercih saklanır; bütün ekranlar ve tarih biçimleri anında değişir. */
 export function LanguageToggle({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
   const lang = useLang()
   const other = OTHER[lang]

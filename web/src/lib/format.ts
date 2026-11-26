@@ -1,6 +1,6 @@
 import { getLang, getLocale, type Lang } from '../i18n/lang'
 
-// Ekranlarda tekrar eden tarih ve belge numarası biçimleri tek yerde. Biçimler geçerli dile göre (K-45).
+// Ekranlarda tekrar eden tarih ve belge numarası biçimleri tek yerde. Biçimler geçerli dile göre (K-46).
 
 type FormatterName = 'date' | 'dateShort' | 'dateTime' | 'time' | 'timeSeconds'
 

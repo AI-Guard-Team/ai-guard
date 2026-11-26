@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-// Arayüz dili (K-45): Türkçe ya da İngilizce. Tercih tarayıcıda saklanır; ilk açılışta tarayıcı dili Türkçe değilse İngilizce.
+// Arayüz dili (K-46): Türkçe ya da İngilizce. Tercih tarayıcıda saklanır; ilk açılışta tarayıcı dili Türkçe değilse İngilizce.
 // Tek kaynak bu modül: bileşenler useLang ile, düz modüller getLang ile okur.
 
 export type Lang = 'tr' | 'en'

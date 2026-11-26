@@ -49,8 +49,8 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Sınav ekranı | Yan menüsüz; mantık `useExamSession`'da, ekran bileşenleri yalnızca çizer; çevrimdışıyken cevaplama sürer, bekleyen sayısı görünür; "daha sonra dön" yalnızca istemcide (K-38) |
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-36) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
-| Arayüz dili | Türkçe ve İngilizce; metinler kullanıldıkları dosyanın yanında iki dilde, tercih tarayıcıda; sunucu metinleri Türkçe kalıyor (K-45) |
-| Giriş ve koyu tema | Giriş panelinde dönen, parlayan halkalar (Şeyma'nın S1 tasarımı); koyu temada yan menü sayfayla aynı ailede, kontrastlar AA (K-46) |
+| Arayüz dili | Türkçe ve İngilizce; metinler kullanıldıkları dosyanın yanında iki dilde, tercih tarayıcıda; sunucu metinleri Türkçe kalıyor (K-46) |
+| Giriş ve koyu tema | Giriş panelinde dönen, parlayan halkalar (Şeyma'nın S1 tasarımı); koyu temada yan menü sayfayla aynı ailede, kontrastlar AA (K-47) |
 
 ---
 
@@ -1261,7 +1261,7 @@ Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; s
 
 ---
 
-## K-45 · Türkçe / İngilizce arayüz (UI1)
+## K-46 · Türkçe / İngilizce arayüz (UI1)
 
 Kullanıcı isteği: "uygulamanın her yerine İngilizce–Türkçe özelliği gelsin".
 
@@ -1280,7 +1280,7 @@ Kullanıcı isteği: "uygulamanın her yerine İngilizce–Türkçe özelliği g
 
 Sınav ekranına dil düğmesi konmadı (aday yalnızca sınava odaklanır, K-37); sınav öncesinde seçilen dil sınavda da geçerli.
 
-## K-46 · Giriş ekranı, koyu tema ve kurumsal hareket (UI1)
+## K-47 · Giriş ekranı, koyu tema ve kurumsal hareket (UI1)
 
 Kullanıcı isteği: Şeyma'nın "yanar dönerli" arka planı, soldan tanıtım ve sağdan giriş, ikisi de animasyonlu; koyu tema renklerinin düzeltilmesi.
 

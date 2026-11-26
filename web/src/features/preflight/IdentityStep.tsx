@@ -22,6 +22,7 @@ const messages = defineMessages({
     ],
     failed: 'Kimlik doğrulanamadı. Yüzünüzün net göründüğünden emin olup yeniden deneyin.',
     notMatched: 'Yüzünüz doğrulanamadı. Işığı ve konumunuzu düzeltip yeniden deneyin.',
+    serviceDown: 'Görüntü servisi şu an yanıt vermiyor. Sorun sizde değil; birkaç dakika sonra yeniden deneyin. Süreniz henüz başlamadı.',
     title: 'Kimlik doğrulama',
     text: 'Yüzünüz kayıt fotoğrafınızla karşılaştırılır. Doğrulama başarılı olunca sınav başlar.',
     cameraLabel: 'Kimlik doğrulama kamerası',
@@ -42,6 +43,7 @@ const messages = defineMessages({
     ],
     failed: 'Your identity could not be verified. Make sure your face is clearly visible and try again.',
     notMatched: 'Your face could not be verified. Adjust the light and your position, then try again.',
+    serviceDown: 'The image service is not responding right now. The problem is not on your side; try again in a few minutes. Your time has not started yet.',
     title: 'Identity check',
     text: 'Your face is compared with your reference photo. The exam starts when verification succeeds.',
     cameraLabel: 'Identity check camera',
@@ -60,6 +62,7 @@ type Failure = { title?: string; text: string }
 function failureOf(error: unknown): Failure {
   if (error instanceof ApiError) {
     // 422 canlı yüz yok / eşleşmedi, 429 çok sık deneme, 503 görüntü servisi yok: neden "title"da, ne yapılacağı "detail"de.
+    if (error.status === 503) return { text: pick(messages).serviceDown }
     if (error.status === 422 && !error.title) return { text: pick(messages).notMatched }
     return { title: error.title !== error.message ? error.title : undefined, text: error.message }
   }

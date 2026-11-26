@@ -153,7 +153,7 @@
 }
 
 /*
- * Koyu tema (K-42, K-46): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
+ * Koyu tema (K-42, K-47): aynı adlar, koyu değerler. <html data-theme="dark"> ile açılır; tercih lib/theme.ts'te.
  * Zeminler düşük doygunlukta mürekkep tonu ve üç katman (zemin < yüzey < vurgulu yüzey); mavi yalnızca vurguda.
  * Yan menü ve tanıtım bantları sayfayla aynı aileden: açık temadaki parlak lacivert koyu zeminde ayrı bir uygulama
  * gibi duruyordu. Metin kontrastları WCAG AA (gövde ≥ 4.5:1) ölçülerek seçildi.

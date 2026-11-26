@@ -3,7 +3,7 @@ import type { BadgeTone } from '../components/StatusBadge'
 import { defineMessages, live } from '../i18n/messages'
 
 // Olay, işaret, durum ve karar adlarının ekrandaki karşılıkları tek yerde. Anahtarlar sunucudaki ortak adlar
-// (CLAUDE.md "Ortak adlar"); değiştirilmez, yalnızca ekrandaki karşılıkları burada (Türkçe ve İngilizce, K-45).
+// (CLAUDE.md "Ortak adlar"); değiştirilmez, yalnızca ekrandaki karşılıkları burada (Türkçe ve İngilizce, K-46).
 
 export const EVENT_LABEL: Record<string, string> = live(
   defineMessages<Record<string, string>>({

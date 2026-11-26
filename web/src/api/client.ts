@@ -20,7 +20,7 @@ export class ApiError extends Error {
 
   /**
    * Sunucunun Türkçe kısa nedeni (ProblemDetails "title"); ASP.NET'in İngilizce varsayılan başlığıysa undefined.
-   * Arayüz İngilizceyken de undefined: sunucu metinleri yalnızca Türkçe (K-45).
+   * Arayüz İngilizceyken de undefined: sunucu metinleri yalnızca Türkçe (K-46).
    */
   get title(): string | undefined {
     return getLang() === 'tr' ? userFacingTitle(this.body) : undefined

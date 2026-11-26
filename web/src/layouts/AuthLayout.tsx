@@ -51,7 +51,7 @@ interface AuthLayoutProps {
 }
 
 /**
- * Giriş yapılmadan açılan ekranların ortak düzeni (K-39, K-46): solda parlayan halkalı lacivert tanıtım paneli
+ * Giriş yapılmadan açılan ekranların ortak düzeni (K-39, K-47): solda parlayan halkalı lacivert tanıtım paneli
  * (soldan gelir), sağda form kartı (sağdan gelir). Bütün giriş ekranları aynı yerleşimi kullanır; geçişte kayma olmaz.
  */
 export function AuthLayout({ title, description, children, footer }: AuthLayoutProps) {

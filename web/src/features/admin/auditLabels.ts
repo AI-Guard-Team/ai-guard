@@ -1,6 +1,6 @@
 import { defineMessages, live } from '../../i18n/messages'
 
-// İşlem adları sunucudaki denetim kayıtlarıyla aynı (K-32); ekranda iki dilde karşılıkları (K-45).
+// İşlem adları sunucudaki denetim kayıtlarıyla aynı (K-32); ekranda iki dilde karşılıkları (K-46).
 export const ACTION_LABEL: Record<string, string> = live(
   defineMessages<Record<string, string>>({
     tr: {

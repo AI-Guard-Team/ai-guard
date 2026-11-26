@@ -38,6 +38,9 @@ const messages = defineMessages({
     photoRequired: 'Bir fotoğraf seçin ya da kameradan çekin.',
     saved: 'Kayıt fotoğrafınız işlendi. Yüz şablonunuz hazır.',
     changePhoto: 'Fotoğrafı değiştirip tekrar deneyin.',
+    serviceDownTitle: 'Görüntü servisi şu an yanıt vermiyor',
+    sessionActive: 'Başlamış ya da hazırlığı süren bir sınav oturumunuz var. Sınav bittikten ya da oturum kapandıktan sonra fotoğrafı güncelleyebilirsiniz.',
+    serviceDown: 'Sorun fotoğrafınızda değil. Birkaç dakika sonra aynı fotoğrafla tekrar deneyin; sürerse sınav sorumlusuna haber verin.',
     saveFailed: 'Fotoğraf kaydedilemedi. Lütfen tekrar deneyin.',
     withdrawn: 'Biyometrik rızanız geri alındı ve yüz şablonunuz silindi.',
     withdrawFailed: 'Rıza geri alınamadı. Lütfen tekrar deneyin.',
@@ -83,6 +86,9 @@ const messages = defineMessages({
     photoRequired: 'Choose a photo or take one with the camera.',
     saved: 'Your reference photo has been processed. Your face template is ready.',
     changePhoto: 'Change the photo and try again.',
+    serviceDownTitle: 'The image service is not responding right now',
+    sessionActive: 'You have an exam session that has started or is being prepared. You can update the photo after the exam ends or the session closes.',
+    serviceDown: 'The problem is not your photo. Try again with the same photo in a few minutes; if it continues, tell the exam coordinator.',
     saveFailed: 'The photo could not be saved. Please try again.',
     withdrawn: 'Your biometric consent was withdrawn and your face template deleted.',
     withdrawFailed: 'Consent could not be withdrawn. Please try again.',
@@ -200,11 +206,16 @@ export function ReferencePhotoPage() {
       showToast(m.saved, 'success')
     } catch (caught) {
       // Sunucu nedeni "title"da verir (yüz bulunamadı, rıza metni eski, sınav sürüyor); ne yapılacağı "detail"de.
-      setError(
-        caught instanceof ApiError
-          ? { title: caught.title, text: caught.message === caught.title ? m.changePhoto : caught.message }
-          : { text: m.saveFailed },
-      )
+      // 503: görüntü servisi kapalı; fotoğrafı değiştirmek işe yaramaz, aynı fotoğraf sonra yeniden denenir.
+      if (caught instanceof ApiError && caught.status === 503) setError({ title: m.serviceDownTitle, text: m.serviceDown })
+      // 409: süren oturum varken fotoğraf değişmez; sorun fotoğrafta değil, zamanlamada.
+      else if (caught instanceof ApiError && caught.status === 409) setError({ title: caught.title, text: m.sessionActive })
+      else
+        setError(
+          caught instanceof ApiError
+            ? { title: caught.title, text: caught.message === caught.title ? m.changePhoto : caught.message }
+            : { text: m.saveFailed },
+        )
       if (caught instanceof ApiError && staleConsentText(caught)) consentText.reload()
     } finally {
       setPending(false)

@@ -5,7 +5,7 @@ import { ToastProvider } from './components/ToastProvider'
 import { useLang } from './i18n/lang'
 
 /**
- * Uygulamanın kökü. Dil değişince bütün ağaç yeniden çizilir (K-45); durum (form alanları, açık pencereler) korunur,
+ * Uygulamanın kökü. Dil değişince bütün ağaç yeniden çizilir (K-46); durum (form alanları, açık pencereler) korunur,
  * düz işlevlerden okunan etiketler de güncel dile geçer.
  */
 export function Root() {
