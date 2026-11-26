@@ -17,6 +17,7 @@ import { DECISION_LABEL, DECISION_TONE, STATUS_LABEL, STATUS_TONE } from '../../
 import { common } from '../../i18n/common'
 import { defineMessages, useMessages } from '../../i18n/messages'
 import { formatDateTime } from '../../lib/format'
+import { ExamSummaryPanel } from './ExamSummaryPanel'
 import './admin.css'
 
 const loadExams = (signal: AbortSignal) => listExams(signal)
@@ -28,9 +29,10 @@ const messages = defineMessages({
     downloadFailed: 'Rapor indirilemedi.',
     admin: 'Yönetim',
     title: 'Raporlar',
-    description: 'Her adayın sonucu, risk skoru, olayları ve değerlendirici kararı.',
+    description: 'Sınavın toplu özeti ve her adayın sonucu, risk skoru, olayları ve değerlendirici kararı.',
     info: [
       'Önce sınavı seçin; o sınava giren adayların oturumları listelenir.',
+      'Üstteki özet sınavın bütün oturumlarını toplar; "Bütün oturumlar (CSV)" hepsini tek dosyada indirir.',
       '"Raporu aç" ekranda belge görünümünü açar; PDF ve Excel aynı raporun dosyasıdır.',
       'Rapor görüntüleme ve indirme denetim kaydına yazılır.',
     ],
@@ -56,9 +58,10 @@ const messages = defineMessages({
     downloadFailed: 'The report could not be downloaded.',
     admin: 'Administration',
     title: 'Reports',
-    description: 'Each candidate’s result, risk score, events and reviewer decision.',
+    description: 'The exam summary and each candidate’s result, risk score, events and reviewer decision.',
     info: [
       'Choose an exam first; the sessions of its candidates are listed.',
+      'The summary at the top covers every session of the exam; "All sessions (CSV)" downloads them in one file.',
       '"Open report" shows the document view; PDF and Excel are files of the same report.',
       'Viewing and downloading reports is written to the audit log.',
     ],
@@ -148,6 +151,8 @@ export function ReportsPage() {
             </label>
             {sessions.data ? <p className="admin-row-sub">{m.sessions(rows.length)}</p> : null}
           </div>
+
+          {selected ? <ExamSummaryPanel examId={selected} /> : null}
 
           {sessions.error ? <Alert tone="danger">{sessions.error}</Alert> : null}
 

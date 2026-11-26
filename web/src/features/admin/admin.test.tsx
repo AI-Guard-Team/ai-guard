@@ -82,24 +82,50 @@ describe('yönetici ekranları', () => {
     expect(JSON.parse(post![1]!.body as string)).toEqual({ fullName: 'Ayşe Demir', email: 'ayse@kurum.edu.tr', role: 'Reviewer' })
   })
 
-  it('risk ayarlarını sunucudan okur, Türkçe olay adlarıyla gösterir', async () => {
-    mockFetch((url) => {
+  const riskMocks = (locked: boolean) =>
+    mockFetch((url, init) => {
       if (url === '/api/risk-settings')
+        return jsonResponse(200, { sessionThreshold: 10, repetitionStep: 0.25, maxRepetitionMultiplier: 2, durationScaleSeconds: 30, events: [] })
+      if (url === '/api/exams/e1/risk-settings' && (init.method ?? 'GET') === 'GET')
         return jsonResponse(200, {
+          examId: 'e1',
           sessionThreshold: 10,
-          repetitionStep: 0.25,
-          maxRepetitionMultiplier: 2,
-          durationScaleSeconds: 30,
-          events: [{ type: 'PHONE', weight: 5, decayPerMinute: 0.02, threshold: null, maxTotal: null }],
+          defaultSessionThreshold: 10,
+          locked,
+          events: [
+            { type: 'PHONE', weight: 5, decayPerMinute: 0.02, threshold: null, defaultWeight: 5, defaultDecayPerMinute: 0.02, defaultThreshold: null, customized: false },
+            { type: 'TAB_BLUR', weight: 1, decayPerMinute: 0.05, threshold: null, defaultWeight: 1, defaultDecayPerMinute: 0.05, defaultThreshold: null, customized: false },
+          ],
         })
+      if (url === '/api/exams/e1/risk-settings') return new Response(null, { status: 204 })
       if (url === '/api/exams/e1') return jsonResponse(200, exam({ questionCount: 3 }))
       return jsonResponse(200, [])
     })
+
+  it('sınava özel risk ağırlığını düzenler; yalnızca değişen değer gider', async () => {
+    const fetchMock = riskMocks(false)
     signInAs('Admin')
     await renderApp('/admin/exams/e1/risk')
 
-    expect(await screen.findByText('Telefon')).toBeInTheDocument()
-    expect(screen.getByText('0,020 / dk')).toBeInTheDocument()
-    expect(screen.getByText('Oturum eşiği').nextElementSibling).toHaveTextContent('10')
+    const weight = await screen.findByLabelText('Telefon: ağırlık')
+    expect(screen.getAllByText('Varsayılan 5,0').length).toBeGreaterThan(0)
+    await userEvent.clear(weight)
+    await userEvent.type(weight, '12,5')
+    expect(screen.getByText('Bu sınava özel')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Kaydet' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/exams/e1/risk-settings' && init?.method === 'PUT')).toBe(true))
+    const put = fetchMock.mock.calls.find(([url, init]) => url === '/api/exams/e1/risk-settings' && init?.method === 'PUT')
+    expect(JSON.parse(put![1]!.body as string)).toEqual({ sessionThreshold: null, events: [{ type: 'PHONE', weight: 12.5, decayPerMinute: 0.02, threshold: null }] })
+  })
+
+  it('oturum açılmış sınavda risk ayarları kilitli', async () => {
+    riskMocks(true)
+    signInAs('Admin')
+    await renderApp('/admin/exams/e1/risk')
+
+    expect(await screen.findByLabelText('Telefon: ağırlık')).toBeDisabled()
+    expect(screen.getByText(/ayarlar kilitli/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kaydet' })).not.toBeInTheDocument()
   })
 })

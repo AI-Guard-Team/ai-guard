@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { getRiskSettings } from '../../api/admin'
 import { getConsentText, type ConsentText, type ConsentType } from '../../api/consentTexts'
 import { listExams } from '../../api/exams'
+import { getPlatformSettings } from '../../api/management'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
@@ -14,6 +15,7 @@ import { eventLabel } from '../../lib/eventCatalog'
 import { common } from '../../i18n/common'
 import { defineMessages, useMessages } from '../../i18n/messages'
 import { formatDate, formatNumber } from '../../lib/format'
+import { PlatformSettingsCard } from './PlatformSettingsCard'
 import './admin.css'
 
 const CONSENT_TYPES: ConsentType[] = ['Biometric', 'Session']
@@ -27,11 +29,11 @@ const messages = defineMessages({
     failed: 'Ayarlar yüklenemedi.',
     admin: 'Yönetim',
     title: 'Ayarlar',
-    description: 'Rıza metinleri, veri saklama ve risk değerleri.',
+    description: 'Aday iletişimi, ajan indirme adresi, rıza metinleri, veri saklama ve risk değerleri.',
     info: [
       'Rıza metinleri sürümlüdür; yayımlanan metin değiştirilemez, yeni sürüm yayımlanır.',
       'Kanıt saklama süresi her sınavın kendi ayarıdır; süre dolunca kanıtlar günlük görevle silinir.',
-      'Risk değerleri bütün sınavlar için geçerlidir.',
+      'Risk değerleri bütün sınavların varsayılanıdır; bir sınav ilk oturumu açılana kadar kendi değerlerini kullanabilir.',
     ],
     loadFailed: 'Ayarlar yüklenemedi',
     consentTitle: 'Rıza metinleri',
@@ -45,7 +47,7 @@ const messages = defineMessages({
     days: (n: number) => `${n} gün`,
     change: 'Değiştir',
     risk: 'Risk değerleri',
-    riskSub: (threshold: string) => `Oturum skoru ${threshold} değerine ulaşınca oturum riskli işaretlenir. En ağır beş olay:`,
+    riskSub: (threshold: string) => `Varsayılan: oturum skoru ${threshold} değerine ulaşınca oturum riskli işaretlenir. En ağır beş olay:`,
     allWeights: 'Bütün olay ağırlıkları',
     consentText: 'Rıza metni',
   },
@@ -57,11 +59,11 @@ const messages = defineMessages({
     failed: 'Settings could not be loaded.',
     admin: 'Administration',
     title: 'Settings',
-    description: 'Consent texts, data retention and risk values.',
+    description: 'Candidate contact, agent download address, consent texts, data retention and risk values.',
     info: [
       'Consent texts are versioned; a published text cannot be changed, a new version is published instead.',
       'Evidence retention is set per exam; when it ends, evidence is deleted by a daily job.',
-      'Risk values apply to every exam.',
+      'Risk values are the default for every exam; an exam can use its own values until its first session opens.',
     ],
     loadFailed: 'Settings could not be loaded',
     consentTitle: 'Consent texts',
@@ -75,25 +77,27 @@ const messages = defineMessages({
     days: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
     change: 'Change',
     risk: 'Risk values',
-    riskSub: (threshold: string) => `A session is marked risky when its score reaches ${threshold}. The five heaviest events:`,
+    riskSub: (threshold: string) => `Default: a session is marked risky when its score reaches ${threshold}. The five heaviest events:`,
     allWeights: 'All event weights',
     consentText: 'Consent text',
   },
 })
 
 const loadAll = async (signal: AbortSignal) => {
-  const [biometric, session, exams, risk] = await Promise.all([
+  const [biometric, session, exams, risk, platform] = await Promise.all([
     getConsentText('Biometric', signal),
     getConsentText('Session', signal),
     listExams(signal),
     getRiskSettings(signal),
+    getPlatformSettings(signal),
   ])
-  return { texts: { Biometric: biometric, Session: session } as Record<ConsentType, ConsentText | undefined>, exams, risk }
+  return { texts: { Biometric: biometric, Session: session } as Record<ConsentType, ConsentText | undefined>, exams, risk, platform }
 }
 
 /**
- * Ayarlar (Stitch 31): platformda gerçekten var olan ayarların özeti. Rıza metinleri sürümlü ve salt okunur (K-32),
- * saklama süresi sınav başına (sınav formunda), risk değerleri platform geneli (K-41). Uydurma bir ayar yok.
+ * Ayarlar (Stitch 31): platformda gerçekten var olan ayarlar. Aday iletişimi ve ajan adresi düzenlenebilir (K-49),
+ * rıza metinleri sürümlü ve salt okunur (K-32), saklama süresi sınav başına (sınav formunda), risk değerleri
+ * platform varsayılanı; sınava özel değerler sınavın risk sekmesinde (K-49). Uydurma bir ayar yok.
  */
 export function SettingsPage() {
   const m = useMessages(messages)
@@ -127,6 +131,8 @@ export function SettingsPage() {
         <Skeleton height="24rem" radius="lg" />
       ) : (
         <div className="settings-grid">
+          <PlatformSettingsCard settings={data.platform} onSaved={reload} />
+
           <section className="editor-card" aria-labelledby="settings-consent">
             <div className="settings-head">
               <span className="settings-icon" aria-hidden="true">

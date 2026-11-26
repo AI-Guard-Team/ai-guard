@@ -1,7 +1,8 @@
-import { MailPlus, Search, UserRoundX, UserRoundCheck, Users } from 'lucide-react'
+import { MailPlus, Search, Send, UserRoundX, UserRoundCheck, Users } from 'lucide-react'
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { createUser, listUsers, updateUser, type InviteStatus, type UserRole, type UserSummary } from '../../api/admin'
+import { resendInvite } from '../../api/management'
 import { ROLE_LABEL } from '../../auth/roles'
 import { useAuth } from '../../auth/useAuth'
 import { Alert } from '../../components/Alert'
@@ -17,7 +18,7 @@ import { useResource } from '../../hooks/useResource'
 import { common } from '../../i18n/common'
 import { getLang, getLocale } from '../../i18n/lang'
 import { defineMessages, useMessages } from '../../i18n/messages'
-import { formatDate } from '../../lib/format'
+import { formatDate, formatDateTime } from '../../lib/format'
 import { MAX_EMAIL_LENGTH, validateEmail } from '../../pages/auth/passwordRules'
 import './admin.css'
 
@@ -47,7 +48,7 @@ const messages = defineMessages({
     description: 'Hesap açın, rolleri yönetin, gerekirse hesabı pasife alın.',
     info: [
       'Davet, kullanıcının e-posta adresine 72 saat geçerli bir şifre belirleme bağlantısı gönderir. Kullanıcı şifresini belirleyince hesap etkin olur.',
-      'Bağlantının süresi dolarsa durum "Davetin süresi doldu" olur.',
+      'Bağlantı gelmezse ya da süresi dolarsa "Daveti yeniden gönder" yeni bir bağlantı gönderir; eski bağlantı geçersiz olur.',
       'Pasife alınan kullanıcı giriş yapamaz; kayıtları silinmez.',
       'Rol değişikliği ve pasife alma denetim kaydına yazılır.',
     ],
@@ -65,6 +66,12 @@ const messages = defineMessages({
     role: 'Rol',
     status: 'Durum',
     added: 'Eklenme',
+    lastLogin: 'Son giriş',
+    neverSignedIn: 'Henüz giriş yok',
+    addedOn: (date: string) => `Eklenme: ${date}`,
+    resend: 'Daveti yeniden gönder',
+    resent: (name: string) => `${name} için yeni davet bağlantısı gönderildi.`,
+    resendFailed: 'Davet gönderilemedi.',
     action: 'İşlem',
     roleOf: (name: string) => `${name} rolü`,
     inactive: 'Pasif',
@@ -86,7 +93,7 @@ const messages = defineMessages({
         Kullanıcının e-posta adresine <strong>72 saat geçerli</strong> bir şifre belirleme bağlantısı gider. Kullanıcı şifresini belirleyince hesabı etkin olur.
       </>
     ),
-    emailNote: 'Not: Gerçek e-posta gönderimi henüz kurulu değil; şimdilik bağlantı sunucu kaydına yazılıyor (S-15).',
+    emailNote: 'E-posta gelmezse kullanıcı listesinden daveti yeniden gönderebilirsiniz.',
     name: 'Ad soyad',
     email: 'E-posta',
     send: 'Davet gönder',
@@ -110,7 +117,7 @@ const messages = defineMessages({
     description: 'Open accounts, manage roles and deactivate accounts when needed.',
     info: [
       'An invitation sends the user a password setup link valid for 72 hours. The account becomes active once they set a password.',
-      'If the link expires, the status becomes "Invitation expired".',
+      'If the email does not arrive or the link expires, "Resend invitation" sends a new link; the old link stops working.',
       'A deactivated user cannot sign in; their records are not deleted.',
       'Role changes and deactivations are written to the audit log.',
     ],
@@ -128,6 +135,12 @@ const messages = defineMessages({
     role: 'Role',
     status: 'Status',
     added: 'Added',
+    lastLogin: 'Last sign-in',
+    neverSignedIn: 'Never signed in',
+    addedOn: (date: string) => `Added ${date}`,
+    resend: 'Resend invitation',
+    resent: (name: string) => `A new invitation link was sent to ${name}.`,
+    resendFailed: 'The invitation could not be sent.',
     action: 'Action',
     roleOf: (name: string) => `${name}’s role`,
     inactive: 'Inactive',
@@ -149,7 +162,7 @@ const messages = defineMessages({
         The user receives a password setup link <strong>valid for 72 hours</strong>. Their account becomes active once they set a password.
       </>
     ),
-    emailNote: 'Note: real email delivery is not set up yet; for now the link is written to the server log (S-15).',
+    emailNote: 'If the email does not arrive, you can resend the invitation from the user list.',
     name: 'Full name',
     email: 'Email',
     send: 'Send invitation',
@@ -196,6 +209,22 @@ export function UsersPage() {
       reload()
     } catch (caught) {
       showToast(caught instanceof ApiError ? caught.message : m.roleFailed, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const resend = async (user: UserSummary) => {
+    if (busy) return
+    setBusy(user.id)
+    try {
+      await resendInvite(user.id)
+      showToast(m.resent(user.fullName), 'success')
+      reload()
+    } catch (caught) {
+      // 429: dakikada bir; 409: davet kabul edilmiş ya da hesap pasif. Sunucunun metni ne yapılacağını söylüyor.
+      showToast(caught instanceof ApiError ? caught.message : m.resendFailed, caught instanceof ApiError && caught.status === 429 ? 'info' : 'error')
+      if (caught instanceof ApiError && caught.status === 409) reload()
     } finally {
       setBusy(null)
     }
@@ -275,7 +304,7 @@ export function UsersPage() {
                 <th scope="col">{m.user}</th>
                 <th scope="col">{m.role}</th>
                 <th scope="col">{m.status}</th>
-                <th scope="col">{m.added}</th>
+                <th scope="col">{m.lastLogin}</th>
                 <th scope="col">
                   <span className="visually-hidden">{m.action}</span>
                 </th>
@@ -323,18 +352,30 @@ export function UsersPage() {
                         </StatusBadge>
                       )}
                     </td>
-                    <td className="numeric">{formatDate(user.createdAt)}</td>
+                    <td>
+                      <span className="assign-person">
+                        <span className="numeric">{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : m.neverSignedIn}</span>
+                        <span className="admin-row-sub">{m.addedOn(formatDate(user.createdAt))}</span>
+                      </span>
+                    </td>
                     <td className="cell-actions">
                       {self ? (
                         <span className="admin-row-sub">{m.you}</span>
                       ) : (
-                        <Button
+                        <span className="row-actions">
+                          {user.isActive && user.inviteStatus !== 'Accepted' ? (
+                            <Button variant="ghost" icon={<Send size={16} aria-hidden="true" />} loading={busy === user.id} onClick={() => void resend(user)}>
+                              {m.resend}
+                            </Button>
+                          ) : null}
+                          <Button
                           variant="ghost"
                           icon={user.isActive ? <UserRoundX size={16} aria-hidden="true" /> : <UserRoundCheck size={16} aria-hidden="true" />}
                           onClick={() => setToggling(user)}
                         >
                           {user.isActive ? m.deactivate : m.activate}
                         </Button>
+                        </span>
                       )}
                     </td>
                   </tr>

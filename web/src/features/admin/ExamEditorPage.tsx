@@ -41,7 +41,7 @@ const messages = defineMessages({
     start: 'Başlangıç',
     generalFirst: 'Önce genel bilgiler',
     assigned: (candidates: number, reviewers: number) => `${candidates} aday · ${reviewers} değerlendirici`,
-    platformWide: 'Platform geneli',
+    platformWide: 'Varsayılan ya da sınava özel',
     admin: 'Yönetim',
     exams: 'Sınavlar',
     newExam: 'Yeni sınav',
@@ -62,7 +62,7 @@ const messages = defineMessages({
     start: 'Start here',
     generalFirst: 'General details first',
     assigned: (candidates: number, reviewers: number) => `${candidates} candidates · ${reviewers} reviewers`,
-    platformWide: 'Platform-wide',
+    platformWide: 'Default or exam-specific',
     admin: 'Administration',
     exams: 'Exams',
     newExam: 'New exam',
@@ -179,7 +179,7 @@ export function ExamEditorPage() {
           ) : step === 'assignments' ? (
             <AssignmentsTab examId={exam.id} assignments={data?.assignments ?? []} onChanged={reload} />
           ) : (
-            <RiskTab />
+            <RiskTab examId={exam.id} />
           )}
         </section>
       </div>
