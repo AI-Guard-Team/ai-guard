@@ -28,9 +28,20 @@ verify:
   liveness_threshold: 0.5
 
 frame:
-  gaze_yaw_deg: 30         # D4: sağ-sol sapma eşiği
-  gaze_pitch_deg: 20       # D4: yukarı-aşağı sapma eşiği
-  phone_confidence: null   # D4: YOLO "cell phone" sınıfı güven eşiği
+  # D4: tek ölçümde gazeAway = |yaw| > gaze_yaw_deg veya |pitch| > gaze_pitch_deg (sınır değer sapma değil).
+  # Derece, MediaPipe dönüşüm matrisinden, en büyük yüz için. İşaret (LFW'de yüz geometrisiyle doğrulandı, K-28):
+  # yaw > 0 kişi kendi soluna (aynalanmamış karede görüntünün sağına), pitch > 0 aşağı bakıyor.
+  # Değerler D4 kartından; GAZE_AWAY için api art arda 5 ölçüm arıyor (S-20).
+  gaze_yaw_deg: 30
+  gaze_pitch_deg: 20
+  # D4: YOLO11n "cell phone" (COCO 67) sınıfının en yüksek skoru >= phone_confidence ise phone.detected.
+  # 0,5: başlangıç değeri. Ultralytics'in 0,25 varsayılanı tespit için genel amaçlı bir alt sınır; PHONE olayı tek
+  # ölçümle oluştuğu için (art arda kuralı yok) yanlış alarm doğrudan adaya yazılıyor. Telefonsuz 3000 LFW
+  # fotoğrafında skor >= 0,25 olan oran %1,00, >= 0,4 %0,53, >= 0,5 %0,33 (p99 0,247, p99,9 0,625). Telefon 3 sn'de
+  # bir kontrol edildiği için (saatte ~1200 kontrol) bu, saatte ~12 yerine ~4 yanlış olay demek. Eşik yükseldikçe
+  # kısmen görünen ya da küçük telefonlar kaçabilir; tespit oranı LFW'de ölçülemiyor (telefon yok).
+  # Deney 2'de gerçek kamera kareleriyle (telefonlu/telefonsuz) yeniden ayarlanacak.
+  phone_confidence: 0.5
 
 audio:
   vad_threshold: null      # D5: Silero VAD olasılık eşiği

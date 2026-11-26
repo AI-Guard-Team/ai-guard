@@ -48,7 +48,7 @@ class Face:
     box: FaceBox
     # (5, 2) piksel; ArcFace sırası: görüntüde soldaki göz, sağdaki göz, burun ucu, soldaki ağız köşesi, sağdaki.
     keypoints: np.ndarray
-    # Derece. Dönüşüm matrisi gelmezse None.
+    # Derece. Dönüşüm matrisi gelmezse None. yaw > 0: kişi kendi soluna, pitch > 0: aşağı (D4, K-28).
     yaw: float | None
     pitch: float | None
     roll: float | None
