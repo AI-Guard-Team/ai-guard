@@ -14,9 +14,10 @@ agent/
 │   │   └── Platform/              IDeviceInspector, DeviceIndicator, ForbiddenAppList
 │   ├── AIGuard.Agent.Windows/     Windows 10/11 (net8.0-windows): WindowsDeviceInspector, MachineDetector,
 │   │                              WindowsSystemProbe (WMI, kayıt defteri, süreçler), forbidden-apps.json (Y3)
-│   └── AIGuard.Agent.MacOS/       macOS giriş noktası + MacDeviceInspector (sanal makine, Y5)
+│   └── AIGuard.Agent.MacOS/       macOS: MacDeviceInspector, MachineDetector (sanal makine, Y5),
+│                                  NetworkDetector, forbidden-apps.json (yazılım ve ağ, S6)
 ├── tests/AIGuard.Agent.Core.Tests/
-├── tests/AIGuard.Agent.MacOS.Tests/     macOS sanal makine kuralları (sahte donanımla; Y5)
+├── tests/AIGuard.Agent.MacOS.Tests/     macOS kuralları: sanal makine (Y5), yazılım ve ağ (S6); sahte Mac ile
 ├── tests/AIGuard.Agent.Windows.Tests/   Windows kuralları (sahte bilgisayarla) + gerçek WMI/kayıt defteri okuması
 └── tools/pairing-test.html        Tarayıcı denemesi için test sayfası
 ```
@@ -54,11 +55,26 @@ Sanal makine ve hipervizör bir kez; süreç listesi, ağ bağdaştırıcıları
 
 Deneme sonuçları: [docs/y3-windows-deneme-notlari.md](../docs/y3-windows-deneme-notlari.md)
 
-## macOS sanal makine tespiti (Y5)
+## macOS cihaz göstergeleri (Y5, S6)
 
-`MachineDetector` Parallels ve VMware konuğunu `VM_DETECTED` olarak bildiriyor; ürün belli değilse `HYPERVISOR_INFO`. Okuma `sysctl kern.hv_vmm_present`, `system_profiler SPHardwareDataType` ve `ioreg -rd1 -c IOPlatformExpertDevice` ile. Sonuç bir kez saklanıyor. Yasaklı yazılım, VPN ve kurulum paketi S6'da.
+Sinyal biçimi Windows'la aynı (`type`, `name`, `detail`); değerlendirici ekranında iki platform aynı görünür. Hepsi kullanıcı modunda; yönetici izni gerekmez.
 
-Deneme: [docs/y5-macos-deneme-notlari.md](../docs/y5-macos-deneme-notlari.md)
+| Tür | Ne zaman | Nasıl |
+|---|---|---|
+| `VM_DETECTED` (Y5) | Ajan Parallels, VMware ya da başka bir Apple sanal makinesinin içinde | `system_profiler SPHardwareDataType` ve `ioreg -rd1 -c IOPlatformExpertDevice`. Apple Silicon konuklarının hepsi Apple Virtualization çatısını kullandığı için model `VirtualMac2,1` / "Apple Virtual Machine 1" çıkar; ürün adı görünmez ve gösterge `"Apple Sanal Makine"` olur. Parallels/VMware adı varsa o yazılır |
+| `HYPERVISOR_INFO` (Y5) | Model fiziksel ama `sysctl kern.hv_vmm_present` = 1 | Düşük ağırlıklı bilgi; oturumu tek başına bekletmez |
+| `FORBIDDEN_APP` (S6) | `forbidden-apps.json`'daki bir yazılım çalışıyor: AnyDesk, TeamViewer, macOS Ekran Paylaşımı, OBS (sanal kamera), Zoom, Teams, Discord | `ps -axo comm=` çıktısındaki dosya adları listeyle karşılaştırılır (büyük/küçük harf farkı yok) |
+| `VPN_PROXY` "VPN bağdaştırıcısı" (S6) | İnternete giden trafik bir tünel arayüzünden (`utun`, `ipsec`, `ppp`, `tun`, `tap`) geçiyor | `route -n get default` **ve** `route -n get 1.1.1.1`. WireGuard/OpenVPN varsayılan rotayı değiştirmeyip `0.0.0.0/1` + `128.0.0.0/1` ekler; ikinci sorgu bunu yakalar |
+| `VPN_PROXY` "Vekil sunucu" (S6) | Sistem HTTP/HTTPS/SOCKS vekili ya da otomatik yapılandırma (PAC) betiği tanımlı | `scutil --proxy`; yalnızca üst düzey ve açık girişler okunur, `__SCOPED__` altındakiler yok sayılır |
+| `VPN_PROXY` bilinen VPN uygulaması (S6) | OpenVPN, Tunnelblick, WireGuard, NordVPN, ProtonVPN, ExpressVPN, Surfshark, Mullvad, WARP, AnyConnect, GlobalProtect … çalışıyor | `forbidden-apps.json`'daki `"type": "VPN_PROXY"` kayıtları |
+
+**Yanlış alarm kuralı:** macOS'un boştaki `utun0`–`utun5` arayüzleri (iCloud Özel Aktarma, Handoff vb.) VPN sayılmaz; yalnızca trafiğin gittiği rota bir tünelse bildirilir. Hep açık duran servis süreçleri (`warp-svc`, `vpnagentd`, `nordvpnd`) listede yok; VPN o an bağlı değilken sayılmasınlar diye.
+
+Donanım bir kez; süreç listesi ve ağ `ProcessScanIntervalSeconds` aralıkla okunur. Listeye yazılım ekleme Windows'takiyle aynı: `forbidden-apps.json`'a `{ "name": "...", "processes": [ "Uygulama" ] }` eklenir, süreç adı uzantısız ve `ps` çıktısındaki gibi yazılır. Dosya bozuksa ajan açılmaz.
+
+> **Doğrulanacak (Y7b):** "macOS Ekran Paylaşımı" için `Screen Sharing` (uygulama) gerçek Mac'te görüldü. Mac'e dışarıdan bağlanıldığında çalışan sunucu süreçleri (`screensharingd`, `ScreensharingAgent`, `ARDAgent`) henüz gerçek bir bağlantıyla denenmedi.
+
+Denemeler: [Y5](../docs/y5-macos-deneme-notlari.md), [S6](../docs/s6-macos-deneme-notlari.md)
 
 ## macOS modülü için sözleşme (Y5)
 
@@ -89,9 +105,9 @@ Deneme: [docs/y5-macos-deneme-notlari.md](../docs/y5-macos-deneme-notlari.md)
 - **Hata ajanı durdurmasın.** Komut çalışmazsa gösterge yok sayılsın ve uyarı loglansın. `SignalSender` inceleme hatasında yine göstergesiz sinyal gönderiyor, ama inceleme kendi içinde de dayanıklı olmalı.
 - **Test edilebilirlik.** Windows'taki gibi okuma ile karar ayrı tutulursa (`IWindowsSystemProbe` + `MachineDetector`), kurallar Mac olmadan da test edilebilir.
 
-**Kapsam dışı (S6):** yasaklı yazılım, VPN ve `.pkg` kurulum paketi bu kartta yok. Değerlendirme Y7b'de.
+**Not:** Aşağıdaki konuk kuralı Apple Silicon'da şöyle uygulanıyor: ürün adı görünmediği için `VirtualMac` modeli de sanal makine sayılıyor (yukarıdaki tablo). Hangi ürün (Parallels, UTM, VMware) olduğu ayırt edilemez; bu sınırlama son raporda belirtilecek. Değerlendirme Y7b'de.
 
-## Kurulum paketi (Y4)
+## Kurulum paketi, Windows (Y4)
 
 ```powershell
 cd agent
@@ -99,6 +115,15 @@ cd agent
 ```
 
 Çıktı `agent/dist/windows/aiguard-agent.exe`: tek dosya, .NET kurulumu gerektirmez. Sunucu adresi ve sınav sitesi `deployment.json` olarak exe'nin içine gömülür ve `appsettings.json`'daki değerlerin üzerine yazar. Aday için kurulum kılavuzu (SmartScreen dahil): [docs/ajan-kurulum-windows.md](../docs/ajan-kurulum-windows.md).
+
+## Kurulum paketi, macOS (S6)
+
+```bash
+cd agent
+./scripts/publish-macos.sh --api-base-url https://api.sinav.ornek.edu.tr --allowed-origin https://sinav.ornek.edu.tr
+```
+
+`dist/macos/aiguard-agent-arm64.pkg` (Apple Silicon) ve `aiguard-agent-x64.pkg` (Intel) üretilir; yalnızca birini üretmek için `--arch arm64|x64`, başka klasör için `--output`, birden fazla site için `--allowed-origin`'i tekrarlayın. Betik `dotnet publish -r osx-<arch> --self-contained -p:PublishSingleFile=true` ile tek dosyalık ajanı derler, `deployment.json`'u (Windows'taki gibi) içine gömer ve `pkgbuild` ile `/Applications/AI-Guard Ajanı/` altına `aiguard-agent` ve `Ajanı Başlat.command` kuran paketi yapar. Paket imzasızdır; Gatekeeper uyarısı ve çözümü kılavuzda: [docs/ajan-kurulum-macos.md](../docs/ajan-kurulum-macos.md).
 
 ## Ayarlar (`appsettings.json`, "Agent" bölümü)
 
