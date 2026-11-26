@@ -9,7 +9,7 @@ namespace AIGuard.Application.Review;
 /// Erişim inceleme uçlarıyla aynı (K-31). Olay zaman çizelgesi ve kanıt kareleri detay ucunda
 /// (<see cref="ReviewService.GetAsync"/>); rapor özet veriyor.
 /// </summary>
-public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvider clock)
+public sealed class ReportService(IAppDbContext db, ExamRiskService risks, TimeProvider clock)
 {
     // Rapordaki "en önemli gerekçeler" listesinin uzunluğu.
     private const int TopReasonCount = 3;
@@ -41,6 +41,7 @@ public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvide
         session.ReviewerNotes = await db.ReviewerNotes.AsNoTracking()
             .Where(n => n.ExamSessionId == sessionId).Include(n => n.Author).ToListAsync(ct);
 
+        var risk = await risks.EngineForExamAsync(examId, ct);
         var contributions = risk.Calculate(ReviewRules.RiskInputs(session.Events), ReviewRules.EvaluatedAt(session, now))
             .Contributions.ToDictionary(c => c.EventId, c => c.Contribution);
 
@@ -56,7 +57,7 @@ public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvide
             .Where(e => e.Reason is not null && contributions.GetValueOrDefault(e.Id) > 0)
             .OrderByDescending(e => contributions[e.Id])
             .Take(TopReasonCount)
-            .Select(e => e.Reason!)
+            .Select(e => ReasonFormatter.Localize(e.Reason)!)
             .ToList();
 
         await ReviewRules.AuditViewAsync(db, exportFormat is null ? "report.view" : "report.export", session.Id, actor, now,
@@ -75,7 +76,7 @@ public sealed class ReportService(IAppDbContext db, RiskEngine risk, TimeProvide
     }
 
     /// <summary>Her soru için en yüksek seq'li cevap geçerli (E4); seçeneği boş olan cevap "boş" sayılıyor.</summary>
-    private static ExamResultView Result(Domain.Entities.ExamSession session)
+    internal static ExamResultView Result(Domain.Entities.ExamSession session)
     {
         var finalAnswers = session.Answers
             .GroupBy(a => a.QuestionId)

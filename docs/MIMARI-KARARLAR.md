@@ -4,7 +4,7 @@ Bu belgede `api/` tarafında aldığımız tasarım kararlarını ve gerekçeler
 
 Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve kodu aynı PR'da güncelleyelim. Yeni karar eklerken sıradaki numarayı kullanın; eski numaraları değiştirmeyin, çünkü kod yorumlarında bu numaralara atıf var.
 
-*Son güncelleme: 24 Kasım 2026 (A5)*
+*Son güncelleme: 26 Kasım 2026 (D4)*
 
 ---
 
@@ -49,7 +49,8 @@ Bir kararı değiştirmek gerekirse önce ekipte konuşalım, sonra belgeyi ve k
 | Sınav ekranı | Yan menüsüz; mantık `useExamSession`'da, ekran bileşenleri yalnızca çizer; çevrimdışıyken cevaplama sürer, bekleyen sayısı görünür; "daha sonra dön" yalnızca istemcide (K-38) |
 | Aday ekranı verisi | Sınav listesi adaya kendi son oturumunu (`mySession`) da dönüyor; `GET /api/me/biometric` yalnızca şablon var mı, ne zaman, hangi rıza sürümüyle (K-36) |
 | Veri koruma | Saklama süresi dolan kanıt, olay ve yüz vektörü günlük görevle siliniyor (sonuç ve karar kalıyor); denetim kaydı ve rıza metinleri veritabanı tetikleyicisiyle değiştirilemez; uçlar GAB erişim matrisinden policy kullanıyor; rıza metinleri sürümlü tabloda; aday raporu Excel ve PDF olarak iniyor (K-32) |
-| Arayüz dili | Türkçe ve İngilizce; metinler kullanıldıkları dosyanın yanında iki dilde, tercih tarayıcıda; sunucu metinleri Türkçe kalıyor (K-46) |
+| Kamera olayları | Kurallar API'de, bölüm bitince süresiyle tek kayıt; bakış serisinde 1–2 yüz kaybı seriyi sürdürür ama sayılmaz; telefon 3 sn, kimlik 60 sn; MONITORING_GAP tek bölüm, INVALID_IMAGE boşluk değil (K-45) |
+| Arayüz dili | Türkçe ve İngilizce; metinler kullanıldıkları dosyanın yanında iki dilde, tercih tarayıcıda; sunucu metinleri isteğin dilinde (K-46, K-48) |
 | Giriş ve koyu tema | Giriş panelinde dönen, parlayan halkalar (Şeyma'nın S1 tasarımı); koyu temada yan menü sayfayla aynı ailede, kontrastlar AA (K-47) |
 
 ---
@@ -851,7 +852,7 @@ S4 kartı tarayıcının `frames`, `audio` ve `events` uçlarına göndermesini 
 - **Biçim dosyanın ilk baytlarından.** Content-Type'a güvenilmiyor: görüntüde K-27'deki `ImageFile` kuralı, seste WebM (EBML `1A 45 DF A3`) ya da WAV (`RIFF….WAVE`).
 - **Sunucu tarafı hız sınırı.** Oturum ve tür başına 250 ms'den sık gelen parça 429 alıyor (`SessionMediaRateLimiter`), yani en fazla saniyede 4. İlk sürümde 500 ms'ydi; tarayıcı denemesinde ağ gecikmesi değişince saniyede bir gönderilen meşru kareler sunucuya 500 ms'den yakın vardı ve düştü. Sınır API belleğinde; API tek örnekle çalışıyor (S-17 ile aynı varsayım).
 - **Kare bağlantıyı canlı tutuyor.** Kare ya da ses geldiğinde `LastSeenAt` en geç 5 sn'de bir yazılıyor. Her saniye veritabanına yazılmıyor; kesinti eşiği (30 sn) bunun çok üstünde.
-- **Analiz D4/D5'te.** Uçlar veriyi `IMediaAnalyzer`'a veriyor. Şimdiki uygulama (`PendingMediaAnalyzer`) hiçbir şey yapmıyor, çünkü vision'ın analiz uçları henüz 503 dönüyor ve her saniye `MONITORING_GAP` üretirdi. D4/D5 bu arayüzü vision istemcisiyle uygulayıp kaydı değiştirecek. Olay kuralları (S-20) ve `MONITORING_GAP` orada.
+- **Analiz D4/D5'te.** Uçlar veriyi `IMediaAnalyzer`'a veriyor. Şimdiki uygulama (`PendingMediaAnalyzer`) hiçbir şey yapmıyor, çünkü vision'ın analiz uçları henüz 503 dönüyor ve her saniye `MONITORING_GAP` üretirdi. D4/D5 bu arayüzü vision istemcisiyle uygulayıp kaydı değiştirecek. Olay kuralları (S-20) ve `MONITORING_GAP` orada. *D4'te yapıldı (K-45): kare analizi CameraMonitor'da; PendingMediaAnalyzer kaldırıldı. Ses D5'te.*
 - **Hiçbir şey saklanmıyor.** Kare ve ses istek bitince bellekten çıkıyor. Tarayıcıda da kuyruğa ya da depolamaya yazılmıyor (kart).
 
 **Önyüz** (`web/src/exam/`):
@@ -1261,6 +1262,60 @@ Yerelde görülen yavaşlık: fotoğraf yükleme görüntü servisine gidiyor; s
 
 ---
 
+## K-45 · Sınav sırası kamera analizi ve olay kuralları (D4)
+
+S-20 kararı gereği kurallar API'de; vision durumsuz, her kare için yalnızca ölçüm dönüyor (`docs/contracts.md` 5. bölüm, v0.5). K-30'daki `PendingMediaAnalyzer` kaldırıldı; `IMediaAnalyzer`'ın uygulaması artık `CameraMonitor`. Kod: `Application/Monitoring/` (`CameraEpisodeTracker` kurallar, `CameraMonitor` kare akışı, `CameraEpisodeCloser` oturum bitişi ve temizlik, `CameraMonitorStorage` veritabanı ve kanıt), `Infrastructure/Vision/VisionFrameAnalysisService`, `Api/Monitoring/CameraMonitorSweepService`. Ses (`AnalyzeAudioAsync`) D5'e kadar hiçbir şey yapmıyor.
+
+**Zamanlama** (oturum başına, sunucu saatiyle; ölçümün anı karenin alındığı an):
+
+| Görev | Ne zaman | "Son kontrol" ne zaman ilerliyor |
+|---|---|---|
+| `face` + `pose` | Her kare | — |
+| `phone` | Son telefon ölçümünden en az 3 sn sonra | Yalnızca `phone` sonucu geldiğinde |
+| `identity` | Oturumun ilk karesinde, sonra son kimlik ölçümünden en az 60 sn sonra | Yalnızca `matched` true/false geldiğinde. `identity = null` (yüz yok), `INVALID_IMAGE` ya da servis hatasında ilerlemiyor; sonraki karede yeniden deneniyor |
+
+Aynı anda gelen iki kare aynı kontrolü iki kez istemesin diye "istek yolda" işareti ayrı tutuluyor. Referans vektör oturumun ilk kimlik kontrolünde bir kez çözülüyor (`IFieldEncryptor`, `face-template:{userId}`), yalnızca bellekte duruyor ve oturum bitince ya da durum silinince sıfırlanıyor; diske ve günlüğe yazılmıyor. Şablon yoksa ya da çözülemiyorsa o oturumda kimlik kontrolü yapılmıyor.
+
+**Olay kuralları ve bölümler**
+
+| Olay | Başlar | Biter | confidence |
+|---|---|---|---|
+| `FACE_MISSING` | Art arda 3. `faceCount = 0` (başlangıç ilk kayıp) | `faceCount ≥ 1` | — |
+| `GAZE_AWAY` | Seride 5. `gazeAway = true` | `gazeAway = false`, ya da 3. ardışık "yüz yok" | — |
+| `MULTIPLE_FACES` | `faceCount ≥ 2` | `faceCount < 2` | — |
+| `PHONE` | `phone.detected` | `detected = false`; telefon kontrolü olmayan kare bölüme dokunmuyor | Bölümdeki en yüksek telefon güveni |
+| `IDENTITY_MISMATCH` | `matched = false` | `matched = true`; kontrolsüz kare ve `identity = null` bölüme dokunmuyor | `1 − en yüksek benzerlik` ([0, 1]) |
+
+- **Bölüm bitince tek kayıt.** `CONNECTION_LOST` ve `PERMISSION_REVOKED`'daki kalıp (K-24, K-30): başlangıç anı tutuluyor, bitişte süresiyle bir kez `RecordSystemEventAsync`. EventService'te olay güncelleme yok; eşikte yazsaydık süre bilinmezdi. K-17'de de süren olay bitmeden azalmıyor. Bedeli: uzun bir bölüm panelde bitince görünüyor.
+- `startedAt` = koşulun ilk ölçümü; `durationSec` = ilk ölçümden koşulun sağlandığı **son** ölçüme. Tek ölçüm 0 sn. Üç kapanış yolunda (koşul bitti, kareler kesildi, oturum bitti) aynı tanım geçerli ve süre şişmiyor. Üst sınır 3600 sn (EventService).
+- **Bakış serisinde tekil yüz kaybı.** Serinin içindeki 1–2 ardışık `faceCount = 0` seriyi sıfırlamıyor, sürdürüyor, ama 5'e sayılmıyor: `G G 0 G G` olay değil, `G G 0 G G G` `GAZE_AWAY`. Bölümün süresine boşluk dahil. Seriden önce gelen kayıplar köprü değil. Gerekçe: D4 kamera denemesi (K-28), |yaw| ≈ 50–60°'de MediaPipe yüzü ara ara kaybediyor (1 → 0 → 1); sayaç sıfırlansaydı başını çok çeviren aday iki kuralın arasından kayabilirdi. Kayıp sırasında kafa yönü bilinmediği için sayılmıyor (tutucu). Yüz var ama kafa yönü yoksa (dönüşüm matrisi gelmedi; `yaw`, `pitch`, `gazeAway` üçü `null`) ölçüm aynı muameleyi görür: bakış serisinde sayılmaz, seriyi sıfırlamaz; yüz sayısı kuralları normal işler. Bakışı bilinmeyen ardışık ölçümler (yüz yok ya da kafa yönü yok) toplamda 3'e ulaşınca seri son G'de kapanır.
+- Eşiğe ulaşmamış seri olay olmadan atılıyor.
+- **payload** (görüntü ve vektör yok, birkaç yüz bayt; skorlar 4 basamak): hepsinde `measurements` ve `closedBy` (`condition` / `stale` / `sessionEnd`); `GAZE_AWAY` `faceLostMeasurements`, `poseMissingMeasurements`, `maxAbsYaw`, `maxAbsPitch`; `MULTIPLE_FACES` `maxFaces`; `PHONE` `maxConfidence`; `IDENTITY_MISMATCH` `minSimilarity`, `maxSimilarity`.
+- **Kanıt karesi.** Vision'ın `evidenceFrame`'i çözülmüyor, yalnızca dolu olup olmadığına bakılıyor; saklanan kare API'nin aldığı ve biçimini doğruladığı baytlar. Bölümün ilk `evidenceFrame`'i olay yazılana kadar bellekte; yazılınca `IEvidenceStore` ile şifreli saklanıp `EvidenceFrame` olarak olaya bağlanıyor (saklama süresi sınavın `RetentionDays`'i). Bölüm başına en fazla bir kare; olay oluşmazsa kare saklanmıyor; kaydı yazılamayan dosya geri siliniyor (K-26).
+
+**`MONITORING_GAP`.** Hata ayrımı VisionFaceService ile aynı (K-27): bağlantı hatası, zaman aşımı, 401, 503, 500, `VALIDATION_ERROR`, tanınmayan kod, sözleşmeye uymayan yanıt ya da ayarlanmamış servis anahtarı (`NOT_CONFIGURED`; kare anahtarsız gönderilmiyor) boşluk açıyor. Boşluk ilk başarılı yanıtta süresiyle **tek kayıt** olarak yazılıyor; her kare için olay yok. Payload: `failedFrames`, ilk hatanın `status` ve `code`'u, `closedBy` (`recovered` / `stale` / `sessionEnd`). Kareler arada 10 sn'den uzun kesildiyse boşluk son başarısız karede bitmiş sayılıyor; kesinti `CONNECTION_LOST`'un işi. **422 `INVALID_IMAGE` boşluk değil**: adayın karesi, kare atlanıyor, bölümleri ne kesiyor ne sürdürüyor. Tarayıcı isteği iptal ederse boşluk açılmıyor.
+
+**Senkron çağrı, 3 sn zaman aşımı.** Tarayıcı bir önceki kare gitmeden yenisini göndermiyor (K-30). Bu yüzden:
+- vision'ın gecikmesi (p95 ≤ 150 ms) yalnızca kare aralığına ekleniyor;
+- vision yavaşlarsa kare hızı kendiliğinden düşüyor; kuyrukta biriken iş, bellek sınırı ve sıra sorunu yok;
+- H3'te `/frames` yanıt süresi gerçek uçtan uca gecikmeyi gösteriyor (kuyruk bekleme süresini gizlerdi).
+
+Zaman aşımı, kesilme (10 sn) ve bağlantı kesintisi (30 sn) eşiklerinin altında. `LastSeenAt` analizden önce yazıldığı için yavaş vision oturumu `Disconnected` yapmıyor. İstemci yüz uçlarından ayrı; oradaki 15 sn değişmedi. Olaylar `CancellationToken.None` ile yazılıyor; ölçülmüş bölüm tarayıcı iptaliyle kaybolmuyor.
+
+**Bölümün kapandığı yerler**
+1. Koşul bitti: sıradaki ölçümde, istek içinde.
+2. Kareler kesildi: 10 sn başarılı ölçüm yoksa (izin bekliyor, bağlantı kesik, kamera durdu ya da vision uzun süredir yanıt vermiyor) temizlik turu (5 sn'de bir) açık bölümleri son ölçüme göre yazıyor. Uzun aradan sonra gelen ölçüm eski seriyi sürdürmüyor.
+3. Teslim ve otomatik teslim: kapalı oturuma olay yazılamadığı için `SessionService.CompleteAsync` `ISessionMonitoringCloser.CloseSessionAsync`'i oturum satırı kilitliyken, aynı işlemde ve durum `Completed`'a geçmeden çağırıyor (izinsiz sürenin yazıldığı yer). `SessionService` ve `SessionTimekeeper`'a isteğe bağlı parametre olarak eklendi (Esma'nın onayıyla); verilmezse davranış aynı. İşlem geri alınırsa o anda saklanmış kanıt dosyası öksüz kalabilir; A5'teki saklama görevi kaydı olmayan dosyayı görmüyor, bilinen sınırlılık.
+4. İptal (biyometrik rıza geri alındı): olay yazılmıyor. Temizlik turu kapanmış ve iptal edilmiş oturumların durumunu, vektör dahil, en geç bir tur içinde siliyor (AgentSignalMonitor'daki kalıp); BiometricEnrollmentService değişmedi.
+
+**Durum ve temizlik.** Oturum başına durum API belleğinde, tek nesnede (`CameraMonitorStore`; API tek örnek, S-17); yeniden başlatmada açık bölümler kayboluyor. Erişim oturum başına kısa bir kilitle. Kilit vision çağrısı ve veritabanı yazımı sırasında **tutulmuyor**; tutulsaydı teslim (satır kilidi → bellek kilidi) ile kare (bellek kilidi → satır kilidi) kilitlenirdi. Oturum kapanınca durum "kapalı" işaretleniyor; yolda olan karenin geç gelen sonucu atılıyor. 2 dk kare gelmeyen ve açık bölümü olmayan oturumun durumu siliniyor. Kare akışı (`CameraMonitor`) ve kapatıcı depolamayı (şifreleyici) yalnızca kimlik vektörü ya da yazılacak bölüm gerektiğinde çözümlüyor; şifreleme anahtarı olmayan bilgisayarda kare, ses ve izin uçları ile teslim çalışıyor, kimlik kontrolü o oturumda kapanıyor (K-26).
+
+**Eşikler** tek yerde: `CameraMonitorOptions` ("CameraMonitoring" bölümü; varsayılanlar contracts.md ile aynı). Değerler: 3 ve 5 ölçüm, telefon 3 sn, kimlik 60 sn, kesilme 10 sn, boşta silme 120 sn, zaman aşımı 3 sn, tur 5 sn. Tutarsız değerle (ör. kesilme ≤ zaman aşımı) API açılmıyor.
+
+**Günlük.** Yalnızca oturum kimliği, olay türü, HTTP durumu ve hata kodu (K-27). Boşluk başına bir uyarı (açılışta) ve bir bilgi (dönüşte); her kare için yazılmıyor. Görüntü, vektör ve skor yazılmıyor.
+
+**Sınırlılıklar.** Uzun bir bölüm değerlendirici panelinde ancak bitince görünüyor. API yeniden başlarsa açık bölümler yazılmıyor. Deney 2'de baş dönüklüğünde `GAZE_AWAY`/`FACE_MISSING` karışması bu kuralla yeniden ölçülmeli (K-28). Teslim işlemi geri alınırsa (ör. kayıt hatası) açık bölümler kaybolur ve oturumun kamera durumu en geç ~2 dk kapalı kalır; bu sürede kareler işlenmez. Teslimle aynı anda kapanan bir bölüm de kaybolabilir (milisaniyeler mertebesinde pencere). Temizlik turunda ya da kare isteğinde yazma hatası olursa o bölüm kaybolur; temizlik turu her oturumu kendi DI kapsamında (kendi DbContext'iyle) yazar, hata veren oturumu atlayıp günlüğe oturum kimliğiyle uyarı yazar, turun geri kalanı devam eder. Kimliğe özgü kalıcı bir doğrulama hatası olursa (ör. bozuk vektörle `VALIDATION_ERROR`) kimlik her karede yeniden istenir ve izleme boşluğa düşer; kayıtta vektör doğrulandığı için olasılığı düşük. Vision anahtarı olup şifreleme anahtarı olmayan yerel ortamda, bölüm yazılacağı zaman o kare isteği 500 alır (yalnızca yerel geliştirme; Docker ve CI anahtarı zorunlu tutuyor).
+
 ## K-46 · Türkçe / İngilizce arayüz (UI1)
 
 Kullanıcı isteği: "uygulamanın her yerine İngilizce–Türkçe özelliği gelsin".
@@ -1275,7 +1330,7 @@ Kullanıcı isteği: "uygulamanın her yerine İngilizce–Türkçe özelliği g
 | Tercih | `localStorage` `aiguard.lang`; yoksa tarayıcı dili Türkçe değilse İngilizce. `<html lang>` güncelleniyor (ekran okuyucu doğru telaffuz etsin) | Tema tercihiyle aynı yöntem (K-42) |
 | Düğme | Yan menüde, giriş ekranının ve kabuk dışı sayfaların (404, oturum süresi doldu) sağ üstünde; öbür dilin kendi adıyla ("English" / "Türkçe") | Dili bilmeyen kişi de tanısın |
 | Tarih ve sayı | `lib/format.ts` geçerli dile göre `tr-TR` / `en-GB` | — |
-| Sunucu metinleri | API'nin ProblemDetails metinleri Türkçe. İngilizcede istemci, duruma göre İngilizce genel metin gösteriyor (`statusMessage`); bilinen durumlar (hatalı giriş, kilit, aynı e-posta, geçersiz bağlantı) ekranın kendi metniyle söyleniyor | Sunucuya çeviri eklemek ayrı bir iş (S-31) |
+| Sunucu metinleri | API'nin ProblemDetails metinleri Türkçe. İngilizcede istemci, duruma göre İngilizce genel metin gösteriyor (`statusMessage`); bilinen durumlar (hatalı giriş, kilit, aynı e-posta, geçersiz bağlantı) ekranın kendi metniyle söyleniyor | Sunucuya çeviri eklemek ayrı bir işti (S-31); K-48 ile sunucu metinleri de isteğin dilinde geliyor |
 | Hukuki metin | Aydınlatma ve rıza metinleri sunucudan Türkçe; İngilizcede altında "bağlayıcı olan Türkçe metin" notu ve `lang="tr"` | Rıza metninin resmî hâli tek |
 
 Sınav ekranına dil düğmesi konmadı (aday yalnızca sınava odaklanır, K-37); sınav öncesinde seçilen dil sınavda da geçerli.
@@ -1308,6 +1363,31 @@ Doğrulama: giriş ve şifremi unuttum ekranları 1440 ve 390 genişlikte, açı
 - Ajansız / göstergeli devam gerekçesi en az 10 karakter.
 - Denetim kaydında başlangıç tarihi bitişten sonraysa istek gönderilmiyor.
 - Bütün gönderim düğmeleri istek sürerken ikinci kez çalışmıyor.
+
+## K-48 · Sunucu metinlerinin dili (UI1)
+
+Önyüz TR/EN olduğu hâlde hata başlıkları, ayrıntılar, ajan göstergesi uyarıları ve olay gerekçeleri yalnızca Türkçe geliyordu.
+
+- **Dil başlıktan.** İstemci her istekte `Accept-Language: tr` ya da `en` gönderiyor. `UiLanguageMiddleware` en yüksek öncelikli `tr`/`en` etiketini seçip `ApiLanguage`'a istek boyunca (AsyncLocal) yazıyor. Başlık yoksa, tanınmıyorsa ya da istek dışındaysa (arka plan görevi, SignalR bildirimi, test) **Türkçe**. `CultureInfo` değişmiyor: sayı, tarih ve ayrıştırma bugünkü gibi; işletim sisteminin dili de etkilemiyor.
+- **Metinler kodda Türkçe kalıyor.** İngilizce karşılıklar tek yerde: `Api/Localization/ServerTexts.cs` (birebir sözlük + değişkenli cümleler için kalıp). `ProblemDetails` oluşturulurken (`CustomizeProblemDetails`) istek İngilizceyse `title` ve `detail` çevriliyor; karşılığı olmayan metin Türkçe kalıyor, boşalmıyor.
+- **Unutulmaz.** `ServerLocalizationTests` kaynak koddaki her sabit Türkçe hata metnini (`title:`, `detail:`, `Fail(...)`, `Invalid(...)`, `Error = ...`) tarıyor; İngilizcesi yoksa test kırılıyor. Yeni bir hata metni eklendiğinde `ServerTexts`'e de eklenmeli.
+- **Ajan uyarıları** (`IndicatorAdvice`) iki dilde yazıldı. **Olay gerekçeleri** veritabanında Türkçe saklanıyor (kayıtlı değer değişmiyor); inceleme ve rapor yanıtında `ReasonFormatter.Localize` İngilizceye çeviriyor ("3. dakikada 8 sn telefon görüldü" → "In minute 3, for 8 s, phone seen").
+- Sınav düzeyi CSV başlıkları da isteğin diline göre. Rıza metinleri sürümlü ve değiştirilemez olduğu için (K-32) bu kapsamda çevrilmedi; İngilizce rıza metni gerekirse ayrı bir sürüm olarak eklenmeli.
+
+## K-49 · Yönetim özellikleri: e-posta, platform ayarları, davet, sınava özel risk, toplu rapor, bildirimler (UI1)
+
+| Konu | Karar |
+|---|---|
+| Gerçek e-posta | `SMTP_HOST` tanımlıysa `SmtpEmailSender` (MailKit 4.18.2), değilse eskisi gibi `LoggingEmailSender`. Ayarlar ortam değişkeninden: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_SECURITY` (`StartTls`/`Ssl`/`None`), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` (host varken zorunlu, yoksa açılışta hata). 15 sn zaman aşımı; gönderim hatası loglanıyor, isteği bozmuyor (davet/sıfırlama yine 2xx, hesap varlığı sızmasın). Bağlantı loga yazılmıyor. Şablonlar (`EmailTemplates`) iki dilli, düz metin + HTML, ad ve bağlantı HTML kaçışlı |
+| Platform ayarları | Tek satırlık `platform_settings` tablosu: alternatif sınav yöntemi metni (≤4000), destek e-postası ve telefonu, ajan indirme adresleri (Windows, macOS). `GET /api/platform-settings` her giriş yapmış kullanıcıya (aday alternatif yöntem ekranında okuyor), `PUT` yalnızca Admin (`Manage`). Adresler yalnızca `https://`, ≤500; telefon `^[0-9 +()\-]{3,40}$`; boş metin "ayarlanmadı" (null). Her değişiklik denetim kaydına (`settings.update`) |
+| Son giriş | `users.last_login_at` başarılı girişte yazılıyor; `GET /api/users` dönüyor |
+| Daveti yeniden gönder | `POST /api/users/{id}/invite` (Admin): yeni bağlantı üretir, eskisini geçersiz kılar, süresi yeniden 72 saat. Davet kabul edilmişse ya da kullanıcı pasifse 409; aynı kullanıcıya dakikada bir (`users.invite_sent_at`), erkense 429. Denetim: `user.invite_resend` |
+| Sınava özel risk ayarı | `GET/PUT/DELETE /api/exams/{examId}/risk-settings` (Admin). Varsayılan `riskconfig.json`; sınav yalnızca farklı olan olay türlerini (`risk_settings.exam_id` dolu satırlar) ve isterse oturum eşiğini (`exams.risk_session_threshold`) saklıyor. Ağırlık 0–100, azalma 0–5/dk, tek başına eşik boş ya da 0–1000, oturum eşiği 1–1000. **Sınavda ilk oturum açılınca kilitli (409):** aynı sınavdaki adaylar aynı ayarla puanlanır, geçmiş skorların hangi ayarla hesaplandığını ayrıca saklamak gerekmez. Olay kaydı, inceleme ve rapor `ExamRiskService.EngineForExamAsync` ile oturumun sınavının motorunu kullanıyor. Denetim: `exam.risk_settings` |
+| Sınav düzeyi rapor | `GET /api/reports/exams/{examId}` (`ReviewRead`, değerlendirici yalnızca atandığı sınav): atanan/başlayan/süren/tamamlanan/inceleme bekleyen/karar verilen sayıları, riskli oturum, ortalama ve en yüksek skor, ortalama doğru, karar dağılımı, olay türü sayıları, dakika başına olay yoğunluğu. `?format=Csv` bütün oturumlar tek dosya: UTF-8 BOM, `;` ayraç, `= + - @` ile başlayan hücreler `'` ile metne çevriliyor (CSV enjeksiyonu). Denetim: `report.exam_view` / `report.exam_export` |
+| Bildirim zili | `GET /api/notifications`: ayrı tablo yok, her istekte güncel veriden türetiliyor, en fazla 20. Değerlendirici: atandığı sınavlarda inceleme bekleyen dosyalar. Admin: inceleme bekleyen sınavlar, yaklaşan ama sorusu ya da adayı olmayan sınavlar, süresi dolan davetler. Aday: açık ya da yakında açılacak sınavları, kayıt fotoğrafı yoksa uyarı. Okundu bilgisi istemcide (bildirim kimliği kararlı, ör. `review:{sessionId}`) |
+
+Göç: `UI1_YonetimAyarlari` (`users.invite_sent_at`, `users.last_login_at`, `exams.risk_session_threshold`, `platform_settings`). Erişim matrisi testine yeni uçlar eklendi.
+
 ---
 
 ## Kartlarda geçmeyen GAB kuralları
@@ -1361,13 +1441,13 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-12 | Eşleştirme kodu ucu (`POST /api/sessions/{id}/agent-code`) E2 gelene kadar yalnızca Development'ta açıktı | Esma (E2), Yağmur | **Çözüldü (E2):** aday rolü ve oturum sahipliği kontrolü (K-20) |
 | S-13 | GAB FR-26: 5 dakikadan uzun kesinti "uzun kesinti olayı" üretmeli; ortak listede tür yok | Esma (E4), Ayşe | **Karar (E4):** ayrı tür eklenmedi; `CONNECTION_LOST` süresiyle yazılıyor, süre çarpanı ağırlaştırıyor (K-24). Gerekirse pilot oturumda ağırlık ayarı |
 | S-14 | `POST /api/agent/pair` eşleşme kimliği dönüyor ama ajana henüz bir anahtar vermiyor | Yağmur (Y2) | **Çözüldü (Y2):** anahtar eşleşmede üretilip yanıtta veriliyor; veritabanında özeti (K-21) |
-| S-15 | Davet e-postası sahte gönderici ile loga yazılıyor; davet yeniden gönderme ucu yok | Esma | Gerçek gönderim gerekirse SMTP göndericisi `IEmailSender` arkasına; süresi dolan davet için `POST /api/users/{id}/invite` eklenebilir (ekip kararı) |
+| S-15 | Davet e-postası sahte gönderici ile loga yazılıyor; davet yeniden gönderme ucu yok | Esma | **Çözüldü (UI1):** `SMTP_HOST` tanımlıysa SMTP ile gönderim; `POST /api/users/{id}/invite` (K-49) |
 | S-16 | `AgentPairing.EncryptedSessionKey` artık kullanılmıyor (K-21: veritabanında yalnızca özet) | Ayşe, Yağmur | Bir sonraki göçle kaldırılması; K-13 gereği önce ekipte konuşulacak |
 | S-17 | Ajan oturum anahtarları tek API sürecinin belleğinde; API yeniden başlarsa ya da birden fazla örnekle çalışırsa doğrulanamıyor | Yağmur, Esma | Proje tek örnekle çalışıyor; gerekirse paylaşılan önbellek (ör. Redis) ya da ajanın yeniden eşleşmesi |
 | S-18 | `vpn-ip-blocks.json` yalnızca örnek bloklar içeriyor; gerçek VPN/veri merkezi listesinin kaynağı belirlenmedi (FR-23, İstenen) | Yağmur, Ayşe | Pilot oturum öncesi bir kaynak seçilip liste doldurulması; seçilen kaynak ve tarih dosyaya yazılmalı |
 | S-16 | Rıza/eşleştirme/doğrulama adımında kalıp son başlangıç zamanını kaçıran oturum açık kalıyor (süre başlamadığı için otomatik teslim yok) | Esma, Ayşe (A4) | **Karar (A4):** listede ve raporda `NotStarted` olarak gösteriliyor, karar verilemiyor (K-31). Zamanlanmış görevle iptal istenirse durum makinesine geçiş gerekiyor (S-23) |
 | S-19 | Yüz doğrulamada `passed` kararını kim veriyor: vision mı, API mi? `Verification.Passed` yorumu "sonuç sunucuda eşiklere göre belirleniyor" diyor | Ayşe (A3), Dilan (D2) | **Çözüldü (A3):** kararı vision veriyor (`config.yaml`), API skorları, sonucu ve `reason`'ı kaydediyor; API'de eşik yok (K-27) |
-| S-20 | Kamera olay kuralları ("art arda 3 ölçümde yüz yok", "art arda 5 ölçümde bakış sapması") nerede çalışacak? | Ayşe, Dilan (D4) | API'de (K-16). Vision çok işçili ve durumsuz çalışacağı için oturum sayacı tutamaz; her kare için yalnızca ölçüm döner (`docs/contracts.md` 5. bölüm) |
+| S-20 | Kamera olay kuralları ("art arda 3 ölçümde yüz yok", "art arda 5 ölçümde bakış sapması") nerede çalışacak? | Ayşe, Dilan (D4) | **Çözüldü (D4):** kurallar API'de (CameraEpisodeTracker), bölüm bitince süresiyle tek kayıt (K-45) |
 | S-21 | `POST /internal/analyze/frame` isteğinde `referenceVector` D4 kartında yok, ama vision vektör saklamadığı için 60 sn'lik kimlik kontrolünde gerekli | Ayşe, Dilan (D4) | Yalnızca `tasks` içinde `identity` varken gönderilsin; vision bu durumda alanı zorunlu tutuyor |
 | S-22 | Ses parçasının uzunluğu ve biçimi belirlenmedi | Yağmur (S4), Dilan (D5) | **Çözüldü (S4):** ~1 sn WebM/Opus, her parça kendi başına tam dosya; API WebM ve WAV kabul ediyor, en fazla 256 KiB (K-30). Vision 16 kHz mono'ya kendisi dönüştürüyor |
 | S-23 | Biyometrik rıza geri alınınca `AgentPairing` ve `IdentityVerification` adımındaki oturumlar iptal edilemiyor: durum makinesinde bu adımlardan `Cancelled` geçişi yok (GAB 3.4.4) | Ayşe (A3), Esma (E4) | Şimdilik oturum olduğu adımda kalıyor, vektör silindiği için doğrulamayı geçemiyor ve son başlangıç zamanını kaçıran takılı oturumlarla (K-24'teki S-16) aynı şekilde ele alınıyor. Tabloya bu iki geçişin eklenmesi önerilir |
@@ -1377,5 +1457,5 @@ Trello kartları güncel GAB'a göre yazıldı, ama aşağıdaki kurallar kart m
 | S-27 | GAB 3.3.2: reddedilen istekler denetim kaydına yazılmalı | Ayşe, Esma | A5'te yapılmadı (K-32): her 401/403'ü kayda yazmak tabloyu hızla büyütür. Uygulama günlüğünde var; gerekirse yalnızca tekrarlayan reddedilmeler (ör. aynı kullanıcıdan art arda 403) kayda alınabilir |
 | S-28 | Web kayıt fotoğrafı formu `biometricConsent` ve `textVersion` alanlarını gönderiyor, API `consent` ve `consentTextVersion` bekliyor; tarayıcıdan yükleme rıza hatası alır | Şeyma (S2), Ayşe (A3) | Önyüzde alan adlarının düzeltilmesi; sürümün sabit yerine `GET /api/consent-texts/Biometric` yanıtından alınması (K-32) |
 | S-29 | Sorular kamera/mikrofon açılmadan önyüzde gizleniyor, ama sunucu `InProgress`'te soruları yine döndürüyor; değiştirilmiş bir istemci kamera açmadan soruları okuyabilir | Yağmur (S4), Esma (E4) | Sunucuda da kontrol: oturum uç `GET /api/sessions/{id}` soruları ancak son birkaç saniyede kare gelmişse döndürsün. K-24'ü değiştirdiği için ekip kararı gerekiyor |
-| S-30 | Risk ağırlıkları şu an platform geneli ve salt okunur (`riskconfig.json`, K-41); Stitch 29 sınav başına düzenleme gösteriyordu | Ayşe | Sınav başına ağırlık istenirse: sınava bağlı ayar tablosu, `PUT /api/exams/{id}/risk-settings`, RiskEngine'in oturumun sınavına göre ayar okuması ve geçmiş skorların hangi ayarla hesaplandığının kaydı gerekir |
-| S-31 | API'nin hata metinleri (ProblemDetails) yalnızca Türkçe; İngilizce arayüzde istemci genel metin gösteriyor | Ekip | `Accept-Language` ile sunucuda çeviri ya da hata kodları (`code`) dönüp metni istemcide seçmek |
+| S-30 | Risk ağırlıkları şu an platform geneli ve salt okunur (`riskconfig.json`, K-41); Stitch 29 sınav başına düzenleme gösteriyordu | Ayşe | **Çözüldü (UI1):** `GET/PUT/DELETE /api/exams/{id}/risk-settings`; ilk oturumdan sonra kilitli, böylece bir sınavın bütün skorları aynı ayarla (K-49) |
+| S-31 | API'nin hata metinleri (ProblemDetails) yalnızca Türkçe; İngilizce arayüzde istemci genel metin gösteriyor | Ekip | **Çözüldü (UI1):** istemci `Accept-Language` gönderiyor, sunucu `title`/`detail`'ı çeviriyor (K-48) |

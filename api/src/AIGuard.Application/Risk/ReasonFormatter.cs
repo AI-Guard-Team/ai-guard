@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
+using AIGuard.Application.Localization;
 using AIGuard.Domain.Enums;
 
 namespace AIGuard.Application.Risk;
@@ -6,8 +8,33 @@ namespace AIGuard.Application.Risk;
 /// <summary>
 /// Değerlendiricinin göreceği Türkçe gerekçe metni, ör. "12. dakikada 8 sn telefon görüldü".
 /// </summary>
-public static class ReasonFormatter
+public static partial class ReasonFormatter
 {
+    private static readonly Dictionary<EventType, string> EnglishLabels = new()
+    {
+        [EventType.FACE_MISSING] = "face not detected",
+        [EventType.MULTIPLE_FACES] = "more than one face seen",
+        [EventType.GAZE_AWAY] = "looked away from the screen",
+        [EventType.PHONE] = "phone seen",
+        [EventType.IDENTITY_MISMATCH] = "face did not match the reference photo",
+        [EventType.VERIFICATION_FAILED] = "identity verification failed",
+        [EventType.SPEECH] = "speech detected",
+        [EventType.TAB_BLUR] = "left the exam tab",
+        [EventType.FULLSCREEN_EXIT] = "left full screen",
+        [EventType.COPY_PASTE] = "copy/paste used",
+        [EventType.RIGHT_CLICK] = "right-clicked",
+        [EventType.PERMISSION_REVOKED] = "camera or microphone permission revoked",
+        [EventType.VM_DETECTED] = "virtual machine detected",
+        [EventType.HYPERVISOR_INFO] = "hypervisor information received (informational)",
+        [EventType.FORBIDDEN_APP] = "a forbidden app was running",
+        [EventType.VPN_PROXY] = "VPN or proxy detected",
+        [EventType.IP_CHANGE] = "IP address changed",
+        [EventType.AGENT_SIGNAL_LOST] = "no signal from the security agent",
+        [EventType.AGENT_SIGNAL_INVALID] = "invalid signal from the security agent",
+        [EventType.CONNECTION_LOST] = "connection lost",
+        [EventType.MONITORING_GAP] = "monitoring service did not respond",
+    };
+
     private static readonly Dictionary<EventType, string> Labels = new()
     {
         [EventType.FACE_MISSING] = "yüz algılanamadı",
@@ -47,5 +74,36 @@ public static class ReasonFormatter
             : string.Empty;
 
         return $"{when}{duration} {Labels[type]}";
+    }
+
+    [GeneratedRegex(@"^(?:(\d+)\. dakikada|Sınav başlamadan önce)(?: (\d+) sn)? (.+)$")]
+    private static partial Regex StoredReason();
+
+    /// <summary>
+    /// Olayla birlikte Türkçe saklanan gerekçeyi istek İngilizceyse çevirir (K-48). Bu formatlayıcının kalıbına
+    /// uymayan metin olduğu gibi döner; saklanan kayıt değişmez.
+    /// </summary>
+    public static string? Localize(string? stored)
+    {
+        if (stored is null || !ApiLanguage.IsEnglish)
+        {
+            return stored;
+        }
+
+        var match = StoredReason().Match(stored);
+        if (!match.Success)
+        {
+            return stored;
+        }
+
+        var label = Labels.FirstOrDefault(pair => pair.Value == match.Groups[3].Value);
+        if (label.Value is null)
+        {
+            return stored;
+        }
+
+        var when = match.Groups[1].Success ? $"In minute {match.Groups[1].Value}" : "Before the exam started";
+        var duration = match.Groups[2].Success ? $", for {match.Groups[2].Value} s," : ",";
+        return $"{when}{duration} {EnglishLabels[label.Key]}";
     }
 }

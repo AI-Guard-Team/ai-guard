@@ -44,6 +44,12 @@ public class User : Entity
 
     public DateTimeOffset? LockoutEndAt { get; set; }
 
+    /// <summary>Son başarılı giriş (yönetici kullanıcı listesi, K-49). Hiç giriş yapmadıysa boş.</summary>
+    public DateTimeOffset? LastLoginAt { get; set; }
+
+    /// <summary>Son davet e-postasının gönderildiği an; davetin art arda yeniden gönderilmesini sınırlıyor.</summary>
+    public DateTimeOffset? InviteSentAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<ExamAssignment> Assignments { get; set; } = new List<ExamAssignment>();
