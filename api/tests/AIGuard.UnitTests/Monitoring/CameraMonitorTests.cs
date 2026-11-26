@@ -27,7 +27,7 @@ public class CameraMonitorTests
     private int _storageResolutions;
 
     private CameraMonitor Monitor() =>
-        new(_store, _vision, () => { _storageResolutions++; return _storage; }, MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+        new(_store, _vision, () => { _storageResolutions++; return _storage; }, () => true, MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
 
     private ServiceProvider? _services;
 
@@ -118,10 +118,11 @@ public class CameraMonitorTests
     }
 
     [Fact]
-    public async Task Unavailable_storage_disables_identity_but_frames_are_still_analyzed()
+    public async Task Missing_encryption_key_disables_identity_but_frames_are_still_analyzed()
     {
-        // Şifreleme anahtarı olmayan ortam: depolama çözümlenirken DI'dan InvalidOperationException geliyor.
-        var monitor = new CameraMonitor(_store, _vision, () => throw new InvalidOperationException("EVIDENCE_ENCRYPTION_KEY tanımlı değil"),
+        // Şifreleme anahtarı olmayan ortam: depolama hiç çözümlenmiyor, kimlik kontrolü o oturumda kapanıyor.
+        var resolved = false;
+        var monitor = new CameraMonitor(_store, _vision, () => { resolved = true; return _storage; }, () => false,
             MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
 
         await monitor.AnalyzeFrameAsync(Session, [0xFF, 0xD8, 0xFF], T0);
@@ -129,8 +130,53 @@ public class CameraMonitorTests
 
         Assert.Equal(2, _vision.Calls.Count);
         Assert.DoesNotContain(_vision.Calls, c => c.Identity);
+        Assert.False(resolved);
+        Assert.Equal(0, _storage.Loads);
         Assert.True(_store.TryGet(Session, out var state));
         Assert.True(state.ReferenceUnavailable);
+    }
+
+    [Fact]
+    public async Task With_the_key_the_vector_is_loaded_and_sent_for_identity()
+    {
+        await Frame(0);
+
+        Assert.Equal(1, _storage.Loads);
+        Assert.True(Assert.Single(_vision.Calls).Identity);
+        Assert.True(_store.TryGet(Session, out var state));
+        Assert.False(state.ReferenceUnavailable);
+        Assert.NotNull(state.Reference);
+    }
+
+    [Fact]
+    public async Task Storage_resolution_failure_other_than_the_key_is_not_swallowed()
+    {
+        // Anahtar var ama depolama başka bir nedenle çözümlenemiyor (ör. eksik DI kaydı): hata yükseliyor,
+        // kimlik kontrolü sessizce kapanmıyor.
+        var monitor = new CameraMonitor(_store, _vision, () => throw new InvalidOperationException("kayıt eksik"), () => true,
+            MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => monitor.AnalyzeFrameAsync(Session, [0xFF, 0xD8, 0xFF], T0));
+
+        Assert.True(_store.TryGet(Session, out var state));
+        Assert.False(state.ReferenceUnavailable);
+        Assert.False(state.IdentityInFlight); // sonraki kare yeniden deniyor
+    }
+
+    [Fact]
+    public async Task Vector_load_failure_is_not_swallowed_and_identity_is_retried()
+    {
+        // Veritabanı kaynaklı hata (EF InvalidOperationException gibi): null'a çevrilmiyor, kimlik kapanmıyor.
+        _storage.LoadFailure = new InvalidOperationException("veritabanı hatası");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Frame(0));
+
+        _storage.LoadFailure = null;
+        await Frame(1);
+
+        Assert.True(_store.TryGet(Session, out var state));
+        Assert.False(state.ReferenceUnavailable);
+        Assert.NotNull(state.Reference);
+        Assert.True(Assert.Single(_vision.Calls).Identity); // ilk karede vision'a gidilmedi, ikincide kimlikle gidildi
     }
 
     [Fact]
@@ -629,9 +675,17 @@ public class CameraMonitorTests
 
         public HashSet<Guid> Ended { get; } = [];
 
+        /// <summary>Verilirse vektör yüklemesi bu istisnayı fırlatıyor (veritabanı hatası gibi).</summary>
+        public Exception? LoadFailure { get; set; }
+
         public Task<float[]?> LoadReferenceVectorAsync(Guid sessionId, CancellationToken ct = default)
         {
             Loads++;
+            if (LoadFailure is not null)
+            {
+                throw LoadFailure;
+            }
+
             // Her çözüm yeni bir dizi; durum silinince temizlenen kopya bu.
             return Task.FromResult(Vector?.ToArray());
         }

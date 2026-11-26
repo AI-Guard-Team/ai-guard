@@ -22,6 +22,7 @@ public sealed class CameraMonitor(
     CameraMonitorStore store,
     IFrameAnalysisService vision,
     Func<ICameraMonitorStorage> storage,
+    EncryptionKeyConfigured encryptionKeyConfigured,
     IOptions<CameraMonitorOptions> options,
     ILogger<CameraMonitor> logger) : IMediaAnalyzer
 {
@@ -162,25 +163,21 @@ public sealed class CameraMonitor(
             }
         }
 
-        ICameraMonitorStorage data;
-        try
-        {
-            data = storage();
-        }
-        catch (InvalidOperationException)
+        if (!encryptionKeyConfigured())
         {
             // Şifreleme anahtarı tanımlı değil (K-26): vektör çözülemez, oturumda kimlik kontrolü yapılmıyor.
-            // Kare yine analiz ediliyor; aksi hâlde her kare 500 alırdı.
+            // Kare yine analiz ediliyor; aksi hâlde her kare 500 alırdı. Yalnızca bu durum ayırt ediliyor; depolama
+            // çözümlemesi ve vektör yüklemesindeki başka hatalar aşağıda yakalanmadan yükseliyor.
             lock (state.Sync)
             {
                 state.ReferenceUnavailable = true;
             }
 
-            logger.LogWarning("Kimlik kontrolü yapılamıyor, kanıt deposu ya da şifreleyici kullanılamıyor: oturum {SessionId}", sessionId);
+            logger.LogWarning("Kimlik kontrolü yapılamıyor, şifreleme anahtarı tanımlı değil: oturum {SessionId}", sessionId);
             return null;
         }
 
-        var vector = await data.LoadReferenceVectorAsync(sessionId, ct);
+        var vector = await storage().LoadReferenceVectorAsync(sessionId, ct);
         lock (state.Sync)
         {
             if (state.Closed)

@@ -69,6 +69,37 @@ public class CameraMonitorSetupTests
         Assert.IsType<CameraMonitor>(scope.ServiceProvider.GetRequiredService<IMediaAnalyzer>());
         // Depolamanın kendisi anahtar ister; çözümlenmediğini gösteren karşı kontrol.
         Assert.ThrowsAny<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<ICameraMonitorStorage>());
+        // Gerçek kayıtta anahtar eksikliği ayırt ediliyor: kimlik kontrolü bu oturumlarda kapanacak.
+        Assert.False(scope.ServiceProvider.GetRequiredService<EncryptionKeyConfigured>()());
+    }
+
+    [Fact]
+    public void Encryption_key_check_is_true_with_a_key_and_storage_resolves()
+    {
+        using var provider = BuildProvider(Convert.ToBase64String(new byte[32]));
+        using var scope = provider.CreateScope();
+
+        Assert.True(scope.ServiceProvider.GetRequiredService<EncryptionKeyConfigured>()());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ICameraMonitorStorage>());
+    }
+
+    [Fact]
+    public void Unregistered_encryptor_is_not_mistaken_for_a_missing_key()
+    {
+        // Kayıt hatası anahtar eksikliği sayılmıyor: kontrol true, hata depolama çözümlenirken görünür.
+        using var provider = new ServiceCollection().BuildServiceProvider();
+
+        Assert.True(EncryptionKey.IsConfigured(provider));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("kisa")]
+    public void Missing_or_invalid_key_is_not_configured(string? key)
+    {
+        using var provider = BuildProvider(key);
+
+        Assert.False(EncryptionKey.IsConfigured(provider));
     }
 
     [Fact]

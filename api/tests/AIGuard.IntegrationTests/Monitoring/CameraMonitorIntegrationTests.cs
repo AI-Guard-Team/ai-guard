@@ -1,6 +1,5 @@
 using System.Text.Json;
 using AIGuard.Application.Abstractions;
-using AIGuard.Application.ConsentTexts;
 using AIGuard.Application.Monitoring;
 using AIGuard.Application.Sessions;
 using AIGuard.Domain.Entities;
@@ -65,7 +64,7 @@ public class CameraMonitorIntegrationTests(PostgresFixture fx) : IClassFixture<P
     }
 
     private CameraMonitor Monitor(AppDbContext db, IFrameAnalysisService vision) =>
-        new(_store, vision, () => Storage(db), MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
+        new(_store, vision, () => Storage(db), () => true, MsOptions.Create(_options), NullLogger<CameraMonitor>.Instance);
 
     private async Task<ExamSession> SessionAsync()
     {
@@ -158,10 +157,12 @@ public class CameraMonitorIntegrationTests(PostgresFixture fx) : IClassFixture<P
     {
         Skip.If(fx.ConnectionString is null, "PostgreSQL yok.");
         await using var db = fx.CreateContext();
-        var session = await InProgressSessionAsync(db);
-        var other = await InProgressSessionAsync(db);
-        await BiometricTestHelpers.Enrollment(db, new FakeFaceService())
-            .EnrollAsync(session.CandidateId, true, ConsentText.InitialBiometricVersion, BiometricTestHelpers.Jpeg());
+
+        // Kayıt fotoğrafı oturum doğrulama adımına gelmeden yükleniyor; sonrasında kayıt SessionActive ile
+        // reddediliyor (K-27). Yardımcı kaydın başarılı olduğunu doğruluyor, sonra oturumu sınav sırasına alıyor.
+        var session = await BiometricTestHelpers.PendingSessionAsync(db, SessionState.InProgress, enrolled: true);
+        var other = await BiometricTestHelpers.PendingSessionAsync(db, SessionState.InProgress, enrolled: false);
+        Assert.True(await db.ReferenceFaceTemplates.AnyAsync(t => t.UserId == session.CandidateId));
 
         Assert.Equal(BiometricTestHelpers.Vector(1), await Storage(db).LoadReferenceVectorAsync(session.Id));
         Assert.Null(await Storage(db).LoadReferenceVectorAsync(other.Id)); // kayıt fotoğrafı yok

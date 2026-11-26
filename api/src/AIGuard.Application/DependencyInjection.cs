@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddSingleton<CameraMonitorStore>();
         services.AddScoped<ICameraMonitorStorage, CameraMonitorStorage>();
         services.AddScoped<Func<ICameraMonitorStorage>>(sp => () => sp.GetRequiredService<ICameraMonitorStorage>());
+        services.AddScoped<EncryptionKeyConfigured>(sp => () => EncryptionKey.IsConfigured(sp));
         services.AddScoped<IMediaAnalyzer, CameraMonitor>();
         services.AddScoped<CameraEpisodeCloser>();
         services.AddScoped<ISessionMonitoringCloser>(sp => sp.GetRequiredService<CameraEpisodeCloser>());
