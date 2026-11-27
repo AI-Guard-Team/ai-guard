@@ -125,10 +125,20 @@ export function useExamMonitoring({ sessionId, state, onStateChange }: Options) 
         void revoke()
       }
 
+      // Sunucu soruları yalnızca kamera karesi aldığı oturuma veriyor (S-29). İlk kare kabul edilince oturum hemen
+      // yeniden okunuyor; yoksa sorular bir sonraki yoklamaya (10 sn) kadar gelmezdi.
+      let firstFrameSent = false
       stopMonitor = startMediaMonitor(
         stream,
         {
-          onFrame: (frame) => sendFrame(sessionId, frame).catch(onRejected),
+          onFrame: (frame) =>
+            sendFrame(sessionId, frame)
+              .then(() => {
+                if (firstFrameSent || cancelled) return
+                firstFrameSent = true
+                refresh.current()
+              })
+              .catch(onRejected),
           onAudio: (chunk) => sendAudio(sessionId, chunk).catch(onRejected),
           onTrackEnded: permissionLost,
         },

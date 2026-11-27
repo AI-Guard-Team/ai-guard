@@ -31,10 +31,6 @@ namespace AIGuard.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<byte[]>("EncryptedSessionKey")
-                        .HasColumnType("bytea")
-                        .HasColumnName("encrypted_session_key");
-
                     b.Property<Guid>("ExamSessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("exam_session_id");

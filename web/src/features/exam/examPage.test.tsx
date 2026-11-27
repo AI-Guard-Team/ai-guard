@@ -404,6 +404,18 @@ describe('sınav ekranı', () => {
       expect(queue.items).toHaveLength(0)
     })
 
+    it('ilk kare kabul edilince oturumu hemen yeniden okur; sorular 10 sn beklemeden gelir (S-29)', async () => {
+      const fetchMock = await renderExam((url) => (url.endsWith('/frames') ? jsonResponse(202) : jsonResponse(200, session())))
+      const sessionReads = () => fetchMock.mock.calls.filter(([url, init]) => /\/api\/sessions\/[^/]+$/.test(String(url)) && init?.method === 'GET').length
+
+      await waitFor(() => expect(calls(fetchMock, '/frames').length).toBeGreaterThanOrEqual(1), { timeout: 2_500 })
+      const afterFirstFrame = sessionReads()
+      await waitFor(() => expect(sessionReads()).toBeGreaterThan(1))
+      // Sonraki kareler oturumu yeniden okutmuyor; yalnızca ilki.
+      await waitFor(() => expect(calls(fetchMock, '/frames').length).toBeGreaterThanOrEqual(2), { timeout: 2_500 })
+      expect(sessionReads()).toBeLessThanOrEqual(afterFirstFrame + 1)
+    })
+
     it('izin kalkınca sunucuya bildirir, soruları gizler, süreyi gösterir ve izin verilince döner', async () => {
       let state = 'InProgress'
       const fetchMock = await renderExam((url, init) => {

@@ -109,6 +109,18 @@ def test_api_waits_for_migrations_and_dependencies(config: dict) -> None:
     assert deps["vision"]["condition"] == "service_healthy"
 
 
+def test_api_connects_with_least_privilege_user(config: dict) -> None:
+    # GAB 3.3.2 en az ayrıcalık (S-7, K-50): api tabloların sahibiyle değil, db-user adımının açtığı
+    # kısıtlı kullanıcıyla bağlanır; göçler sahip kullanıcıyla kalır.
+    services = config["services"]
+    api_conn = services["api"]["environment"]["ConnectionStrings__Default"]
+    migrate_conn = services["migrate"]["environment"]["ConnectionStrings__Default"]
+    assert "Username=aiguard_app;" in api_conn
+    assert "Username=aiguard_app;" not in migrate_conn
+    assert services["api"]["depends_on"]["db-user"]["condition"] == "service_completed_successfully"
+    assert services["db-user"]["depends_on"]["migrate"]["condition"] == "service_completed_successfully"
+
+
 def test_api_reaches_services_by_container_name(config: dict) -> None:
     env = config["services"]["api"]["environment"]
     # localhost container'ın kendisi demek; diğer servislere servis adıyla gidilmeli.

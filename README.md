@@ -229,3 +229,15 @@ Bu repoya **hiçbir zaman** şunlar eklenmez:
 - Büyük model ağırlık dosyaları
 
 Bunlar `.gitignore` ile engellenmiştir. Veriler yalnızca ekibin paylaşılan sürücüsünde tutulur.
+
+### Veritabanı yedekleri
+
+Proje kendiliğinden yedek almaz; Docker'da veritabanı yalnızca kalıcı bir birimde (`pgdata`) durur. Elle yedek alırsanız (ör. entegrasyon gününden önce `pg_dump`):
+
+- Yedeği **en fazla 7 gün** tutun, sonra silin. GAB 3.3.8'e göre silinen veriler en geç 7 gün içinde yedeklerden de çıkmalı; saklama görevinin sildiği bir kanıt karesi ya da yüz vektörü eski bir yedekte kalmamalı.
+- Yedek kişisel veri içerir (adlar, e-postalar, şifreli yüz vektörleri, olaylar). Şifreli diskte tutun, repoya ve ekip dışına koymayın.
+- Kanıt kareleri veritabanında değil dosya deposundadır; onları yedeklerseniz aynı 7 gün kuralı geçerli.
+
+### Veritabanı kullanıcısı
+
+Docker Compose'da API, tabloların sahibiyle değil yetkisi kısıtlı `aiguard_app` kullanıcısıyla bağlanır (GAB 3.3.2): göçlerden sonra `db-user` adımı bu kullanıcıyı açar, şifresi `.env`'deki `APP_DB_PASSWORD`. Docker'sız yerel geliştirmede `postgres` kullanıcısıyla bağlanmak yeterli; istenirse aynı betik elle çalıştırılabilir. Ayrıntılar: [docs/veritabani-kullanicisi.md](docs/veritabani-kullanicisi.md).

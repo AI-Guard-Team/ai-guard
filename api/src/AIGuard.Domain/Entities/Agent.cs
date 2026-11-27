@@ -21,14 +21,8 @@ public class AgentPairing : Entity
     public AgentPlatform? Platform { get; set; }
 
     /// <summary>
-    /// A1'de anahtarın şifreli saklanması için açılmıştı. Y2 kartı (GAB) veritabanında yalnızca özet
-    /// istediği için kullanılmıyor; kaldırılması Ayşe ile konuşulacak (K-21, S-16).
-    /// </summary>
-    public byte[]? EncryptedSessionKey { get; set; }
-
-    /// <summary>
     /// Sinyalleri imzalayan oturum anahtarının SHA-256 özeti (Y2, GAB nesne modeli). Anahtarın kendisi
-    /// yalnızca API belleğinde ve ajanın belleğinde (K-21). Oturum bitince null; o andan sonra
+    /// yalnızca API belleğinde ve ajanın belleğinde (K-21); şifreli anahtar sütunu A5'te kaldırıldı (S-16). Oturum bitince null; o andan sonra
     /// bu anahtarla gelen sinyal kabul edilmiyor.
     /// </summary>
     public string? SessionKeyHash { get; set; }

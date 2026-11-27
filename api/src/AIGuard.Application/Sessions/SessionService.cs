@@ -18,9 +18,11 @@ namespace AIGuard.Application.Sessions;
 /// </remarks>
 // reviewNotifier isteğe bağlı: testler oturum akışını bildirimsiz kurabiliyor; uygulamada DI her zaman veriyor (A4).
 // monitoring de isteğe bağlı: teslimde açık kamera bölümlerini yazıyor (D4, K-45); verilmezse davranış aynı.
+// cameraPresence de isteğe bağlı: verilmezse sorular durumdan başka koşul aranmadan veriliyor (E4 testleri);
+// uygulamada DI her zaman veriyor ve sorular yalnızca kare gelen oturuma gidiyor (S-29).
 public sealed class SessionService(
     IAppDbContext db, EventService events, TimeProvider clock, IReviewNotifier? reviewNotifier = null,
-    ISessionMonitoringCloser? monitoring = null)
+    ISessionMonitoringCloser? monitoring = null, ICameraPresence? cameraPresence = null)
 {
     public async Task<StartSessionResult> StartAsync(Guid examId, Guid candidateId, CancellationToken ct = default)
     {
@@ -89,7 +91,9 @@ public sealed class SessionService(
         await TouchAsync(session, now, ct);
 
         // Sorular yalnızca sınav sürerken; izin beklerken gizli (FR-17), başlamadan ve bitince yok.
+        // Sürerken de son 15 sn'de kamera karesi gelmemişse gizli (S-29): kamera açılmadan sorular okunamasın.
         var questions = session.State == SessionState.InProgress
+                && (cameraPresence is null || cameraPresence.HasRecentFrame(sessionId, now))
             ? await db.Questions.AsNoTracking()
                 .Where(q => q.ExamId == session.ExamId)
                 .OrderBy(q => q.Order).ThenBy(q => q.Id)

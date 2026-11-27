@@ -16,7 +16,7 @@ import './admin.css'
 
 const PAGE_SIZE = 25
 
-const GROUP_VALUES = ['', 'user.', 'review.', 'report.', 'consent.', 'session.', 'retention.'] as const
+const GROUP_VALUES = ['', 'user.', 'review.', 'report.', 'consent.', 'session.', 'retention.', 'access.'] as const
 
 const messages = defineMessages({
   tr: {
@@ -29,6 +29,7 @@ const messages = defineMessages({
       ConsentRecord: 'Rıza kaydı',
       ReferenceFaceTemplate: 'Yüz şablonu',
       ReviewerDecision: 'Karar',
+      endpoint: 'Uç',
     } as Record<string, string>,
     groups: {
       '': 'Bütün işlemler',
@@ -38,6 +39,7 @@ const messages = defineMessages({
       'consent.': 'Rızalar',
       'session.': 'Oturumlar',
       'retention.': 'Veri saklama',
+      'access.': 'Reddedilen istekler',
     } as Record<(typeof GROUP_VALUES)[number], string>,
     failed: 'Denetim kaydı yüklenemedi.',
     admin: 'Yönetim',
@@ -60,6 +62,7 @@ const messages = defineMessages({
     next: 'Sonraki',
     page: (page: number, pages: number) => `Sayfa ${page} / ${pages}`,
     system: 'Sistem',
+    anonymous: 'Giriş yapmamış istek',
     before: 'Önceki',
     after: 'Sonraki',
     code: 'İşlem kodu:',
@@ -74,6 +77,7 @@ const messages = defineMessages({
       ConsentRecord: 'Consent record',
       ReferenceFaceTemplate: 'Face template',
       ReviewerDecision: 'Decision',
+      endpoint: 'Endpoint',
     },
     groups: {
       '': 'All actions',
@@ -83,6 +87,7 @@ const messages = defineMessages({
       'consent.': 'Consents',
       'session.': 'Sessions',
       'retention.': 'Data retention',
+      'access.': 'Denied requests',
     },
     failed: 'The audit log could not be loaded.',
     admin: 'Administration',
@@ -105,6 +110,7 @@ const messages = defineMessages({
     next: 'Next',
     page: (page: number, pages: number) => `Page ${page} of ${pages}`,
     system: 'System',
+    anonymous: 'Unauthenticated request',
     before: 'Before',
     after: 'After',
     code: 'Action code:',
@@ -249,7 +255,7 @@ function AuditRow({ item, open, onToggle }: { item: AuditLogView; open: boolean;
         <time className="audit-time numeric" dateTime={item.occurredAt}>
           {formatDateTime(item.occurredAt)}
         </time>
-        <span className="audit-actor">{item.actorName ?? m.system}</span>
+        <span className="audit-actor">{item.actorName ?? (item.action === 'access.denied' ? m.anonymous : m.system)}</span>
         <span className="audit-action">{ACTION_LABEL[item.action] ?? item.action}</span>
         <span className="audit-target">{item.targetType ? (m.targets[item.targetType] ?? item.targetType) : ''}</span>
         {hasDetail ? <ChevronDown size={18} className="audit-chevron" aria-hidden="true" /> : <span />}

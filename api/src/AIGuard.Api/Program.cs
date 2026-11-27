@@ -93,6 +93,8 @@ if (behindProxy)
 app.UseApiDocumentation();
 
 app.UseAuthentication();
+// S-27 (GAB 3.3.2): reddedilen istekler (401/403) denetim kaydına; yetkilendirmeyi sardığı için rol kuralının reddini de görüyor.
+app.UseMiddleware<AIGuard.Api.Audit.AccessDeniedAuditMiddleware>();
 app.UseAuthorization();
 
 // Compose ve CI giriş yapmadan kontrol ediyor.
