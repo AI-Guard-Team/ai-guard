@@ -68,7 +68,7 @@ Sinyal biçimi Windows'la aynı (`type`, `name`, `detail`); değerlendirici ekra
 | `VPN_PROXY` "Vekil sunucu" (S6) | Sistem HTTP/HTTPS/SOCKS vekili ya da otomatik yapılandırma (PAC) betiği tanımlı | `scutil --proxy`; yalnızca üst düzey ve açık girişler okunur, `__SCOPED__` altındakiler yok sayılır |
 | `VPN_PROXY` bilinen VPN uygulaması (S6) | OpenVPN, Tunnelblick, WireGuard, NordVPN, ProtonVPN, ExpressVPN, Surfshark, Mullvad, WARP, AnyConnect, GlobalProtect … çalışıyor | `forbidden-apps.json`'daki `"type": "VPN_PROXY"` kayıtları |
 
-**Yanlış alarm kuralı:** macOS'un boştaki `utun0`–`utun5` arayüzleri (iCloud Özel Aktarma, Handoff vb.) VPN sayılmaz; yalnızca trafiğin gittiği rota bir tünelse bildirilir. Hep açık duran servis süreçleri (`warp-svc`, `vpnagentd`, `nordvpnd`) listede yok; VPN o an bağlı değilken sayılmasınlar diye.
+**Yanlış alarm kuralı:** macOS'un boştaki `utun0`–`utun5` arayüzleri (iCloud Özel Aktarma, Handoff vb.) VPN sayılmaz; yalnızca trafiğin gittiği rota bir tünelse bildirilir. Hep açık duran servis süreçleri (`CloudflareWARP`, `vpnagentd`, `nordvpnd`) listede yok; VPN o an bağlı değilken sayılmasınlar diye.
 
 Donanım bir kez; süreç listesi ve ağ `ProcessScanIntervalSeconds` aralıkla okunur. Listeye yazılım ekleme Windows'takiyle aynı: `forbidden-apps.json`'a `{ "name": "...", "processes": [ "Uygulama" ] }` eklenir, süreç adı uzantısız ve `ps` çıktısındaki gibi yazılır. Dosya bozuksa ajan açılmaz.
 

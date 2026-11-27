@@ -46,6 +46,22 @@ Yanlış alarm denemesinin dayandığı değerler:
 
 Sahte süreç, `/bin/sleep`'in kopyası `Discord` adıyla kaydedilip ad-hoc imzalanarak (`codesign -s -`) açıldı; imzasız kopyayı macOS çalıştırmıyor.
 
+### Gerçek VPN ile (Cloudflare WARP 2026.8, 27 Kasım 2026)
+
+Aynı okuma, Cloudflare WARP kurulup üç durumda tekrarlandı (ajan ve okuma fiziksel Mac'te):
+
+| Durum | `route default` / `route 1.1.1.1` | Ajanın bildirdiği |
+|---|---|---|
+| WARP açık değil (arka plan servisi `CloudflareWARP` çalışıyor) | `en0` / `en0` | `[]`: **yanlış alarm yok** |
+| WARP uygulaması açık, bağlı değil | `en0` / `en0` | `VPN_PROXY / Cloudflare WARP` |
+| WARP bağlı | `en0` / **`utun6`** | `VPN_PROXY / Cloudflare WARP` + `VPN_PROXY / VPN bağdaştırıcısı`, detay `utun6 (genel adrese giden rota)` |
+
+Bulgular:
+
+- **Varsayılan rota bağlıyken de `en0` kalıyor.** WARP trafiği bölünmüş rotalarla tünele alıyor; yalnızca `route -n get default`'a bakan bir tespit bu VPN'i kaçırırdı. `1.1.1.1` rotasının da sorgulanması gerçek bir VPN'le doğrulanmış oldu.
+- Arka planda hep çalışan `CloudflareWARP` servisi bildirilmiyor (listede yok); VPN bağlı değilken uygulama kapalıysa gösterge çıkmıyor.
+- Bağlıyken `utun6` yeni bir arayüz olarak açıldı (`inet 172.16.0.2`); boştaki `utun0`–`utun5` yine sayılmadı.
+
 ### Kurulum paketi
 
 `publish-macos.sh --api-base-url … --allowed-origin …` iki paketi 13 saniyede üretti:
@@ -57,15 +73,24 @@ Sahte süreç, `/bin/sleep`'in kopyası `Discord` adıyla kaydedilip ad-hoc imza
 
 - `pkgutil --payload-files`: yalnızca `/Applications/AI-Guard Ajanı/aiguard-agent` ve `Ajanı Başlat.command`.
 - `pkgutil --expand-full` ile açılan ajan çalıştırıldı: banner yazıldı, yalnızca `127.0.0.1:47321` dinledi; `appsettings.json`, `deployment.json` ve `forbidden-apps.json` tek dosyanın içinden okundu (`~/.net/aiguard-agent` altına çıkarıldı).
-- Paketin gerçekten `installer` ile kurulumu yapılmadı (`/Applications` yönetici parolası ister); yalnızca içeriği açılıp ajan çalıştırıldı.
+
+**Gerçek kurulum (27 Kasım 2026, macOS 26.5.1):** Paket tarayıcıdan indirilmiş gibi karantina işareti (`com.apple.quarantine`) konularak Finder'dan çift tıklandı. Gatekeeper engelinden **System Settings → Privacy & Security** üzerinden geçilip Installer tamamlandı ("The installation was completed successfully"); parola istendi. Sonuç:
+
+- `/Applications/AI-Guard Ajanı/` altında `aiguard-agent` ve `Ajanı Başlat.command` var; macOS paketi `tr.edu.aiguard.agent` 1.0.0 olarak kaydetti.
+- Kurulan ajan dosyasında karantina işareti yok.
+- `Ajanı Başlat.command` çift tıklamayla uyarısız açıldı, Terminal'de banner yazıldı; ajan `127.0.0.1:47321`'i dinledi.
+- Installer sonunda "Move to Trash / Keep" sorusu çıkıyor; kılavuza eklendi.
+- Bulgu: `.command` dosyası pakete paketi yapan kullanıcıya ait kaydediliyordu (başka Mac'te yanlış kullanıcıya düşer). `publish-macos.sh` artık kurulumdan sonra root olarak çalışan bir `postinstall` ile `root:wheel` yapıyor. Düzeltme aynı gün yeniden kurularak doğrulandı: `Ajanı Başlat.command` kurulumdan önce `seymavideniz staff`, sonra `root wheel`; `aiguard-agent` ve klasör `root wheel`.
+
+Gatekeeper uyarı ekranının kendisinin görüntüsü alınmadı; Privacy & Security adımı kullanıcı tarafından uygulandı.
 
 ## Bilinen sınırlar ve açık kalanlar
 
 | Konu | Durum |
 |---|---|
-| Gatekeeper | Paket Developer ID ile imzalı/noter onaylı değil (Apple Developer hesabı yok). Kılavuz Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de Aç" yolunu anlatıyor. Bu yol bu Mac'te baştan sona denenmedi, kılavuz Apple'ın belgelenmiş akışına dayanıyor |
+| Gatekeeper | Paket Developer ID ile imzalı/noter onaylı değil (Apple Developer hesabı yok). Kılavuz Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de Aç" yolunu anlatıyor; bu yolla gerçek kurulum yapıldı (yukarıda). Uyarı ekranının görüntüsü alınmadı |
 | macOS Ekran Paylaşımı süreç adları | **Doğrulandı:** Screen Sharing uygulaması açıkken `ps` çıktısında süreç adı tam olarak `Screen Sharing` (26 Kasım 2026, bu Mac). Mac kendi ekranına bağlanamadığı için ("You cannot control your own screen") **sunucu tarafı** (`screensharingd`, `ScreensharingAgent`, `ARDAgent`) bu denemede görülemedi; Y7b'de Parallels konuğu Mac'e `vnc://` ile bağlanınca doğrulanacak |
-| Gerçek VPN | Bu denemede gerçek bir VPN sağlayıcısına bağlanılmadı; tünel kararı rota çıktısı örnekleriyle (WireGuard, OpenVPN, Cloudflare WARP biçimi) test edildi. Gerçek VPN ile deneme Y7b ortam matrisinde |
+| Gerçek VPN | **Doğrulandı:** Cloudflare WARP ile üç durum denendi (yukarıda). Diğer sağlayıcılar (OpenVPN, WireGuard, kurumsal VPN) rota örnekleriyle test edildi; Y7b ortam matrisinde bir tane daha gerçek VPN denenebilir |
 | Sistem vekil sunucusu | `scutil --proxy` ayrıştırması gerçek çıktı örnekleriyle test edildi; Mac'in ağ ayarı değiştirilerek canlı denenmedi |
 | Apple Silicon sanal makine | Ürün (Parallels/UTM/VMware) ayırt edilemiyor, hepsi "Apple Sanal Makine" (Y5 notuna bakın) |
 | Web sihirbazı metni | Sihirbazdaki indirme/ipucu metinleri Windows'a göre ("aiguard-agent.exe"). macOS için ayrı metin ve `.pkg` indirme bağlantısı ön yüz ekibiyle konuşulmalı; bu kartta ön yüze dokunulmadı |

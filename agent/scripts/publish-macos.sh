@@ -87,7 +87,20 @@ EOF
   chmod 755 "$app_dir/Ajanı Başlat.command"
 
   pkg="$OUTPUT/aiguard-agent-$arch.pkg"
-  pkgbuild --root "$payload" --identifier "tr.edu.aiguard.agent" --version "$VERSION" \
+  # Paket içindeki dosyalar paketi yapan kullanıcıya ait kaydedilir (başka Mac'te yanlış kullanıcıya düşer).
+  # Kurulumdan sonra root olarak çalışan bu betik sahipliği düzeltir.
+  scripts="$STAGING/scripts-$arch"
+  mkdir -p "$scripts"
+  cat > "$scripts/postinstall" <<'EOF'
+#!/bin/bash
+APP="/Applications/AI-Guard Ajanı"
+chown -R root:wheel "$APP"
+chmod 755 "$APP" "$APP/aiguard-agent" "$APP/Ajanı Başlat.command"
+exit 0
+EOF
+  chmod 755 "$scripts/postinstall"
+
+  pkgbuild --root "$payload" --scripts "$scripts" --identifier "tr.edu.aiguard.agent" --version "$VERSION" \
     --install-location "/" "$pkg" >/dev/null
 
   size=$(du -m "$pkg" | cut -f1)

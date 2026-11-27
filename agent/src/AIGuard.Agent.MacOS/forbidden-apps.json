@@ -14,7 +14,7 @@
 //
 // VPN: uygulama sürecinin yanında trafiği taşıyan VPN tüneli (utun, ipsec, ppp) ve sistem vekil sunucu
 // ayarı da denetlenir (kodda, bu dosyada değil); bağlantı uygulamasız kurulsa da bulunur. Yalnızca
-// arka planda hep çalışan servis süreçleri (ör. warp-svc, vpnagentd) listede YOK: VPN kurulu ama bağlı
+// arka planda hep çalışan servis süreçleri (ör. CloudflareWARP, vpnagentd) listede YOK: VPN kurulu ama bağlı
 // değilken de çalıştıkları için yanlış alarm verirler. Arayüz uygulamalarının adları yazılı.
 {
   "apps": [

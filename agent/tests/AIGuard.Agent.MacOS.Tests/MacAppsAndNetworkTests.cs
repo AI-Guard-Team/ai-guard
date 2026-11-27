@@ -13,9 +13,6 @@ internal static class MacTestHost
     public static readonly ForbiddenAppList Apps =
         ForbiddenAppList.Load(Path.Combine(AppContext.BaseDirectory, "forbidden-apps.json"));
 
-    public static MacDeviceInspector CreateInspector2(IMacSystemProbe probe) =>
-        new(probe, Apps, TimeProvider.System, Options.Create(new AgentOptions()));
-
     public static MacDeviceInspector CreateInspector(FakeProbe probe, FakeTimeProvider? clock = null, int scanSeconds = 15) =>
         new(probe, Apps, clock ?? new FakeTimeProvider(new DateTimeOffset(2026, 11, 26, 9, 0, 0, TimeSpan.Zero)),
             Options.Create(new AgentOptions { ProcessScanIntervalSeconds = scanSeconds }));

@@ -19,6 +19,8 @@ Sınav sayfasındaki **"Güvenlik ajanını indir"** bağlantısından Mac'inize
 
 İndirilen `.pkg` dosyasına çift tıklayın ve ekrandaki adımları izleyin. Kurulum ajanı `/Applications/AI-Guard Ajanı` klasörüne kopyalar; bu klasöre yazmak için Mac'inizin parolası istenir.
 
+Kurulum bitince Installer "kurulum paketini Çöp Sepeti'ne taşımak ister misiniz?" diye sorar. **Taşı** ya da **Sakla**, ikisi de olur; paket ajanın çalışması için gerekmez.
+
 > **"Açılamıyor, çünkü Apple tarafından doğrulanamadı" uyarısı çıkarsa:** aşağıdaki [Gatekeeper uyarısı](#gatekeeper-uyarısı) bölümüne bakın.
 
 ### 3. Çalıştırın
