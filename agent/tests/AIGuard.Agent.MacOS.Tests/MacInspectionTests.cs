@@ -13,12 +13,35 @@ internal sealed class FakeProbe : IMacSystemProbe
         IoModel: "Mac14,2");
 
     public int Reads { get; private set; }
+    public int ProcessScans { get; private set; }
+
+    /// <summary>Çalışan süreçler. Varsayılan: sıradan bir Mac masaüstü.</summary>
+    public List<string> Processes { get; set; } = ["Finder", "Dock", "Safari", "Spotify", "Cursor"];
+
+    /// <summary>Hedef → çıkış arayüzü. Varsayılan: Wi-Fi (VPN yok) ve macOS'un boşta duran utun arayüzleri.</summary>
+    public Dictionary<string, string?> Routes { get; set; } = new()
+    {
+        ["default"] = "en0",
+        [NetworkDetector.PublicProbeAddress] = "en0",
+    };
+
+    public MacProxySettings Proxy { get; set; } = new();
 
     public MacHardware ReadHardware()
     {
         Reads++;
         return Hardware;
     }
+
+    public IReadOnlyList<string> RunningProcessNames()
+    {
+        ProcessScans++;
+        return Processes;
+    }
+
+    public string? RouteInterface(string destination) => Routes.GetValueOrDefault(destination);
+
+    public MacProxySettings ReadProxySettings() => Proxy;
 }
 
 public class MachineDetectorTests
@@ -170,7 +193,7 @@ public class MacDeviceInspectorTests
     public async Task Hardware_is_read_once()
     {
         var probe = new FakeProbe();
-        var inspector = new MacDeviceInspector(probe);
+        var inspector = MacTestHost.CreateInspector(probe);
 
         await inspector.InspectAsync();
         await inspector.InspectAsync();

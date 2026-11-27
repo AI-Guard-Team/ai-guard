@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- macOS ajanı. Ortak çekirdeği başlatıyor ve sanal makine incelemesini ekliyor (Y5). -->
+  <!-- macOS ajanı. Ortak çekirdeği başlatıyor; sanal makine (Y5), yasaklı yazılım ve VPN/vekil (S6) incelemesini ekliyor. -->
   <PropertyGroup>
     <AssemblyName>aiguard-agent</AssemblyName>
     <RootNamespace>AIGuard.Agent.MacOS</RootNamespace>
@@ -11,7 +11,34 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Yasaklı yazılım listesi ajanın yanına kopyalanıyor; değiştirmek için yeniden derleme gerekmiyor. -->
+    <Content Update="forbidden-apps.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="AIGuard.Agent.MacOS.Tests" />
+  </ItemGroup>
+
+  <!-- Tek dosyalık paket (S6): agent/scripts/publish-macos.sh bu ayarlarla yayımlıyor (-r osx-arm64 / osx-x64).
+       Ayar dosyaları ajanın içine gömülüyor; .pkg yalnızca tek bir yürütülebilir dosya kuruyor. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Web SDK'nın IIS ve statik dosya çıktıları ajanda kullanılmıyor. -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <!-- Web SDK appsettings.json'ı varsayılan olarak tek dosyanın dışında bırakıyor; ajanda içeride olmalı. -->
+  <ItemGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <Content Update="appsettings.json" ExcludeFromSingleFile="false" />
+    <Content Update="forbidden-apps.json" ExcludeFromSingleFile="false" />
+  </ItemGroup>
+
+  <!-- Kurum ayarları (sunucu adresi, sınav sitesi): betik deployment.json yazıp yolunu bu özellikle veriyor. -->
+  <ItemGroup Condition="'$(DeploymentSettingsFile)' != ''">
+    <None Include="$(DeploymentSettingsFile)" Link="deployment.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="false" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,45 @@
+// macOS yasaklı yazılım listesi (S6, FR-19) ve bilinen VPN uygulamaları (FR-20). Ajan çalışan süreçlerin
+// adlarını bu listeyle karşılaştırır ve sunucuya yalnızca eşleşenleri gönderir; tam süreç listesi gönderilmez.
+//
+// - name: değerlendiricinin ve adayın göreceği ad (en fazla 64 karakter). Windows listesiyle aynı yazılır
+//   (AnyDesk, TeamViewer, Zoom ...), böylece iki platform değerlendirici ekranında aynı görünür.
+// - processes: macOS süreç adları (yürütülebilir dosya adı, büyük/küçük harf yok sayılır). Windows'taki
+//   gibi ".exe" yok; uygulamaların macOS'taki süreç adları farklı olabilir.
+// - type: "FORBIDDEN_APP" (varsayılan) ya da "VPN_PROXY"
+//
+// Ekran Paylaşımı: macOS'un kendi uzaktan erişimi. "Ekran Paylaşımı" uygulaması adayın BAŞKA bir Mac'e
+// bağlandığını, screensharingd / ScreensharingAgent / ARDAgent ise bu Mac'e dışarıdan bağlanıldığını
+// gösterir. Süreç adları macOS sürümüne göre değişebiliyor; Y7b'de gerçek bir Ekran Paylaşımı oturumunda
+// doğrulanıp bu liste güncellenir.
+//
+// VPN: uygulama sürecinin yanında trafiği taşıyan VPN tüneli (utun, ipsec, ppp) ve sistem vekil sunucu
+// ayarı da denetlenir (kodda, bu dosyada değil); bağlantı uygulamasız kurulsa da bulunur. Yalnızca
+// arka planda hep çalışan servis süreçleri (ör. CloudflareWARP, vpnagentd) listede YOK: VPN kurulu ama bağlı
+// değilken de çalıştıkları için yanlış alarm verirler. Arayüz uygulamalarının adları yazılı.
+{
+  "apps": [
+    { "name": "AnyDesk", "processes": [ "AnyDesk" ] },
+    { "name": "TeamViewer", "processes": [ "TeamViewer" ] },
+    { "name": "macOS Ekran Paylaşımı", "processes": [ "Screen Sharing", "screensharingd", "ScreensharingAgent", "ARDAgent" ] },
+    { "name": "OBS Studio (sanal kamera)", "processes": [ "OBS", "obs" ] },
+    { "name": "Zoom", "processes": [ "zoom.us" ] },
+    // Yeni Teams'in süreç adı farklı (MSTeams); iki ad da listede.
+    { "name": "Microsoft Teams", "processes": [ "Microsoft Teams", "MSTeams" ] },
+    { "name": "Discord", "processes": [ "Discord" ] },
+
+    { "name": "OpenVPN", "processes": [ "OpenVPN Connect", "openvpn" ], "type": "VPN_PROXY" },
+    { "name": "Tunnelblick", "processes": [ "Tunnelblick" ], "type": "VPN_PROXY" },
+    { "name": "WireGuard", "processes": [ "WireGuard", "wireguard-go" ], "type": "VPN_PROXY" },
+    { "name": "NordVPN", "processes": [ "NordVPN" ], "type": "VPN_PROXY" },
+    { "name": "ProtonVPN", "processes": [ "ProtonVPN", "Proton VPN" ], "type": "VPN_PROXY" },
+    { "name": "ExpressVPN", "processes": [ "ExpressVPN" ], "type": "VPN_PROXY" },
+    { "name": "Surfshark", "processes": [ "Surfshark" ], "type": "VPN_PROXY" },
+    { "name": "Mullvad VPN", "processes": [ "Mullvad VPN" ], "type": "VPN_PROXY" },
+    { "name": "Cloudflare WARP", "processes": [ "Cloudflare WARP" ], "type": "VPN_PROXY" },
+    { "name": "Cisco AnyConnect", "processes": [ "Cisco AnyConnect Secure Mobility Client" ], "type": "VPN_PROXY" },
+    { "name": "GlobalProtect", "processes": [ "GlobalProtect" ], "type": "VPN_PROXY" },
+    { "name": "Windscribe", "processes": [ "Windscribe" ], "type": "VPN_PROXY" },
+    { "name": "Psiphon", "processes": [ "Psiphon" ], "type": "VPN_PROXY" },
+    { "name": "Tor", "processes": [ "tor" ], "type": "VPN_PROXY" }
+  ]
+}

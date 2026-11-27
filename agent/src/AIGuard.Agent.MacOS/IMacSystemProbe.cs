@@ -18,11 +18,37 @@ internal sealed record MacHardware(
     string? IoModel = null);
 
 /// <summary>
-/// İşletim sisteminden okunan ham bilgiler. Kurallar <see cref="MachineDetector"/> üzerinden
-/// çalışıyor; testlerde sahte uygulama veriliyor (Windows'taki <c>IWindowsSystemProbe</c> gibi).
+/// Sistem vekil sunucu ayarı (S6). Boş alan ayar yok demek. "Ayarları otomatik algıla" (WPAD) varsayılan
+/// açık olduğu için burada yok; gösterge sayılmıyor.
 /// </summary>
-/// <remarks>Çağrı kullanıcı modunda. Hata fırlatmıyor; okunamayan alan null kalıyor.</remarks>
+/// <param name="Http"><c>HTTPEnable</c> açıksa "adres:port".</param>
+/// <param name="Https"><c>HTTPSEnable</c> açıksa "adres:port".</param>
+/// <param name="Socks"><c>SOCKSEnable</c> açıksa "adres:port".</param>
+/// <param name="PacUrl"><c>ProxyAutoConfigEnable</c> açıksa kurulum betiği (PAC) adresi.</param>
+internal sealed record MacProxySettings(string? Http = null, string? Https = null, string? Socks = null, string? PacUrl = null);
+
+/// <summary>
+/// İşletim sisteminden okunan ham bilgiler. Kurallar <see cref="MachineDetector"/>,
+/// <see cref="NetworkDetector"/> ve <see cref="MacDeviceInspector"/> üzerinden çalışıyor; testlerde sahte
+/// uygulama veriliyor (Windows'taki <c>IWindowsSystemProbe</c> gibi).
+/// </summary>
+/// <remarks>Çağrı kullanıcı modunda. Hata fırlatmıyor; okunamayan alan null (ya da boş liste) kalıyor.</remarks>
 internal interface IMacSystemProbe
 {
     MacHardware ReadHardware();
+
+    /// <summary>
+    /// Çalışan süreçlerin adları (yürütülebilir dosya adı). Yalnızca yasaklı yazılım listesiyle
+    /// karşılaştırmak için; hiçbir yere gönderilmiyor ve loglanmıyor (KVKK).
+    /// </summary>
+    IReadOnlyList<string> RunningProcessNames();
+
+    /// <summary>
+    /// <c>route -n get {hedef}</c> ile bu hedefe giden trafiğin çıkış arayüzü (ör. <c>en0</c>, <c>utun4</c>).
+    /// Hedef <c>default</c> ya da bir IP adresi. Hiçbir paket gönderilmiyor; yalnızca yönlendirme tablosu okunuyor.
+    /// </summary>
+    string? RouteInterface(string destination);
+
+    /// <summary><c>scutil --proxy</c>: ağ ayarlarındaki sistem vekil sunucusu.</summary>
+    MacProxySettings ReadProxySettings();
 }
